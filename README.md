@@ -7,6 +7,12 @@ This repository will contain those portions of Laika's Production Shading Librar
 
 The inagural release contains a set of shading nodes that provide a Material Layering System based on [Pixar's](https://www.pixar.com) [RenderMan](https://renderman.pixar.com/product).
 
+## Requirements
+* Pixar's RenderMan 22
+* Pixar's RenderMan 22 for Katana 3.0
+* The Foundry's Katana 3.0
+
+An update of the software that includes support for Maya 2018 will come soon.
 
 ## License
 Licensed under either of
