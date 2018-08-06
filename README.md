@@ -12,7 +12,7 @@ The inagural release contains a set of shading nodes that provide a Material Lay
 * Pixar's RenderMan 22 for Katana 3.0
 * The Foundry's Katana 3.0
 
-An update of the software that includes support for Maya 2018 will come soon.
+An update of the Material Layering System that includes support for Maya 2018 will come soon.
 
 ## License
 Licensed under either of
