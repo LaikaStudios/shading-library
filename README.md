@@ -11,6 +11,7 @@ The inagural release contains a set of shading nodes that provide a Material Lay
 * Pixar's RenderMan 22
 * Pixar's RenderMan 22 for Katana 3.0
 * The Foundry's Katana 3.0
+* A c++11 compatible compiler
 
 An update of the Material Layering System that includes support for Maya 2018 will come soon.
 
