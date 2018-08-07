@@ -8,8 +8,8 @@ This repository will contain those portions of Laika's Production Shading Librar
 The inagural release contains a set of shading nodes that provide a [Material Layering System](https://github.com/LaikaStudios/shading-library/wiki#material-layering) based on [Pixar's](https://www.pixar.com) [RenderMan 22](https://renderman.pixar.com/product).
 
 ## Requirements
-* Pixar's RenderMan 22
-* Pixar's RenderMan 22 for Katana 3.0
+* [Pixar's](https://www.pixar.com) [RenderMan 22](https://renderman.pixar.com/product)
+* [Pixar's](https://www.pixar.com) [RenderMan 22 for Katana 3.0](https://rmanwiki.pixar.com/display/RFK22/RenderMan+22+for+Katana)
 * [Foundry's](https://www.foundry.com) [Katana 3.0](https://www.foundry.com/products/katana)
 * A c++11 compatible compiler
 
