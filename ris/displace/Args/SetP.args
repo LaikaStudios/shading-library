@@ -1,0 +1,38 @@
+<!--
+ *  Copyright 2016,2018 Laika, LLC. Authored by Mitch Prater.
+ *
+ *  Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
+ *  http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
+ *  http://opensource.org/licenses/MIT>, at your option. This file may not be
+ *  copied, modified, or distributed except according to those terms.
+-->
+<args format="1.0">
+
+    <shaderType> <tag value = "displacement"/> </shaderType>
+    <rfmdata nodeid = "1233907" classification = "rendernode/RenderMan/displace/Laika"/>
+
+    <help>
+        Directly sets the value of P.
+    </help>
+
+    <param name = "Q"
+        label = "P"
+        type = "point"
+        default = "0.0 0.0 0.0">
+        <tags> <tag value = "point"/> </tags>
+        <help>
+            The new value of P.
+        </help>
+    </param>
+
+    <param name = "Enable"
+        type = "float"
+        slider = "true" slidermin = "0.0" slidermax = "1.0"
+        default = "1">
+        <tags> <tag value="float"/> </tags>
+        <help>
+            How much effect will this have on the displacement?
+        </help>
+    </param>
+
+</args>

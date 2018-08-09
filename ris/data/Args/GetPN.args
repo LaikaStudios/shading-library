@@ -1,0 +1,60 @@
+<!--
+ *  Copyright 2018 Laika, LLC. Authored by Mitch Prater.
+ *
+ *  Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
+ *  http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
+ *  http://opensource.org/licenses/MIT>, at your option. This file may not be
+ *  copied, modified, or distributed except according to those terms.
+-->
+<args format="1.0">
+
+    <shaderType> <tag value = "pattern"/> </shaderType>
+    <rfmdata nodeid = "1103638" classification = "rendernode/RenderMan/pattern/Laika/data"/>
+
+    <help>
+        Access the original (undisplaced) Po and No, and the displaced P and N values.
+    </help>
+
+    <param name = "Notes"
+        connectable = "false"
+        type = "string"
+        default = "">
+        <help>
+            Access the original (undisplaced) Po and No, and the displaced P and N values.
+        </help>
+    </param>
+
+    <output name = "Po">
+        <tags>
+            <tag value = "point"/>
+            <tag value = "color"/>
+            <tag value = "normal"/>
+            <tag value = "vector"/>
+        </tags>
+    </output>
+    <output name = "No">
+        <tags>
+            <tag value = "normal"/>
+            <tag value = "vector"/>
+            <tag value = "color"/>
+            <tag value = "point"/>
+        </tags>
+    </output>
+    <output name = "P">
+        <tags>
+            <tag value = "point"/>
+            <tag value = "color"/>
+            <tag value = "normal"/>
+            <tag value = "vector"/>
+        </tags>
+    </output>
+    <output name = "N">
+        <tags>
+            <tag value = "normal"/>
+            <tag value = "vector"/>
+            <tag value = "color"/>
+            <tag value = "point"/>
+        </tags>
+    </output>
+
+</args>
