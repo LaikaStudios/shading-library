@@ -3,6 +3,7 @@
 # Set it if it's not already set in the environment.
 #
 RMANTREE ?= /opt/pixar/RenderManProServer-22.0
+export RMANTREE
 
 #
 # BUILD_DIR is where the built files will go.
