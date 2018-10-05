@@ -1,16 +1,16 @@
 /*
  *  Copyright 2018 Laika, LLC. Authored by Mitch Prater.
  *
- *  Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
- *  http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
- *  http://opensource.org/licenses/MIT>, at your option. This file may not be
- *  copied, modified, or distributed except according to those terms.
+ *  Licensed under the Apache License Version 2.0 http://apache.org/licenses/LICENSE-2.0,
+ *  or the MIT license http://opensource.org/licenses/MIT, at your option.
+ *
+ *  This program may not be copied, modified, or distributed except according to those terms.
  */
 /*
     Material: a single node that combines bxdf and displacement controls.
     Each material node has a Material Input connection which is composited OVER
     this material's parameter settings, and the result is returned in Material Output.
-*/
+ */
 #include "material/Displace.h"
 #include "material/PxrSurface.h"
 
@@ -79,8 +79,10 @@ shader PxrSurface
             "layer it OVER this material. "
     ]],
 
+    // The struct parameter.
     PXRSURFACE_MATERIAL_STRUCT( Material_Input, Params ),
 
+    // The Enable parameters.
     ALL_ENABLE_PARAMS( Material_Input, clearcoat ),
     ALL_ENABLE_PARAMS( Material_Input, specPrimary ),
     ALL_ENABLE_PARAMS( Material_Input, specSecondary ),
@@ -116,9 +118,10 @@ shader PxrSurface
         int slider = 1, float slidermin = 0.0, float slidermax = 1.0,
         string help =
             "This material <strong>Mask</strong> (a.k.a. Opacity, Alpha, Matte, Presence, etc.) "
-            "determines the distribution of this material: where it is versus where it isn't. "
+            "determines the distribution of this material layer: where it is versus where it isn't. "
             "Can optionally be used in the generation of a <strong>Pattern Ramp</strong> based on "
-            "the <strong>Displacement</strong> to produce a more physically plausible transition. "
+            "the <strong>Displacement</strong> to produce a more physically plausible transition "
+            "between this and other material layers. "
             "<br/><br/>"
             "Specifically, it controls the blend between this material and the material "
             "composited UNDER it (the one connected to this one's <strong>Material Output</strong>). "
@@ -472,7 +475,7 @@ shader PxrSurface
             ),
 
     // Utility socket.
-    int  Socket = 0
+    int Socket = 0
     [[
         string help =
             "Connect a shading node's <strong>Plug</strong> output here in order to execute that node and "
@@ -500,8 +503,10 @@ shader PxrSurface
             "<strong>PxrSurface_Material</strong> node. "
     ]],
 
+    // The struct parameter.
     output PXRSURFACE_MATERIAL_STRUCT( Material_Output, Params ),
 
+    // Set the vstruct Enable parameters based on the input Enable and user parameter settings.
     output ALL_ENABLE_PARAMS_SET( Material_Output, Material_Input, clearcoat ),
     output ALL_ENABLE_PARAMS_SET( Material_Output, Material_Input, specPrimary ),
     output ALL_ENABLE_PARAMS_SET( Material_Output, Material_Input, specSecondary ),
@@ -525,6 +530,9 @@ shader PxrSurface
  *  Material functionality: Output = Input OVER this.
  */
 {
+    // Pull on the Socket to make sure it's evaluated.
+    Material_Output_Params.socket = Socket;
+
     // Short-circuit this material.
     if( Enable == 0 )
     {
@@ -537,10 +545,9 @@ shader PxrSurface
     else
     {
 
-    //  Set the mask compositing values.
-    bxdfMask = Mask;
-    dispMask = Mask;
-
+    // Initialize this material's mask values.
+    bxdfMask = Mask; // this_bxdfMask
+    dispMask = Mask; // this_dispMask
 
     //
     //  Displacement.
@@ -555,7 +562,10 @@ shader PxrSurface
                 transform( DispMagSpace, vector( dispDirSpace, 0.577350269189626, 0.577350269189626, 0.577350269189626 ))
                 );
 
-    // The deltaP vector for this material's displacement.
+    // The covering height offset surface vector for this material.
+    vector  this_coverV = Nmag*CoveringHeight;
+
+    // The deltaP displacement vector for this material.
     vector  this_deltaP = Nmag * (
                         DISPLACE_FLOAT_AMOUNT(0)
                         + DISPLACE_FLOAT_AMOUNT(1)
@@ -609,10 +619,6 @@ shader PxrSurface
         if( this_rampMag > 0.0000001 ) this_rampPattern /= this_rampMag;
         else this_rampPattern = 0.5;
 
-        // Make sure the edge width is at least a ray footprint wide.
-        // XXX area() of arbitrary variables is not supported.
-        // float  edgeWidth = max( area( Mask ), EdgeWidth );
-
         // Generate the pattern ramped masks.
         bxdfMask = linearstep(
                     Mask - BxdfWidth,
@@ -623,7 +629,7 @@ shader PxrSurface
                     this_rampPattern + mix(
                                         -1.0000001-LowerCutoff - BxdfWidth,
                                         2.0-UpperCutoff + BxdfWidth,
-                                        pow( Mask, pow( 3.0, -BxdfTransition ))
+                                        pow( Mask, pow( 3.0, -BxdfTransition )) // Grow/Erode the Masked area.
                                         )
                     );
 
@@ -641,34 +647,31 @@ shader PxrSurface
                     );
     }
 
-    // Not the top layer.
-    if( Material_Input_Params.layer > 0 )
-    {
-        // The covering height offset surface vector for this material.
-        vector  this_coverV = Nmag*CoveringHeight;
+    // Pre-multiply by this mask.
+    this_coverV *= dispMask;
+    this_deltaP *= dispMask;
 
-        // Displacement compositing.
-        // Note: displacement is NOT Porter-Duff composited.
-        Material_Output_Params.deltaP = Material_Input_Params.deltaP
-                                        + mix(
-                                            this_deltaP,
-                                            this_coverV,
-                                            Material_Input_Params.thickness
-                                            ) * dispMask;
-    }
-    // This is the top layer. Its displacement is always present.
-    // Note: must set thickness explicitly - cannot rely on struct defaults.
-    // My guess is the osl optimizer is mucking up that behavior.
-    else
-    {
-        Material_Output_Params.deltaP = this_deltaP*dispMask;
-        Material_Output_Params.thickness = 0.0;
-    }
+    // Note: coverV is not composited. It is only communicated
+    // with the immediately overlying material layer.
+    Material_Output_Params.coverV = this_coverV;
 
-    // Thickness*dispMask must be passed down through all layers to account for
-    // intermediate layers that are not present, and a higher layer has thickness.
+    // Displacement compositing.
+    // Note: displacement is NOT Porter-Duff OVER operation composited.
+    Material_Output_Params.deltaP = Material_Input_Params.deltaP
+                                    + mix(
+                                        this_deltaP,
+                                        this_coverV,
+                                        Material_Input_Params.thickness
+                                        );
+
+    // Thickness accumulates through all the layers, since layer displacements all accumulate.
+    // Any overlying layer's thickness will apply to all layers below it, so always pass on the
+    // largest thickness value.
     Material_Output_Params.thickness = max( Material_Input_Params.thickness, Thickness*dispMask );
 
+    // Composite the dispMask.
+    Material_Output_Params.dispMask = Material_Input_Params.dispMask
+                                    + dispMask*( 1.0 - Material_Input_Params.dispMask );
 
     //
     // Bxdf shader parameters start here.
@@ -950,7 +953,5 @@ shader PxrSurface
         GLOW_COPY( Material_Output_Params, Material_Input_Params, glow );
     }
 
-    // Increment the layer counter for the next material.
-    Material_Output_Params.layer = Material_Input_Params.layer + 1;
     }
 }

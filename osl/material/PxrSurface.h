@@ -1,16 +1,16 @@
 /*
  *  Copyright 2018 Laika, LLC. Authored by Mitch Prater.
  *
- *  Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
- *  http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
- *  http://opensource.org/licenses/MIT>, at your option. This file may not be
- *  copied, modified, or distributed except according to those terms.
+ *  Licensed under the Apache License Version 2.0 http://apache.org/licenses/LICENSE-2.0,
+ *  or the MIT license http://opensource.org/licenses/MIT, at your option.
+ *
+ *  This program may not be copied, modified, or distributed except according to those terms.
  */
 /*
     Defines two components of the material layering system.
     The first is the set of user interface parameters that control the material.
     The second is the data struct passed from one layer to another.
-*/
+ */
 #ifndef PXRSURFACE_MATERIAL_H
 #define PXRSURFACE_MATERIAL_H
 
@@ -1000,18 +1000,20 @@
 //
 struct PxrSurface_material_s
 {
-    int    layer; // Material layering depth. Top = 0.
+    // Dummy Socket variable.
+    int    socket;
 
-    //
-    // Material layering and displacement parameters.
-    //
-    float  bxdfMask;
+    // Layer values.
+    vector coverV; // This material's covering height vector.
+
+    // Accumulated Displacement values.
+    float  dispMask;
     float  thickness;
-    vector deltaP;  // Layer accumulated displacement vector.
+    vector deltaP;
 
-    //
-    // Bxdf parameters start here.
-    //
+    // Accumulated Bxdf values.
+    float  bxdfMask;
+
     float  BumpPercent;
 
     normal globalShadingNormal;
@@ -1241,9 +1243,6 @@ struct PxrSurface_material_s
 //
 //  Note: not all responses have ShadingNormal or ShadingTangent.
 //  They'll simply be ignored in that case.
-//  XXX
-//  True, but the Preset Browser will become confused when it encouters
-//  a vstructConditional that references a non-existent parameter.
 //
 #define ALL_ENABLE_PARAMS(VSTRUCT,PREFIX) \
     RESPONSE_ENABLE_PARAM( VSTRUCT, PREFIX ), \
@@ -1360,5 +1359,5 @@ struct PxrSurface_material_s
 //
 #define PARAM_OVER(OUTPUT,INPUT,PREFIX,PARAM,MASK) \
     OUTPUT.PREFIX##PARAM = INPUT.PREFIX##PARAM + ( PREFIX##PARAM * MASK )*( 1.0 - INPUT.##MASK )
-
+ 
 #endif

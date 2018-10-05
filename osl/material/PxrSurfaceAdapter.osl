@@ -1,10 +1,10 @@
 /*
  *  Copyright 2018 Laika, LLC. Authored by Mitch Prater.
  *
- *  Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
- *  http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
- *  http://opensource.org/licenses/MIT>, at your option. This file may not be
- *  copied, modified, or distributed except according to those terms.
+ *  Licensed under the Apache License Version 2.0 http://apache.org/licenses/LICENSE-2.0,
+ *  or the MIT license http://opensource.org/licenses/MIT, at your option.
+ *
+ *  This program may not be copied, modified, or distributed except according to those terms.
  */
 /*
  *  This adapts the Material Output of a material shader to a
@@ -95,6 +95,11 @@ shader PxrSurfaceAdapter
     ]],
 
     /*
+     *  Utility Plug output.
+     */
+    output int Plug = 0 [[ string widget = "null" ]],
+
+    /*
      *  Output PxrSurface (vstruct) shader parameters start here.
      */
     output normal globalShadingNormal = normal( 0.0 )
@@ -174,8 +179,6 @@ shader PxrSurfaceAdapter
     //  When enabled, simply copy the response's parameter values
     //  to their corresponding vstruct output parameters.
     //
-    //  XXX This should be from CreateOrthonormalBasis().
-    //  But that's not even correct: https://renderman.pixar.com/forum/showthread.php?s=&threadid=37865
     vector  defaultShadingTangent = normalize( dPdu );
 
     // When out_P has been connected to a displacement, N becomes the post-displacement normal.
