@@ -18,7 +18,7 @@ This beta release contains a set of shading nodes that provide a [Material Layer
 An update of the Material Layering System that includes support for Maya 2018 will come soon.
 
 ## Documentation
-https://github.com/LaikaStudios/shading-library/wiki
+Documentation is on the [wiki page](https://github.com/LaikaStudios/shading-library/wiki).
 
 ## License
 Licensed under either of
