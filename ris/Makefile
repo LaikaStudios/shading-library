@@ -2,14 +2,14 @@
 # RMANTREE points to the RenderManProServer directory.
 # Set it if it's not already set in the environment.
 #
-RMANTREE ?= /opt/pixar/RenderManProServer-22.0
+RMANTREE ?= /opt/pixar/RenderManProServer-22.3
 
 #
 # Compiler and linker settings.
 #
-CC = g++
-LD = g++ -shared
-CFLAGS = -fmax-errors=5 -Wall -Wno-switch -Wno-reorder -Wno-sign-compare -Wno-narrowing -fPIC -std=c++11 -O3
+CC = clang++
+LD = clang++ -shared
+CFLAGS = -Wall -Wno-switch -Wno-reorder -Wno-sign-compare -Wno-narrowing -fPIC -std=c++11 -O3
 INCLUDE = -I. -I./include -I${RMANTREE}/include
 
 #
