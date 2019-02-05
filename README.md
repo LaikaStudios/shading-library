@@ -4,9 +4,9 @@ The Production Shading Library refers to [Laika's](https://www.laika.com) entire
 
 This repository will contain those portions of Laika's Production Shading Library that have been released as open source.
 
-If you make use of this repsitory, I strongly urge you to [subscribe to the discussion group](https://groups.google.com/group/laikastudios-shading-library).
-
 This release contains a set of shading nodes that provide a [Material Layering System](https://github.com/LaikaStudios/shading-library/wiki/Material-Layering-System) tool kit based on [Pixar's](https://www.pixar.com) [RenderMan](https://renderman.pixar.com/product). This system has been implemented for a future production, and has yet to be thoroughly tested. Please provide feedback on any bugs or feature requests.
+
+If you make use of this repsitory, I strongly urge you to [subscribe to the discussion group](https://groups.google.com/group/laikastudios-shading-library).
 
 ## Requirements
 * [Pixar's](https://www.pixar.com) [RenderMan 22](https://rmanwiki.pixar.com/display/REN22/RenderMan)
