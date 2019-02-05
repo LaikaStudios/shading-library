@@ -1,8 +1,6 @@
 # Production Shading Library
 
-The Production Shading Library refers to [Laika's](https://www.laika.com) entire collection of VFX production shading capabilities. These are embodied primarily in the set of shading-library files.
-
-This repository will contain those portions of Laika's Production Shading Library that have been released as open source.
+The Production Shading Library refers to [Laika's](https://www.laika.com) entire collection of VFX production shading capabilities. These are embodied primarily in the set of shading-library files. This repository will contain those portions of Laika's Production Shading Library that have been released as open source.
 
 This release contains a set of shading nodes that provide a [Material Layering System](https://github.com/LaikaStudios/shading-library/wiki/Material-Layering-System) based on [Pixar's](https://www.pixar.com) [RenderMan](https://renderman.pixar.com/product).
 
