@@ -15,7 +15,7 @@ INCLUDE = -I. -I./include
 # Control variables.
 # These subdirectories will be searched for .osl files, which will then be built into .oso files.
 #
-SUBDIRS := material
+SUBDIRS := material utility
 
 # These shaders won't be built. Use 'subdirectory/basename'.
 EXCLUDE := 
