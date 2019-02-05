@@ -4,7 +4,7 @@ The Production Shading Library refers to [Laika's](https://www.laika.com) entire
 
 This repository will contain those portions of Laika's Production Shading Library that have been released as open source.
 
-This release contains a set of shading nodes that provide a [Material Layering System](https://github.com/LaikaStudios/shading-library/wiki/Material-Layering-System) tool kit based on [Pixar's](https://www.pixar.com) [RenderMan](https://renderman.pixar.com/product).
+This release contains a set of shading nodes that provide a [Material Layering System](https://github.com/LaikaStudios/shading-library/wiki/Material-Layering-System) based on [Pixar's](https://www.pixar.com) [RenderMan](https://renderman.pixar.com/product).
 
 If you make use of this repsitory, I strongly urge you to [subscribe to the discussion group](https://groups.google.com/group/laikastudios-shading-library). Please use this group to provide feedback on any bugs you may find or to make any feature requests.
 
@@ -13,8 +13,6 @@ If you make use of this repsitory, I strongly urge you to [subscribe to the disc
 * [Pixar's](https://www.pixar.com) [RenderMan 22 for Katana 3.0](https://rmanwiki.pixar.com/display/RFK22/RenderMan+22+for+Katana)
 * [Foundry's](https://www.foundry.com) [Katana 3.0](https://www.foundry.com/products/katana)
 * A c++11 compatible compiler: clang++, g++, etc.
-
-An update of the Material Layering System that includes support for Maya 2018 will come soon.
 
 ## Documentation
 Documentation is on the [wiki page](https://github.com/LaikaStudios/shading-library/wiki).
