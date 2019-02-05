@@ -1,0 +1,601 @@
+/*
+ *  Copyright 2018 Laika, LLC. Authored by Mitch Prater.
+ *
+ *  Licensed under the Apache License Version 2.0 http://apache.org/licenses/LICENSE-2.0,
+ *  or the MIT license http://opensource.org/licenses/MIT, at your option.
+ *
+ *  This program may not be copied, modified, or distributed except according to those terms.
+ */
+/*
+    Material: a single node that combines bxdf and displacement controls.
+    Each material node has a Material Input connection which is composited OVER
+    this material's parameter settings, and the result is returned in Material Output.
+ */
+#include "ikaConstants.h"
+#include "material/v1_Displacement.h"
+#include "material/v1_PxrSurface.h"
+
+// Re-define so there are no local response Enable parameters.
+#undef  ENABLE_UI_DECLARE
+#define ENABLE_UI_DECLARE(PAGE,PREFIX,DESCRIPTION)
+
+#undef  SET_RESPONSE_ENABLE_PARAM
+#define SET_RESPONSE_ENABLE_PARAM(VSTRUCTOUT,VSTRUCTIN,PREFIX) \
+        SET_RESPONSE_ENABLE_PARAM_CONDITION( VSTRUCTOUT, PREFIX, \
+            set 1 \
+            if ( \
+                VSTRUCTIN##_##PREFIX##_##Enable == 1 \
+                ) \
+            else set 0 \
+        )
+
+
+shader v1_PxrSurfaceModifier
+[[
+    int rfm_nodeid = 1233957,
+    string rfm_classification = "rendernode/RenderMan/pattern/Laika/material",
+    string URL = "https://app.laika.com/intranet/vfx/shading/film6_shading_nodes/material",
+    string help = 
+        "<strong>Modifies</strong> the response parameter values of a "
+        "<strong>material_v1_PxrSurface</strong> data stream. "
+]]
+(
+    string Notes = ""
+    [[
+        int connectable = 0,
+        string URL = "https://app.laika.com/intranet/vfx/shading/film6_shading_nodes/material",
+        string help = 
+            "<strong>Modifies</strong> the response parameter values of a "
+            "<strong>material_v1_PxrSurface</strong> data stream. "
+    ]],
+
+    /*
+     *  The Input Material data set.
+     *
+     *  This consists of a vstruct parameter, a material struct parameter, and a set
+     *  of enable parameters for each response. The material struct and response enable
+     *  parameters are members of the vstruct parameter.
+     */
+    // The vstruct parameter. This is the single material connection point
+    // for all the material parameters in the material struct.
+    PXRSURFACE_MATERIAL_VSTRUCT( MaterialInput, Material Input,
+            The connected <strong>Material</strong> that will be <strong>Modified.</strong>
+            ),
+
+    // The material struct parameter.
+    PXRSURFACE_MATERIAL_STRUCT( MaterialInput, MatIn ),
+
+    // The response Enable parameters. These are linked to a vstructmember of the vstruct parameter.
+    ALL_ENABLE_PARAMS( MaterialInput, ClearCoat ),
+    ALL_ENABLE_PARAMS( MaterialInput, PrimarySpecular ),
+    ALL_ENABLE_PARAMS( MaterialInput, SecondarySpecular ),
+    RESPONSE_ENABLE_PARAM( MaterialInput, Iridescence ),
+    ANISOTROPYDIRECTION_ENABLE_PARAM( MaterialInput, Iridescence ),
+    RESPONSE_ENABLE_PARAM( MaterialInput, Fuzz ),
+    SHADINGNORMAL_ENABLE_PARAM( MaterialInput, Fuzz ),
+    RESPONSE_ENABLE_PARAM( MaterialInput, Diffuse ),
+    SHADINGNORMAL_ENABLE_PARAM( MaterialInput, Diffuse ),
+    RESPONSE_ENABLE_PARAM( MaterialInput, Scatter ),
+    RESPONSE_ENABLE_PARAM( MaterialInput, Subsurface ),
+    RESPONSE_ENABLE_PARAM( MaterialInput, Glass ),
+    ANISOTROPYDIRECTION_ENABLE_PARAM( MaterialInput, Glass ),
+    RESPONSE_ENABLE_PARAM( MaterialInput, Glow ),
+
+    /*
+     *  This material's user interface parameters.
+     */
+    int Enable = 1
+    [[
+        int connectable = 0,
+        string label = "Enable",
+        string widget = "checkBox",
+        string help =
+            "Turns the modifications On/Off. "
+    ]],
+
+    float Mask = 1.0
+    [[
+        string label = "Mask",
+        int slider = 1, float slidermin = 0.0, float slidermax = 1.0,
+        string help =
+            "Determines where the modifications will be applied. "
+    ]],
+
+    //
+    // Bxdf parameters start here.
+    //
+    normal Global_ShadingNormal = normal( 0.0 )
+    [[
+        string page = "Global",
+        string label = "Shading Normal",
+        string help =
+            "An alternate shading normal to use for all responses. "
+            "If an individual response specifies its own shading normal values, "
+            "they will override these settings. "
+    ]],
+
+    float Global_UseShadingNormal = 1.0
+    [[
+        string page = "Global",
+        string label = "Use Shading Normal",
+        int slider = 1, float slidermin = 0.0, float slidermax = 1.0,
+        string help =
+            "How much of the connected <strong>Shading Normal</strong> is used? "
+            "This is a mix between the regular (potentially displaced) shading normal <strong>N</strong>, "
+            "and the connected <strong>Shading Normal</strong> value. "
+            "<br/><br/>"
+            "Note: this has no effect if the <strong>Shading Normal</strong> is unconnected. "
+    ]],
+
+    color Global_ShadowColor = color( 0.0 )
+    [[
+        string page = "Global",
+        string label = "Shadow Color",
+        string help =
+            "Sets the color of the shadows cast by this material. "
+    ]],
+
+    // Clearcoat response.
+    CLEARCOAT_UI_DECLARE( Clear Coat, ClearCoat,
+            <strong>Clear Coat</strong> represents a clear specular layer applied over all the other 
+            responses. It can be truly clear. Or it can optionally absorb colored light from the layers 
+            below it to tint the overall response.
+            , ClearCoat_RoughnessUIDefault ),
+
+    // Primary specular response.
+    SPECULAR_UI_DECLARE( Primary Specular, PrimarySpecular, 
+            <strong>Primary Specular</strong> is the first of two 'standard' specular responses.
+            It is capable of producing a broad range of response types from artistic
+            to physically based and dielectric to metallic.
+            , PrimarySpecular_RoughnessUIDefault ),
+
+    // Secondary specular response.
+    SPECULAR_UI_DECLARE( Secondary Specular, SecondarySpecular, 
+            <strong>Secondary Specular</strong> is the second of two 'standard' specular responses.
+            It is capable of producing a broad range of response types from artistic
+            to physically based and dielectric to metallic.
+            , SecondarySpecular_RoughnessUIDefault ),
+
+    // Iridescence response.
+    IRIDESCENCE_UI_DECLARE(
+            <strong>Iridescence</strong> is a special type of specular response.
+            It produces the effects of thin-film interference and can be controlled
+            using Artistic or Physically based controls.
+            ),
+
+    // Fuzz response.
+    FUZZ_UI_DECLARE(
+            <strong>Fuzz</strong> produces scattering of the illumination in
+            a boundry layer on the surface. It is implemented as a Marschner
+            hair primary reflection response (R component) where the hair fibers
+            are oriented in the direction of the shading normal.
+            ),
+
+    // Diffuse response.
+    DIFFUSE_UI_DECLARE(
+            <strong>Diffuse</strong> uses an Oren-Nayar response model employing
+            a Roughness parameter to control the deviation of micro-facet normals.
+            ),
+
+    // Scatter response.
+    SCATTER_UI_DECLARE(
+            <strong>Scatter</strong> produces (single) scattering through the interior
+            of an object. It has many controls for altering the physical and artistic
+            characteristics of the response.
+            Its main feature is the ability to alter the directionality of the scattering
+            from forward to backward to isotropic.
+            ),
+
+    // Subsurface response.
+    SUBSURFACE_UI_DECLARE(
+            <strong>Subsurface</strong> produces multiple scattering through the interior
+            of an object. It has many controls for altering the physical and artistic
+            characteristics of the response.
+            ),
+
+    // Scatter & Subsurface controls.
+    color ScatterAndSubsurface_IlluminationTint = color( 1.0 )
+    [[
+        string page = "Scatter And Subsurface",
+        string label = "Illumination Tint",
+        string help =
+            "Tints the incoming illumination prior to being used in the "
+            "<strong>Scatter</strong> and <strong>Subsurface</strong> response computations. "
+            "In light linear space. "
+    ]],
+
+    float ScatterAndSubsurface_Roughness = 0.0
+    [[
+        string page = "Scatter And Subsurface",
+        string label = "Roughness",
+        int slider = 1, float slidermin = 0.0, float slidermax = 1.0,
+        string help =
+            "Controls the diffuse micro-facet surface roughness used in the "
+            "<strong>Scatter</strong> and <strong>Subsurface</strong> response computations. "
+            "Increasing <strong>Roughness</strong> causes the rays penetrating into "
+            "the material to have an increasingly broader range of directions than lower "
+            "<strong>Roughness</strong> values. This tends to slightly darken the overall response, "
+            "as the light is more widely dispersed prior to entering the material. "
+    ]],
+
+    // Glass response.
+    GLASS_UI_DECLARE(
+            <strong>Glass</strong> produces a physically-based glass that
+            includes <strong>Reflection</strong> and <strong>Refraction</strong>.
+            It has many controls for altering the physical properties of the glass
+            including its interior.
+            ),
+    
+
+    // Glow response.
+    EGC_UI_DECLARE( Glow, Glow,
+            <strong>Glow</strong> can make an object appear to emit light.
+            <br/><br/>
+            Note: this is not an efficient way to illuminate a scene and would require
+            indirect bounces to be at least 2 to be effective. This should instead be
+            used simply as a shading effect and not for actual lighting.
+            ),
+
+
+    // Utility socket.
+    int Socket = 0
+    [[
+        string help =
+            "Connect a shading node's <strong>Plug</strong> output here in order to execute that node and "
+            "any shading tree connected to it. "
+    ]],
+
+    /*
+     *  The Output Material data set.
+     * 
+     *  This consists of a vstruct parameter, a material struct parameter, and a set
+     *  of enable parameters for each response. The material struct and response enable
+     *  parameters are members of the vstruct parameter.
+     */
+    output PXRSURFACE_MATERIAL_VSTRUCT( MaterialOutput, Material Output,
+            Connect this to a PxrSurface Material shader's <strong>Material Input</strong>
+            to layer this OVER it.
+            <br/><br/>
+            If this is the last Material in the layer chain connect this to a
+            <strong>PxrSurface_Material</strong> node.
+            ),
+
+    // The struct parameter.
+    output PXRSURFACE_MATERIAL_STRUCT( MaterialOutput, MatOut ),
+
+    // Set the output vstruct Enable parameters based on the input Enable value and user parameter settings.
+    SET_ALL_ENABLE_PARAMS( MaterialOutput, MaterialInput, ClearCoat ),
+    SET_ALL_ENABLE_PARAMS( MaterialOutput, MaterialInput, PrimarySpecular ),
+    SET_ALL_ENABLE_PARAMS( MaterialOutput, MaterialInput, SecondarySpecular ),
+    SET_RESPONSE_ENABLE_PARAM( MaterialOutput, MaterialInput, Iridescence ),
+    SET_ANISOTROPYDIRECTION_ENABLE_PARAM( MaterialOutput, MaterialInput, Iridescence ),
+    SET_RESPONSE_ENABLE_PARAM( MaterialOutput, MaterialInput, Fuzz ),
+    SET_SHADINGNORMAL_ENABLE_PARAM( MaterialOutput, MaterialInput, Fuzz ),
+    SET_RESPONSE_ENABLE_PARAM( MaterialOutput, MaterialInput, Diffuse ),
+    SET_SHADINGNORMAL_ENABLE_PARAM( MaterialOutput, MaterialInput, Diffuse ),
+    SET_RESPONSE_ENABLE_PARAM( MaterialOutput, MaterialInput, Scatter ),
+    SET_RESPONSE_ENABLE_PARAM( MaterialOutput, MaterialInput, Subsurface ),
+    SET_RESPONSE_ENABLE_PARAM( MaterialOutput, MaterialInput, Glass ),
+    SET_ANISOTROPYDIRECTION_ENABLE_PARAM( MaterialOutput, MaterialInput, Glass ),
+    SET_RESPONSE_ENABLE_PARAM( MaterialOutput, MaterialInput, Glow ),
+
+    // This material's masks, as possibly modified by a pattern ramp.
+    output float bxdfMask = 1.0 [[ string widget = "null" ]]
+)
+/*
+ *  Material functionality: Output = Input OVER this.
+ */
+{
+    // Pull on the Socket to make sure it's evaluated.
+    MatOut.socket = Socket;
+
+    // Short-circuit this material.
+    if( Enable == 0 )
+    {
+        MatOut = MatIn;
+    }
+
+    // Note: using a return statement in the if case above breaks functionality,
+    // so must use this else clause.
+    // My guess is the osl optimizer is mucking with the proper behavior.
+    else
+    {
+
+    // Initialize this material's mask values.
+    bxdfMask = Mask; // this_bxdfMask
+
+
+    //
+    // Bxdf shader parameters start here.
+    // Note: Gain = 1.0, and Color = Gain*Color. This eliminates false
+    // colors resulting from interpolating these parameters separately.
+    //
+    // Porter-Duff pre-multiplied alpha(mask) compositing OVER operation.
+    //  Out = In over Ui:
+    //  Out =   In*In_Mask*1 + Ui*Ui_Mask*(1 - In_Mask)
+    //  Out_Mask = In_Mask*1 +    Ui_Mask*(1 - In_Mask)
+    //
+    // Composited output mask defines where the input material and this material exist.
+    MatOut.bxdfMask = MatIn.bxdfMask + bxdfMask*( 1.0 - MatIn.bxdfMask );
+
+    PARAM_OVER( MatOut, MatIn, Global, ShadowColor, bxdfMask );
+    PARAM_OVER( MatOut, MatIn, Global, ShadingNormal, bxdfMask );
+
+    // This material's Global_UseShadingNormal value is 0 if its Global_ShadingNormal is not connected.
+    float  useShadingNormal = isconnected( Global_ShadingNormal ) ? Global_UseShadingNormal : 0.0;
+    MatOut.Global_UseShadingNormal = MatIn.Global_UseShadingNormal
+    + useShadingNormal*bxdfMask*( 1.0 - MatIn.bxdfMask );
+
+    // ClearCoat
+    if( MaterialInput_ClearCoat_Enable == 1 )
+    {
+        MatOut.ClearCoat_CG = MatIn.ClearCoat_CG
+        + ( ClearCoat_Gain*ClearCoat_Color*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        MatOut.ClearCoat_FaceCG = MatIn.ClearCoat_FaceCG
+        + ( ClearCoat_Gain*ClearCoat_FaceColor*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        MatOut.ClearCoat_RefractionCI = MatIn.ClearCoat_RefractionCI
+        + ( ClearCoat_RefractionIndex*ClearCoat_RefractionColor*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        PARAM_OVER( MatOut, MatIn, ClearCoat, FresnelExponent, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, ClearCoat, LayerThickness, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, ClearCoat, LayerColor, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, ClearCoat, Roughness, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, ClearCoat, Anisotropy, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, ClearCoat, AnisotropyDirection, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, ClearCoat, ShadingNormal, bxdfMask );
+
+        float  useAnisotropyDirection = isconnected( ClearCoat_AnisotropyDirection ) ? 1.0 : 0.0;
+        MatOut.ClearCoat_UseAnisotropyDirection = MatIn.ClearCoat_UseAnisotropyDirection
+        + useAnisotropyDirection*bxdfMask*( 1.0 - MatIn.bxdfMask );
+
+        float  useShadingNormal = isconnected( ClearCoat_ShadingNormal ) ? ClearCoat_UseShadingNormal : 0.0;
+        MatOut.ClearCoat_UseShadingNormal = MatIn.ClearCoat_UseShadingNormal
+        + useShadingNormal*bxdfMask*( 1.0 - MatIn.bxdfMask );
+    }
+    else
+    {
+        CLEARCOAT_COPY( MatOut, MatIn, ClearCoat );
+    }
+
+    // PrimarySpecular
+    if( MaterialInput_PrimarySpecular_Enable == 1 )
+    {
+        MatOut.PrimarySpecular_CG = MatIn.PrimarySpecular_CG
+        + ( PrimarySpecular_Gain*PrimarySpecular_Color*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        MatOut.PrimarySpecular_FaceCG = MatIn.PrimarySpecular_FaceCG
+        + ( PrimarySpecular_Gain*PrimarySpecular_FaceColor*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        MatOut.PrimarySpecular_RefractionCI = MatIn.PrimarySpecular_RefractionCI
+        + ( PrimarySpecular_RefractionIndex*PrimarySpecular_RefractionColor*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        MatOut.PrimarySpecular_ExtinctionCC = MatIn.PrimarySpecular_ExtinctionCC
+        + ( PrimarySpecular_ExtinctionCoeff*PrimarySpecular_ExtinctionColor*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        PARAM_OVER( MatOut, MatIn, PrimarySpecular, FresnelExponent, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, PrimarySpecular, Roughness, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, PrimarySpecular, Anisotropy, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, PrimarySpecular, AnisotropyDirection, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, PrimarySpecular, ShadingNormal, bxdfMask );
+
+        float  useAnisotropyDirection = isconnected( PrimarySpecular_AnisotropyDirection ) ? 1.0 : 0.0;
+        MatOut.PrimarySpecular_UseAnisotropyDirection = MatIn.PrimarySpecular_UseAnisotropyDirection
+        + useAnisotropyDirection*bxdfMask*( 1.0 - MatIn.bxdfMask );
+
+        float  useShadingNormal = isconnected( PrimarySpecular_ShadingNormal ) ? PrimarySpecular_UseShadingNormal : 0.0;
+        MatOut.PrimarySpecular_UseShadingNormal = MatIn.PrimarySpecular_UseShadingNormal
+        + useShadingNormal*bxdfMask*( 1.0 - MatIn.bxdfMask );
+    }
+    else
+    {
+        SPECULAR_COPY( MatOut, MatIn, PrimarySpecular );
+    }
+
+    // SecondarySpecular
+    if( MaterialInput_SecondarySpecular_Enable == 1 )
+    {
+        MatOut.SecondarySpecular_CG = MatIn.SecondarySpecular_CG
+        + ( SecondarySpecular_Gain*SecondarySpecular_Color*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        MatOut.SecondarySpecular_FaceCG = MatIn.SecondarySpecular_FaceCG
+        + ( SecondarySpecular_Gain*SecondarySpecular_FaceColor*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        MatOut.SecondarySpecular_RefractionCI = MatIn.SecondarySpecular_RefractionCI
+        + ( SecondarySpecular_RefractionIndex*SecondarySpecular_RefractionColor*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        MatOut.SecondarySpecular_ExtinctionCC = MatIn.SecondarySpecular_ExtinctionCC
+        + ( SecondarySpecular_ExtinctionCoeff*SecondarySpecular_ExtinctionColor*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        PARAM_OVER( MatOut, MatIn, SecondarySpecular, FresnelExponent, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, SecondarySpecular, Roughness, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, SecondarySpecular, Anisotropy, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, SecondarySpecular, AnisotropyDirection, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, SecondarySpecular, ShadingNormal, bxdfMask );
+
+        float  useAnisotropyDirection = isconnected( SecondarySpecular_AnisotropyDirection ) ? 1.0 : 0.0;
+        MatOut.SecondarySpecular_UseAnisotropyDirection = MatIn.SecondarySpecular_UseAnisotropyDirection
+        + useAnisotropyDirection*bxdfMask*( 1.0 - MatIn.bxdfMask );
+
+        float  useShadingNormal = isconnected( SecondarySpecular_ShadingNormal ) ? SecondarySpecular_UseShadingNormal : 0.0;
+        MatOut.SecondarySpecular_UseShadingNormal = MatIn.SecondarySpecular_UseShadingNormal
+        + useShadingNormal*bxdfMask*( 1.0 - MatIn.bxdfMask );
+    }
+    else
+    {
+        SPECULAR_COPY( MatOut, MatIn, SecondarySpecular );
+    }
+
+    // Iridescence
+    if( MaterialInput_Iridescence_Enable == 1 )
+    {
+        PARAM_OVER( MatOut, MatIn, Iridescence, Gain, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Iridescence, FaceColor, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Iridescence, EdgeColor, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Iridescence, Exponent, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Iridescence, Repetitions, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Iridescence, Thickness, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Iridescence, Roughness, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Iridescence, Anisotropy, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Iridescence, AnisotropyDirection, bxdfMask );
+
+        float  useAnisotropyDirection = isconnected( Iridescence_AnisotropyDirection ) ? 1.0 : 0.0;
+        MatOut.Iridescence_UseAnisotropyDirection = MatIn.Iridescence_UseAnisotropyDirection
+        + useAnisotropyDirection*bxdfMask*( 1.0 - MatIn.bxdfMask );
+    }
+    else
+    {
+        IRIDESCENCE_COPY( MatOut, MatIn, Iridescence );
+    }
+
+    // Fuzz
+    if( MaterialInput_Fuzz_Enable == 1 )
+    {
+        MatOut.Fuzz_CG = MatIn.Fuzz_CG
+        + ( Fuzz_Gain*Fuzz_Color*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        PARAM_OVER( MatOut, MatIn, Fuzz, ConeAngle, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Fuzz, ShadingNormal, bxdfMask );
+
+        float  useShadingNormal = isconnected( Fuzz_ShadingNormal ) ? Fuzz_UseShadingNormal : 0.0;
+        MatOut.Fuzz_UseShadingNormal = MatIn.Fuzz_UseShadingNormal
+        + useShadingNormal*bxdfMask*( 1.0 - MatIn.bxdfMask );
+    }
+    else
+    {
+        FUZZ_COPY( MatOut, MatIn, Fuzz );
+    }
+
+    // Diffuse
+    if( MaterialInput_Diffuse_Enable == 1 )
+    {
+        MatOut.Diffuse_CG = MatIn.Diffuse_CG
+        + ( Diffuse_Gain*Diffuse_Color*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        MatOut.Diffuse_BackfaceCG = MatIn.Diffuse_BackfaceCG
+        + ( Diffuse_BackfaceGain*Diffuse_BackfaceColor*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        MatOut.Diffuse_TransmitCG = MatIn.Diffuse_TransmitCG
+        + ( Diffuse_TransmitGain*Diffuse_TransmitColor*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        PARAM_OVER( MatOut, MatIn, Diffuse, Roughness, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Diffuse, FalloffExponent, bxdfMask );
+        MatOut.Diffuse_FalloffExponent = max( 1.0, MatOut.Diffuse_FalloffExponent ); // Hack to keep this ≥ 1.
+        PARAM_OVER( MatOut, MatIn, Diffuse, ShadingNormal, bxdfMask );
+
+        float  useShadingNormal = isconnected( Diffuse_ShadingNormal ) ? Diffuse_UseShadingNormal : 0.0;
+        MatOut.Diffuse_UseShadingNormal = MatIn.Diffuse_UseShadingNormal
+        + useShadingNormal*bxdfMask*( 1.0 - MatIn.bxdfMask );
+    }
+    else
+    {
+        DIFFUSE_COPY( MatOut, MatIn, Diffuse );
+    }
+
+    // Scatter
+    if( MaterialInput_Scatter_Enable == 1 )
+    {
+        MatOut.Scatter_CG = MatIn.Scatter_CG
+        + ( Scatter_Gain*Scatter_Color*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        // Backside_CG = (Backside) IlluminationGain * (Backside) IlluminationTint
+        MatOut.Scatter_BacksideCG = MatIn.Scatter_BacksideCG
+        + ( Scatter_IlluminationGain*Scatter_IlluminationTint*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        PARAM_OVER( MatOut, MatIn, Scatter, PathLength, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Scatter, PathColor, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Scatter, Direction, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Scatter, Roughness, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Scatter, RefractionIndex, bxdfMask );
+    }
+    else
+    {
+        SCATTER_COPY( MatOut, MatIn, Scatter );
+    }
+
+    // Subsurface
+    if( MaterialInput_Subsurface_Enable == 1 )
+    {
+        MatOut.Subsurface_CG = MatIn.Subsurface_CG
+        + ( Subsurface_Gain*Subsurface_Color*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        MatOut.Subsurface_ShortCG = MatIn.Subsurface_ShortCG
+        + ( Subsurface_ShortGain*Subsurface_ShortColor*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        MatOut.Subsurface_LongCG = MatIn.Subsurface_LongCG
+        + ( Subsurface_LongGain*Subsurface_LongColor*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        PARAM_OVER( MatOut, MatIn, Subsurface, PathLength, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Subsurface, PathColor, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Subsurface, PostTint, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Subsurface, TransmitGain, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Subsurface, ShortLength, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Subsurface, LongLength, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Subsurface, Directionality, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Subsurface, DiffuseBlend, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Subsurface, Bleed, bxdfMask );
+    }
+    else
+    {
+        SUBSURFACE_COPY( MatOut, MatIn, Subsurface );
+    }
+
+    // Scatter & Subsurface
+    if( MaterialInput_Scatter_Enable == 1 || MaterialInput_Subsurface_Enable == 1 )
+    {
+        PARAM_OVER( MatOut, MatIn, ScatterAndSubsurface, IlluminationTint, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, ScatterAndSubsurface, Roughness, bxdfMask );
+    }
+    else
+    {
+        MatOut.ScatterAndSubsurface_IlluminationTint = MatIn.ScatterAndSubsurface_IlluminationTint;
+        MatOut.ScatterAndSubsurface_Roughness = MatIn.ScatterAndSubsurface_Roughness;
+    }
+
+    // Glass
+    if( MaterialInput_Glass_Enable == 1 )
+    {
+        PARAM_OVER( MatOut, MatIn, Glass, ReflectionGain, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Glass, Roughness, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Glass, Anisotropy, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Glass, AnisotropyDirection, bxdfMask );
+
+        float  useAnisotropyDirection = isconnected( Glass_AnisotropyDirection ) ? 1.0 : 0.0;
+        MatOut.Glass_UseAnisotropyDirection = MatIn.Glass_UseAnisotropyDirection
+        + useAnisotropyDirection*bxdfMask*( 1.0 - MatIn.bxdfMask );
+
+        // Refraction.
+        MatOut.Glass_RefractionCG = MatIn.Glass_RefractionCG
+        + ( Glass_RefractionGain*Glass_RefractionColor*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+
+        PARAM_OVER( MatOut, MatIn, Glass, RefractionIndex, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Glass, ScatterAmount, bxdfMask );
+
+        // Use RefractionColor if ScatterColor is < 0.
+        color  scatterColor = Glass_ScatterColor;
+        if( Glass_ScatterColor[0] < 0.0 && Glass_ScatterColor[1] < 0.0 && Glass_ScatterColor[2] < 0.0 )
+        {
+            scatterColor = Glass_RefractionColor;
+        }
+        MatOut.Glass_ScatterCG = MatIn.Glass_ScatterCG
+        + ( Glass_RefractionGain*scatterColor*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+    }
+    else
+    {
+        GLASS_COPY( MatOut, MatIn, Glass );
+    }
+
+    // Glow
+    if( MaterialInput_Glow_Enable == 1 )
+    {
+        MatOut.Glow_CG = MatIn.Glow_CG
+        + ( Glow_Gain*Glow_Color*bxdfMask )*( 1.0 - MatIn.bxdfMask );
+    }
+    else
+    {
+        GLOW_COPY( MatOut, MatIn, Glow );
+    }
+
+    }
+}

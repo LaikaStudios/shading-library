@@ -2,7 +2,7 @@
 # RMANTREE points to the RenderManProServer directory.
 # Set it if it's not already set in the environment.
 #
-RMANTREE ?= /opt/pixar/RenderManProServer-22.0
+RMANTREE ?= /opt/pixar/RenderManProServer-22.3
 
 #
 # Compiler settings.

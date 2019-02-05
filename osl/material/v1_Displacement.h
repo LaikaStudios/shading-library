@@ -6,20 +6,23 @@
  *
  *  This program may not be copied, modified, or distributed except according to those terms.
  */
-#ifndef DISPLACE_MATERIAL_H
-#define DISPLACE_MATERIAL_H
+#ifndef MATERIAL_V1_DISPLACEMENT_H
+#define MATERIAL_V1_DISPLACEMENT_H
 
 #define DISPLACE_FLOAT_UI_DECLARE(NAME) \
-    int float_On_ ## NAME = 0 \
+    int Displacement_Float_On ## NAME = 0 \
     [[ \
         int connectable = 0, \
         string page = "Displacement.Float", \
         string label = "On " #NAME, \
-        string widget = "checkBox", \
+        string widget = "mapper", \
+        string options = "Off:0|On:1|Invert Input:-1", \
         string help = \
-            "Turns the use of this displacement <strong>Input</strong> On/Off. " \
+            "Turns the use of the <strong>Input " #NAME "</strong> displacement <em>On, " \
+            "Off,</em>  or can <em>Invert</em> the Input value before " \
+            "it's used: Input -> 1-Input. " \
     ]], \
-    float float_Value_ ## NAME = 0.5 \
+    float Displacement_Float_Input ## NAME = 0.5 \
     [[ \
         string page = "Displacement.Float", \
         string label = "Input " #NAME, \
@@ -29,7 +32,7 @@
             "(and optionally <strong>Mask</strong>), " \
             "it determines the location and amount of displacement along the surface normal. " \
     ]], \
-    float float_Position_ ## NAME = 0.0 \
+    float Displacement_Float_Position ## NAME = 0.0 \
     [[ \
         string page = "Displacement.Float", \
         string label = "Position " #NAME, \
@@ -49,7 +52,7 @@
             "A <strong>Position</strong> of -1 will shift the <strong>Input</strong> values (to -1,0) " \
             "so they will only create valleys below the current surface. " \
     ]], \
-    float float_Magnitude_ ## NAME = 1.0 \
+    float Displacement_Float_Magnitude ## NAME = 1.0 \
     [[ \
         string page = "Displacement.Float", \
         string label = "Magnitude " #NAME, \
@@ -64,7 +67,7 @@
             "Note: you can use a negative value here to invert the <strong>Input</strong> pattern " \
             "and displacement direction (to -N). " \
     ]], \
-    float float_Mask_ ## NAME = 1.0 \
+    float Displacement_Float_Mask ## NAME = 1.0 \
     [[ \
         string page = "Displacement.Float", \
         string label = "Mask " #NAME, \
@@ -87,16 +90,16 @@
 
 
 #define DISPLACE_VECTOR_UI_DECLARE(NAME) \
-    int vector_On_ ## NAME = 0 \
+    int Displacement_Vector_On ## NAME = 0 \
     [[ \
         int connectable = 0, \
         string page = "Displacement.Vector", \
         string label = "On " #NAME, \
         string widget = "checkBox", \
         string help = \
-            "Turns the use of this displacement <strong>Input</strong> On/Off. " \
+            "Turns the use of the <strong>Input " #NAME "</strong> displacement <em>On</em> or <em>Off.</em> " \
     ]], \
-    vector vector_Value_ ## NAME = vector(0.0) \
+    vector Displacement_Vector_Input ## NAME = vector(0.0) \
     [[ \
         string page = "Displacement.Vector", \
         string label = "Input " #NAME, \
@@ -107,7 +110,7 @@
             "(and optionally <strong>Mask</strong>), " \
             "it determines how the surface is displaced. " \
     ]], \
-    int vector_Mode_ ## NAME = 1 \
+    int Displacement_Vector_Mode ## NAME = 1 \
     [[ \
         int connectable = 0, \
         string page = "Displacement.Vector", \
@@ -126,7 +129,7 @@
             "of that produced by <strong>+</strong> or <strong>-</strong> for the same " \
             "<strong>Input</strong> data. " \
     ]], \
-    float vector_Magnitude_ ## NAME = 1.0 \
+    float Displacement_Vector_Magnitude ## NAME = 1.0 \
     [[ \
         string page = "Displacement.Vector", \
         string label = "Magnitude " #NAME, \
@@ -138,7 +141,7 @@
             "of 1; so this parameter controls the actual displacement amount (in displacement " \
             "<strong>Mag Space</strong> units). " \
     ]], \
-    float vector_Mask_ ## NAME = 1.0 \
+    float Displacement_Vector_Mask ## NAME = 1.0 \
     [[ \
         string page = "Displacement.Vector", \
         string label = "Mask " #NAME, \
@@ -160,14 +163,55 @@
     ]]
 
 
+
+float displace_float_pattern(
+        int    mode, // 0=Off, 1=On, -1=Invert
+        float  input,
+        float  magnitude,
+        float  mask
+) {
+    float  result = 0.0;
+
+    if( mode == 1 ) result = input*magnitude*mask;
+    else if( mode == -1 ) result = ( 1.0-input )*magnitude*mask;
+
+    return result;
+}
+
+float displace_float_amount(
+        int    mode, // 0=Off, 1=On, -1=Invert
+        float  input,
+        float  position,
+        float  magnitude,
+        float  mask
+) {
+    float  result = 0.0;
+
+    if( mode == 1 ) result = ( input + mix( -0.5, 0.0, position ))*magnitude*mask;
+    else if( mode == -1 ) result = (( 1.0-input ) + mix( -0.5, 0.0, position ))*magnitude*mask;
+
+    return result;
+}
+
 #define DISPLACE_FLOAT_MAG(NAME) \
-    (( float_On_ ## NAME == 0 ) ? 0.0 : float_Magnitude_ ## NAME )
+    (( Displacement_Float_On ## NAME == 0 ) ? 0.0 : abs( Displacement_Float_Magnitude ## NAME ))
 
 #define DISPLACE_FLOAT_PATTERN(NAME) \
-    (( float_On_ ## NAME == 0 ) ? 0.0 : float_Value_ ## NAME * float_Magnitude_ ## NAME * float_Mask_ ## NAME )
+    displace_float_pattern( \
+        Displacement_Float_On ## NAME, \
+        Displacement_Float_Input ## NAME, \
+        Displacement_Float_Magnitude ## NAME, \
+        Displacement_Float_Mask ## NAME \
+        )
 
 #define DISPLACE_FLOAT_AMOUNT(NAME) \
-    (( float_On_ ## NAME == 0 ) ? 0.0 : ( float_Value_ ## NAME + mix( -0.5, 0.0, float_Position_ ## NAME )) * float_Magnitude_ ## NAME * float_Mask_ ## NAME )
+    displace_float_amount( \
+        Displacement_Float_On ## NAME, \
+        Displacement_Float_Input ## NAME, \
+        Displacement_Float_Position ## NAME, \
+        Displacement_Float_Magnitude ## NAME, \
+        Displacement_Float_Mask ## NAME \
+        )
 
 
 vector displace_vector(
@@ -185,12 +229,12 @@ vector displace_vector(
 }
 
 #define DISPLACE_VECTOR_MAG(NAME) \
-    (( vector_On_ ## NAME == 0 ) ? 0.0 : length( vector_Value_ ## NAME ) * vector_Magnitude_ ## NAME )
+    (( Displacement_Vector_On ## NAME == 0 ) ? 0.0 : length( Displacement_Vector_Input ## NAME ) * Displacement_Vector_Magnitude ## NAME )
 
 #define DISPLACE_VECTOR_PATTERN(NAME) \
-    (( vector_On_ ## NAME == 0 ) ? 0.0 : 0.5*(dot( N, vector_Value_ ## NAME )+1.0) * vector_Magnitude_ ## NAME * vector_Mask_ ## NAME )
+    (( Displacement_Vector_On ## NAME == 0 ) ? 0.0 : 0.5*(dot( N, Displacement_Vector_Input ## NAME )+1.0) * Displacement_Vector_Magnitude ## NAME * Displacement_Vector_Mask ## NAME )
 
 #define DISPLACE_VECTOR_AMOUNT(NAME) \
-    (( vector_On_ ## NAME == 0 ) ? vector(0.0) : displace_vector( vector_Value_ ## NAME, vector_Mode_ ## NAME, vector_Magnitude_ ## NAME, vector_Mask_ ## NAME ))
+    (( Displacement_Vector_On ## NAME == 0 ) ? vector(0.0) : displace_vector( Displacement_Vector_Input ## NAME, Displacement_Vector_Mode ## NAME, Displacement_Vector_Magnitude ## NAME, Displacement_Vector_Mask ## NAME ))
 
 #endif

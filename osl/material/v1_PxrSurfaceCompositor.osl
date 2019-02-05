@@ -1,0 +1,354 @@
+/*
+ *  Copyright 2018 Laika, LLC. Authored by Mitch Prater.
+ *
+ *  Licensed under the Apache License Version 2.0 http://apache.org/licenses/LICENSE-2.0,
+ *  or the MIT license http://opensource.org/licenses/MIT, at your option.
+ *
+ *  This program may not be copied, modified, or distributed except according to those terms.
+ */
+/*
+    This has two Material Input connections, and composites one OVER the other.
+    This is similar to PxrSurface, but its user parameters are replaced by the
+    second input material.
+ */
+#include "material/v1_PxrSurfaceCompositor.h"
+
+shader v1_PxrSurfaceCompositor
+[[
+    int rfm_nodeid = 0x12d413,
+    string rfm_classification = "rendernode/RenderMan/pattern/Laika/material",
+    string URL = "https://app.laika.com/intranet/vfx/shading/film6_shading_nodes/material",
+    string help = 
+        "A <a href='https://app.laika.com/intranet/vfx/shading/film6_shading_nodes/material'>Material</a> "
+        "defines its response to light, its surface displacement, and its presence. "
+        "Other materials of the same type can be composited together to produce a single layered material. "
+        "The composited result is returned as a <strong>Material Output</strong>. "
+        "<br/><br/>"
+        "<strong>Material Input A</strong> layers OVER <strong>Material Input B.</strong> "
+        "<br/><br/>"
+        "The output of the final node in the PxrSurfaceCompositor chain is connected to a "
+        "<strong>PxrSurface_Controls</strong> node, which produces a "
+        "<em>prmanBxdf</em> and a <em>prmanDisplacement</em> output. "
+]]
+(
+    string Notes = ""
+    [[
+        int connectable = 0,
+        string URL = "https://app.laika.com/intranet/vfx/shading/film6_shading_nodes/material",
+        string help = 
+            "A <a href='https://app.laika.com/intranet/vfx/shading/film6_shading_nodes/material'>Material</a> "
+            "defines its response to light, its surface displacement, and its presence. "
+            "Other materials of the same type can be composited together to produce a single layered material. "
+            "The composited result is returned as a <strong>Material Output</strong>. "
+            "<br/><br/>"
+            "<strong>Material Input A</strong> layers OVER <strong>Material Input B.</strong> "
+            "<br/><br/>"
+            "The output of the final node in the PxrSurfaceCompositor chain is connected to a "
+            "<strong>PxrSurface_Controls</strong> node, which produces a "
+            "<em>prmanBxdf</em> and a <em>prmanDisplacement</em> output. "
+    ]],
+
+    /*
+     *  Upper Input Material data set.
+     * 
+     *  This consists of a vstruct parameter, a material struct parameter, and a set
+     *  of enable parameters. The material struct and enable parameters are members
+     *  of the vstruct parameter, so they get connected when it is connected.
+     */
+
+    // The vstruct parameter. This is the single connection point
+    // for the material struct and enable parameters.
+    PXRSURFACE_MATERIAL_VSTRUCT( InputA, Input A,
+            <strong>Input A</strong> layers OVER <strong>Input B.</strong>
+            ),
+
+    // The material struct parameter.
+    PXRSURFACE_MATERIAL_STRUCT( InputA, MatInA ),
+
+    // The enable parameters.
+    ALL_ENABLE_PARAMS( InputA, ClearCoat ),
+    ALL_ENABLE_PARAMS( InputA, PrimarySpecular ),
+    ALL_ENABLE_PARAMS( InputA, SecondarySpecular ),
+    RESPONSE_ENABLE_PARAM( InputA, Iridescence ),
+    ANISOTROPYDIRECTION_ENABLE_PARAM( InputA, Iridescence ),
+    RESPONSE_ENABLE_PARAM( InputA, Fuzz ),
+    SHADINGNORMAL_ENABLE_PARAM( InputA, Fuzz ),
+    RESPONSE_ENABLE_PARAM( InputA, Diffuse ),
+    SHADINGNORMAL_ENABLE_PARAM( InputA, Diffuse ),
+    RESPONSE_ENABLE_PARAM( InputA, Scatter ),
+    RESPONSE_ENABLE_PARAM( InputA, Subsurface ),
+    RESPONSE_ENABLE_PARAM( InputA, Glass ),
+    ANISOTROPYDIRECTION_ENABLE_PARAM( InputA, Glass ),
+    RESPONSE_ENABLE_PARAM( InputA, Glow ),
+
+    /*
+     *  Lower Input Material data set.
+     * 
+     *  This consists of a vstruct parameter, a material struct parameter, and a set
+     *  of enable parameters. The material struct and enable parameters are members
+     *  of the vstruct parameter, so they get connected when it is connected.
+     */
+
+    // The vstruct parameter.
+    // This is the single connection point for the material struct and enable parameters.
+    PXRSURFACE_MATERIAL_VSTRUCT( InputB, Input B,
+            <strong>Input A</strong> layers OVER <strong>Input B.</strong>
+            ),
+
+    // The material struct parameter.
+    PXRSURFACE_MATERIAL_STRUCT( InputB, MatInB ),
+
+    // The enable parameters.
+    ALL_ENABLE_PARAMS( InputB, ClearCoat ),
+    ALL_ENABLE_PARAMS( InputB, PrimarySpecular ),
+    ALL_ENABLE_PARAMS( InputB, SecondarySpecular ),
+    RESPONSE_ENABLE_PARAM( InputB, Iridescence ),
+    ANISOTROPYDIRECTION_ENABLE_PARAM( InputB, Iridescence ),
+    RESPONSE_ENABLE_PARAM( InputB, Fuzz ),
+    SHADINGNORMAL_ENABLE_PARAM( InputB, Fuzz ),
+    RESPONSE_ENABLE_PARAM( InputB, Diffuse ),
+    SHADINGNORMAL_ENABLE_PARAM( InputB, Diffuse ),
+    RESPONSE_ENABLE_PARAM( InputB, Scatter ),
+    RESPONSE_ENABLE_PARAM( InputB, Subsurface ),
+    RESPONSE_ENABLE_PARAM( InputB, Glass ),
+    ANISOTROPYDIRECTION_ENABLE_PARAM( InputB, Glass ),
+    RESPONSE_ENABLE_PARAM( InputB, Glow ),
+
+    /*
+     *  The Output Material data set.
+     * 
+     *  This consists of a vstruct parameter, a material struct parameter, and a set
+     *  of enable parameters. The material struct and enable parameters are members
+     *  of the vstruct parameter, so they get connected when it is connected.
+     */
+
+    // The vstruct parameter.
+    // This is the single connection point for the material struct and enable parameters.
+    output PXRSURFACE_MATERIAL_VSTRUCT( MaterialOutput, Material Output,
+            Connect this to any <strong>PxrSurface Material Input</strong> parameter.
+            ),
+
+    // The material struct parameter.
+    output PXRSURFACE_MATERIAL_STRUCT( MaterialOutput, MatOut ),
+
+    // The enable parameters.
+    // Set the output enable parameters based on the two inputs' enable parameter values.
+    SET_ALL_ENABLE_PARAMS( MaterialOutput, InputA, InputB, ClearCoat ),
+    SET_ALL_ENABLE_PARAMS( MaterialOutput, InputA, InputB, PrimarySpecular ),
+    SET_ALL_ENABLE_PARAMS( MaterialOutput, InputA, InputB, SecondarySpecular ),
+    SET_RESPONSE_ENABLE_PARAM( MaterialOutput, InputA, InputB, Iridescence ),
+    SET_ANISOTROPYDIRECTION_ENABLE_PARAM( MaterialOutput, InputA, InputB, Iridescence ),
+    SET_RESPONSE_ENABLE_PARAM( MaterialOutput, InputA, InputB, Fuzz ),
+    SET_SHADINGNORMAL_ENABLE_PARAM( MaterialOutput, InputA, InputB, Fuzz ),
+    SET_RESPONSE_ENABLE_PARAM( MaterialOutput, InputA, InputB, Diffuse ),
+    SET_SHADINGNORMAL_ENABLE_PARAM( MaterialOutput, InputA, InputB, Diffuse ),
+    SET_RESPONSE_ENABLE_PARAM( MaterialOutput, InputA, InputB, Scatter ),
+    SET_RESPONSE_ENABLE_PARAM( MaterialOutput, InputA, InputB, Subsurface ),
+    SET_RESPONSE_ENABLE_PARAM( MaterialOutput, InputA, InputB, Glass ),
+    SET_ANISOTROPYDIRECTION_ENABLE_PARAM( MaterialOutput, InputA, InputB, Glass ),
+    SET_RESPONSE_ENABLE_PARAM( MaterialOutput, InputA, InputB, Glow ),
+)
+/*
+ *  Compositor functionality: Out = A OVER B.
+ *
+ *  top      mid      bottom
+ *   |        |          |
+ *   |        B          B
+ *    ----> A[ ]Out -> A[ ]Out ->
+ */
+{
+    // Short-circuit for no UNDER material.
+    // MatInA may also be unconnected; will just copy a blank material to the Output then.
+    if( !isconnected( MatInB ))
+    {
+        MatOut = MatInA;
+    }
+
+    // Have UNDER but no OVER material.
+    else if( !isconnected( MatInA ))
+    {
+        MatOut = MatInB;
+    }
+
+    // Have both A and B connections.
+    else
+    {
+
+    //
+    // Combine displacements.
+    //
+    // Composited output mask defines where the A material and B material exist.
+    MatOut.dispMask = MatInA.dispMask + MatInB.dispMask*( 1.0 - MatInA.dispMask );
+
+    MatOut.deltaP = MatInA.deltaP + mix(
+                                    MatInB.deltaP,
+                                    MatInB.coverV,
+                                    MatInA.thickness
+                                    );
+
+    // Thickness accumulates through all the layers, since layer displacements all accumulate.
+    // Any overlying layer's thickness will apply to all layers below it, so always pass on the
+    // largest thickness value.
+    MatOut.thickness = max( MatInA.thickness, MatInB.thickness );
+
+    //
+    // Combine bxdfs.
+    //
+    // Porter-Duff pre-multiplied alpha(mask) compositing OVER operation.
+    //  Out = A over B:
+    //  Out =    A*A_Mask*1 + B*B_Mask*(1 - A_Mask)
+    //  Out_Mask = A_Mask*1 +   B_Mask*(1 - A_Mask)
+    //
+    // Composited output mask defines where the A material and B material exist.
+    MatOut.bxdfMask = MatInA.bxdfMask + MatInB.bxdfMask*( 1.0 - MatInA.bxdfMask );
+
+    // Global
+    A_OVER_B( MatOut, MatInA, MatInB, Displacement, BumpPercent );
+    A_OVER_B( MatOut, MatInA, MatInB, Global, ShadowColor );
+    A_OVER_B( MatOut, MatInA, MatInB, Global, ShadingNormal );
+    A_OVER_B( MatOut, MatInA, MatInB, Global, UseShadingNormal );
+
+    // ClearCoat
+    if( InputA_ClearCoat_Enable == 1 || InputB_ClearCoat_Enable == 1 )
+    {
+        A_OVER_B( MatOut, MatInA, MatInB, ClearCoat, CG );
+        A_OVER_B( MatOut, MatInA, MatInB, ClearCoat, FaceCG );
+        A_OVER_B( MatOut, MatInA, MatInB, ClearCoat, RefractionCI );
+        A_OVER_B( MatOut, MatInA, MatInB, ClearCoat, FresnelExponent );
+        A_OVER_B( MatOut, MatInA, MatInB, ClearCoat, LayerThickness );
+        A_OVER_B( MatOut, MatInA, MatInB, ClearCoat, LayerColor );
+        A_OVER_B( MatOut, MatInA, MatInB, ClearCoat, Roughness );
+        A_OVER_B( MatOut, MatInA, MatInB, ClearCoat, Anisotropy );
+        A_OVER_B( MatOut, MatInA, MatInB, ClearCoat, AnisotropyDirection );
+        A_OVER_B( MatOut, MatInA, MatInB, ClearCoat, UseAnisotropyDirection );
+        A_OVER_B( MatOut, MatInA, MatInB, ClearCoat, ShadingNormal );
+        A_OVER_B( MatOut, MatInA, MatInB, ClearCoat, UseShadingNormal );
+    }
+
+    // PrimarySpecular
+    if( InputA_PrimarySpecular_Enable == 1 || InputB_PrimarySpecular_Enable == 1 )
+    {
+        A_OVER_B( MatOut, MatInA, MatInB, PrimarySpecular, CG );
+        A_OVER_B( MatOut, MatInA, MatInB, PrimarySpecular, FaceCG );
+        A_OVER_B( MatOut, MatInA, MatInB, PrimarySpecular, RefractionCI );
+        A_OVER_B( MatOut, MatInA, MatInB, PrimarySpecular, ExtinctionCC );
+        A_OVER_B( MatOut, MatInA, MatInB, PrimarySpecular, FresnelExponent );
+        A_OVER_B( MatOut, MatInA, MatInB, PrimarySpecular, Roughness );
+        A_OVER_B( MatOut, MatInA, MatInB, PrimarySpecular, Anisotropy );
+        A_OVER_B( MatOut, MatInA, MatInB, PrimarySpecular, AnisotropyDirection );
+        A_OVER_B( MatOut, MatInA, MatInB, PrimarySpecular, UseAnisotropyDirection );
+        A_OVER_B( MatOut, MatInA, MatInB, PrimarySpecular, ShadingNormal );
+        A_OVER_B( MatOut, MatInA, MatInB, PrimarySpecular, UseShadingNormal );
+    }
+
+    // SecondarySpecular
+    if( InputA_SecondarySpecular_Enable == 1 || InputB_SecondarySpecular_Enable == 1 )
+    {
+        A_OVER_B( MatOut, MatInA, MatInB, SecondarySpecular, CG );
+        A_OVER_B( MatOut, MatInA, MatInB, SecondarySpecular, FaceCG );
+        A_OVER_B( MatOut, MatInA, MatInB, SecondarySpecular, RefractionCI );
+        A_OVER_B( MatOut, MatInA, MatInB, SecondarySpecular, ExtinctionCC );
+        A_OVER_B( MatOut, MatInA, MatInB, SecondarySpecular, FresnelExponent );
+        A_OVER_B( MatOut, MatInA, MatInB, SecondarySpecular, Roughness );
+        A_OVER_B( MatOut, MatInA, MatInB, SecondarySpecular, Anisotropy );
+        A_OVER_B( MatOut, MatInA, MatInB, SecondarySpecular, AnisotropyDirection );
+        A_OVER_B( MatOut, MatInA, MatInB, SecondarySpecular, UseAnisotropyDirection );
+        A_OVER_B( MatOut, MatInA, MatInB, SecondarySpecular, ShadingNormal );
+        A_OVER_B( MatOut, MatInA, MatInB, SecondarySpecular, UseShadingNormal );
+    }
+
+    // Iridescence
+    if( InputA_Iridescence_Enable == 1 || InputB_Iridescence_Enable == 1 )
+    {
+        A_OVER_B( MatOut, MatInA, MatInB, Iridescence, Gain );
+        A_OVER_B( MatOut, MatInA, MatInB, Iridescence, FaceColor );
+        A_OVER_B( MatOut, MatInA, MatInB, Iridescence, EdgeColor );
+        A_OVER_B( MatOut, MatInA, MatInB, Iridescence, Exponent );
+        A_OVER_B( MatOut, MatInA, MatInB, Iridescence, Repetitions );
+        A_OVER_B( MatOut, MatInA, MatInB, Iridescence, Thickness );
+        A_OVER_B( MatOut, MatInA, MatInB, Iridescence, Roughness );
+        A_OVER_B( MatOut, MatInA, MatInB, Iridescence, Anisotropy );
+        A_OVER_B( MatOut, MatInA, MatInB, Iridescence, AnisotropyDirection );
+        A_OVER_B( MatOut, MatInA, MatInB, Iridescence, UseAnisotropyDirection );
+    }
+
+    // Fuzz
+    if( InputA_Fuzz_Enable == 1 || InputB_Fuzz_Enable == 1 )
+    {
+        A_OVER_B( MatOut, MatInA, MatInB, Fuzz, CG );
+        A_OVER_B( MatOut, MatInA, MatInB, Fuzz, ConeAngle );
+        A_OVER_B( MatOut, MatInA, MatInB, Fuzz, ShadingNormal );
+        A_OVER_B( MatOut, MatInA, MatInB, Fuzz, UseShadingNormal );
+    }
+
+    // Diffuse
+    if( InputA_Diffuse_Enable == 1 || InputB_Diffuse_Enable == 1 )
+    {
+        A_OVER_B( MatOut, MatInA, MatInB, Diffuse, CG );
+        A_OVER_B( MatOut, MatInA, MatInB, Diffuse, BackfaceCG );
+        A_OVER_B( MatOut, MatInA, MatInB, Diffuse, TransmitCG );
+        A_OVER_B( MatOut, MatInA, MatInB, Diffuse, Roughness );
+        A_OVER_B( MatOut, MatInA, MatInB, Diffuse, FalloffExponent );
+        A_OVER_B( MatOut, MatInA, MatInB, Diffuse, ShadingNormal );
+        A_OVER_B( MatOut, MatInA, MatInB, Diffuse, UseShadingNormal );
+    }
+
+    // Scatter
+    if( InputA_Scatter_Enable == 1 || InputB_Scatter_Enable == 1 )
+    {
+        A_OVER_B( MatOut, MatInA, MatInB, Scatter, CG );
+        A_OVER_B( MatOut, MatInA, MatInB, Scatter, BacksideCG );
+        A_OVER_B( MatOut, MatInA, MatInB, Scatter, PathLength );
+        A_OVER_B( MatOut, MatInA, MatInB, Scatter, PathColor );
+        A_OVER_B( MatOut, MatInA, MatInB, Scatter, Direction );
+        A_OVER_B( MatOut, MatInA, MatInB, Scatter, Roughness );
+        A_OVER_B( MatOut, MatInA, MatInB, Scatter, RefractionIndex );
+    }
+
+    // Subsurface
+    if( InputA_Subsurface_Enable == 1 || InputB_Subsurface_Enable == 1 )
+    {
+        A_OVER_B( MatOut, MatInA, MatInB, Subsurface, CG );
+        A_OVER_B( MatOut, MatInA, MatInB, Subsurface, ShortCG );
+        A_OVER_B( MatOut, MatInA, MatInB, Subsurface, LongCG );
+        A_OVER_B( MatOut, MatInA, MatInB, Subsurface, PathLength );
+        A_OVER_B( MatOut, MatInA, MatInB, Subsurface, PathColor );
+        A_OVER_B( MatOut, MatInA, MatInB, Subsurface, PostTint );
+        A_OVER_B( MatOut, MatInA, MatInB, Subsurface, TransmitGain );
+        A_OVER_B( MatOut, MatInA, MatInB, Subsurface, ShortLength );
+        A_OVER_B( MatOut, MatInA, MatInB, Subsurface, LongLength );
+        A_OVER_B( MatOut, MatInA, MatInB, Subsurface, Directionality );
+        A_OVER_B( MatOut, MatInA, MatInB, Subsurface, DiffuseBlend );
+        A_OVER_B( MatOut, MatInA, MatInB, Subsurface, Bleed );
+    }
+
+    // Scatter And Subsurface
+    if( InputA_Scatter_Enable == 1 || InputB_Scatter_Enable == 1
+     || InputA_Subsurface_Enable == 1 || InputB_Subsurface_Enable == 1 )
+    {
+        A_OVER_B( MatOut, MatInA, MatInB, ScatterAndSubsurface, IlluminationTint );
+        A_OVER_B( MatOut, MatInA, MatInB, ScatterAndSubsurface, Roughness );
+    }
+
+    // Glass
+    if( InputA_Glass_Enable == 1 || InputB_Glass_Enable == 1 )
+    {
+        A_OVER_B( MatOut, MatInA, MatInB, Glass, ReflectionGain );
+        A_OVER_B( MatOut, MatInA, MatInB, Glass, Roughness );
+        A_OVER_B( MatOut, MatInA, MatInB, Glass, Anisotropy );
+        A_OVER_B( MatOut, MatInA, MatInB, Glass, AnisotropyDirection );
+        A_OVER_B( MatOut, MatInA, MatInB, Glass, UseAnisotropyDirection );
+        A_OVER_B( MatOut, MatInA, MatInB, Glass, RefractionCG );
+        A_OVER_B( MatOut, MatInA, MatInB, Glass, RefractionIndex );
+        A_OVER_B( MatOut, MatInA, MatInB, Glass, ScatterAmount );
+        A_OVER_B( MatOut, MatInA, MatInB, Glass, ScatterCG );
+    }
+
+    // Glow
+    if( InputA_Glow_Enable == 1 || InputB_Glow_Enable == 1 )
+    {
+        A_OVER_B( MatOut, MatInA, MatInB, Glow, CG );
+    }
+
+    }
+}
