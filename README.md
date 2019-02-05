@@ -14,8 +14,6 @@ If you make use of this repsitory, I strongly urge you to [subscribe to the disc
 * [Foundry's](https://www.foundry.com) [Katana 3.0](https://www.foundry.com/products/katana)
 * A c++11 compatible compiler: clang++, g++, etc.
 
-An update of the Material Layering System that includes support for Maya 2018 will come soon.
-
 ## Documentation
 Documentation is on the [wiki page](https://github.com/LaikaStudios/shading-library/wiki).
 
