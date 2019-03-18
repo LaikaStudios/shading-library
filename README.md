@@ -8,8 +8,8 @@ If you make use of this repsitory, I strongly urge you to [subscribe to the disc
 
 ## Requirements
 * [Pixar's](https://www.pixar.com) [RenderMan 22](https://rmanwiki.pixar.com/display/REN22/RenderMan)
-* [Pixar's](https://www.pixar.com) [RenderMan 22 for Katana 3.0](https://rmanwiki.pixar.com/display/RFK22/RenderMan+22+for+Katana)
-* [Foundry's](https://www.foundry.com) [Katana 3.0](https://www.foundry.com/products/katana)
+* [Pixar's](https://www.pixar.com) [RenderMan 22 for Katana 3](https://rmanwiki.pixar.com/display/RFK22/RenderMan+22+for+Katana)
+* [Foundry's](https://www.foundry.com) [Katana 3](https://www.foundry.com/products/katana)
 * A c++11 compatible compiler: clang++, g++, etc.
 
 ## Documentation
