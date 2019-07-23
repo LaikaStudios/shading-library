@@ -49,7 +49,7 @@
 shader v1_PxrSurfaceEdit
 [[
     int rfm_nodeid = 1233959,
-    string rfm_classification = "rendernode/RenderMan/pattern/Laika/material",
+    string rfm_classification = "rendernode/RenderMan/pattern/material",
     string URL = "https://app.laika.com/intranet/vfx/shading/film6_shading_nodes/material",
     string help = 
         "<strong>Edits</strong> the response parameter values of a "

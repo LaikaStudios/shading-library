@@ -1,5 +1,5 @@
 /*
- *  Copyright 2018 Laika, LLC. Authored by Mitch Prater.
+ *  Copyright 2018-2019 Laika, LLC. Authored by Mitch Prater.
  *
  *  Licensed under the Apache License Version 2.0 http://apache.org/licenses/LICENSE-2.0,
  *  or the MIT license http://opensource.org/licenses/MIT, at your option.
@@ -17,8 +17,8 @@
 
 shader v1_PxrSurface
 [[
-    int rfm_nodeid = 0x12d410,
-    string rfm_classification = "rendernode/RenderMan/pattern/Laika/material",
+    int rfm_nodeid = 1233936,
+    string rfm_classification = "rendernode/RenderMan/pattern/material",
     string URL = "https://app.laika.com/intranet/vfx/shading/film6_shading_nodes/material",
     string help = 
         "A <a href='https://app.laika.com/intranet/vfx/shading/film6_shading_nodes/material'>Material</a> "
@@ -330,10 +330,10 @@ shader v1_PxrSurface
         int connectable = 0,
         string page = "Displacement",
         string label = "Mag Space",
-        string widget = "mapper",
-        string options = "common:common|object:object|shader:shader|world:world",
+        string widget = "popup", int editable = 1,
+        string options = "common|world|object",
         string help =
-            "The coordinate system in which the Displacement <strong>Covering Height</strong> "
+            "Selects the <strong>Space</strong> in which the Displacement <strong>Covering Height</strong> "
             "and Float and Vector <strong>Magnitude</strong> units are specified. "
     ]],
 
@@ -341,13 +341,25 @@ shader v1_PxrSurface
     [[
         string page = "Displacement",
         string label = "Mag Scale",
-        int slider = 1, float slidermin = 0.0, float slidermax = 2.0,
+        int slider = 1, float slidermin = 0.0, float slidermax = 10.0, float slidercenter = 1.0,
         string help =
-            "An overall scale applied to <em>all</em> the Input Float "
-            "and Vector <strong>Magnitude</strong> values used by this material. "
+            "An overall <strong>Scale</strong> applied to <em>all</em> the Input Float "
+            "and Vector <strong>Magnitudes.</strong> "
     ]],
 
     // Float displacements.
+    normal Displacement_Float_Nn = normal(0.0)
+    [[
+        string page = "Displacement.Float",
+        string label = "Nn",
+        string help =
+            "Use this <em>common</em> space surface normal for the <strong>Float</strong> displacement "
+            "directions. Defaults to the surface normal <strong>N</strong> if left un-connected. "
+            "<br/><br/>"
+            "Note: this <strong><em>must</em></strong> be connected to set it: "
+            "<u>manually entering values will not work</u>. "
+    ]],
+
     DISPLACE_FLOAT_UI_DECLARE(0),
     DISPLACE_FLOAT_UI_DECLARE(1),
     DISPLACE_FLOAT_UI_DECLARE(2),
@@ -355,29 +367,23 @@ shader v1_PxrSurface
     DISPLACE_FLOAT_UI_DECLARE(4),
 
     // Vector displacements.
-    string Displacement_Vector_DirSpace = "magspace"
+    string Displacement_Vector_DirSpace = "Mag Space Value"
     [[
         int connectable = 0,
         string page = "Displacement.Vector",
         string label = "Dir Space",
-        string widget = "mapper",
-        string options =
-            "Mag Space Value:magspace"
-            "|common:common"
-            "|object:object"
-            "|shader:shader"
-            "|world:world",
+        string widget = "popup", int editable = 1,
+        string options = "Mag Space Value|common|world|object",
         string help =
             "The coordinate system in which the Vector <strong>Input</strong> <em>Directions</em> are specified. "
-            "<em>common</em> is the default space used by vectors or normals such as "
-            "<strong>N</strong>, <strong>V</strong>, or <strong>T</strong> (from ris/data/ShadingVars). "
+            "You may also enter the name of your own coordinate system. "
             "<br/><br/>"
             "Note: it is assumed the <strong>Input</strong> vectors have a maximum length of 1. "
             "<strong>Mag Space</strong> and <strong>Magnitude</strong> therefore determine their "
             "amount of displacement. "
-            "<br/>"
-            "<strong>Dir Space</strong> however, specifies their orientation (direction) space: vector "
-            "direction and magnitude are separate characteristics. "
+            "<br/><br/>"
+            "<strong>Dir Space</strong> however, specifies their orientation (direction): "
+            "vector direction and magnitude are separate characteristics. "
     ]],
 
     DISPLACE_VECTOR_UI_DECLARE(0),
@@ -553,79 +559,92 @@ shader v1_PxrSurface
     bxdfMask = Mask; // this_bxdfMask
     dispMask = Mask; // this_dispMask
 
+
     //
     //  Displacement.
     //
-    // Used by float displacements.
+    vector  this_deltaP;
+    vector  this_coverV;
+
+    // The covering height surface offset vector for this material.
+    // Nmag is common space direction with length relative to Mag Space.
+    // Note: must use a normal transform to get the proper scale.
     normal  Nn = normalize(N);
-    normal  Nmag = Nn / length( transform( Displacement_MagSpace, Nn ));
+    normal  Nmag = Nn * length( transform( "common", Displacement_MagSpace, Nn )); // normal
 
-    // Used by vector displacements.
-    string  dispDirSpace = ( Displacement_Vector_DirSpace != "magspace" ) ?
-                Displacement_Vector_DirSpace : Displacement_MagSpace;
+    this_coverV = Nmag * Displacement_CoveringHeight;
 
-    float   dirScale = 1.0 / length(
-                transform( Displacement_MagSpace, vector( dispDirSpace, IKA_INVSQRT3, IKA_INVSQRT3, IKA_INVSQRT3 ) )
-                );
+    // Float displacements.
+    if( isconnected( Displacement_Float_Nn ))
+    {
+        Nn = Displacement_Float_Nn;
+        Nmag = Nn * length( transform( "common", Displacement_MagSpace, Nn )); // normal
+    }
 
-    // The covering height offset surface vector for this material.
-    vector  this_coverV = Nmag*Displacement_CoveringHeight;
+    // Add float displacements to the deltaP displacement vector.
+    float  floatDisp = DISPLACE_FLOAT_AMOUNT(0)
+                + DISPLACE_FLOAT_AMOUNT(1)
+                + DISPLACE_FLOAT_AMOUNT(2)
+                + DISPLACE_FLOAT_AMOUNT(3)
+                + DISPLACE_FLOAT_AMOUNT(4);
 
-    // The deltaP displacement vector for this material.
-    vector  this_deltaP = Nmag * (
-                        DISPLACE_FLOAT_AMOUNT(0)
-                        + DISPLACE_FLOAT_AMOUNT(1)
-                        + DISPLACE_FLOAT_AMOUNT(2)
-                        + DISPLACE_FLOAT_AMOUNT(3)
-                        + DISPLACE_FLOAT_AMOUNT(4)
-                        );
+    this_deltaP = Nmag * floatDisp;
 
-    this_deltaP += dirScale * transform( dispDirSpace, "common",
-                        DISPLACE_VECTOR_AMOUNT(0)
-                        + DISPLACE_VECTOR_AMOUNT(1)
-                        + DISPLACE_VECTOR_AMOUNT(2)
-                        + DISPLACE_VECTOR_AMOUNT(3)
-                        + DISPLACE_VECTOR_AMOUNT(4)
-                        );
+    // Vector displacements.
+    // Magnitude and Direction are handled separately.
+    string  directionSpace = ( Displacement_Vector_DirSpace != "Mag Space Value" )
+                             ? Displacement_Vector_DirSpace : Displacement_MagSpace;
+
+    // Add vector displacements to the deltaP displacement vector.
+    vector  vectorDisp = DISPLACE_VECTOR_AMOUNT( 0, directionSpace, Displacement_MagSpace )
+                + DISPLACE_VECTOR_AMOUNT( 1, directionSpace, Displacement_MagSpace )
+                + DISPLACE_VECTOR_AMOUNT( 2, directionSpace, Displacement_MagSpace )
+                + DISPLACE_VECTOR_AMOUNT( 3, directionSpace, Displacement_MagSpace )
+                + DISPLACE_VECTOR_AMOUNT( 4, directionSpace, Displacement_MagSpace );
+
+    this_deltaP += vectorDisp;
 
     // Globally scale the displacement. Displacement_MagScale is unitless.
     this_deltaP *= Displacement_MagScale;
 
-    // Modify the Mask with a patterned ramp?
-    if( PatternRamp_Enable == 1 )
+    // Modify the displacement mask with a patterned ramp?
+    if( PatternRamp_Enable )
     {
+        float  rampPattern;
+        float  rampMag;
+
         // Determine displacement-based ramp pattern.
-        float  this_rampPattern = DISPLACE_FLOAT_PATTERN(0)
-                            + DISPLACE_FLOAT_PATTERN(1)
-                            + DISPLACE_FLOAT_PATTERN(2)
-                            + DISPLACE_FLOAT_PATTERN(3)
-                            + DISPLACE_FLOAT_PATTERN(4)
-                            ;
+        rampPattern = DISPLACE_FLOAT_PATTERN(0)
+                        + DISPLACE_FLOAT_PATTERN(1)
+                        + DISPLACE_FLOAT_PATTERN(2)
+                        + DISPLACE_FLOAT_PATTERN(3)
+                        + DISPLACE_FLOAT_PATTERN(4)
+                        ;
 
-        this_rampPattern += DISPLACE_VECTOR_PATTERN(0)
-                            + DISPLACE_VECTOR_PATTERN(1)
-                            + DISPLACE_VECTOR_PATTERN(2)
-                            + DISPLACE_VECTOR_PATTERN(3)
-                            + DISPLACE_VECTOR_PATTERN(4)
-                            ;
+        rampPattern += DISPLACE_VECTOR_PATTERN(0)
+                        + DISPLACE_VECTOR_PATTERN(1)
+                        + DISPLACE_VECTOR_PATTERN(2)
+                        + DISPLACE_VECTOR_PATTERN(3)
+                        + DISPLACE_VECTOR_PATTERN(4)
+                        ;
 
-        float  this_rampMag = DISPLACE_FLOAT_MAG(0)
-                            + DISPLACE_FLOAT_MAG(1)
-                            + DISPLACE_FLOAT_MAG(2)
-                            + DISPLACE_FLOAT_MAG(3)
-                            + DISPLACE_FLOAT_MAG(4)
-                            ;
+        rampMag = DISPLACE_FLOAT_MAG(0)
+                    + DISPLACE_FLOAT_MAG(1)
+                    + DISPLACE_FLOAT_MAG(2)
+                    + DISPLACE_FLOAT_MAG(3)
+                    + DISPLACE_FLOAT_MAG(4)
+                    ;
 
-        this_rampMag += DISPLACE_VECTOR_MAG(0)
-                            + DISPLACE_VECTOR_MAG(1)
-                            + DISPLACE_VECTOR_MAG(2)
-                            + DISPLACE_VECTOR_MAG(3)
-                            + DISPLACE_VECTOR_MAG(4)
-                            ;
+        rampMag += DISPLACE_VECTOR_MAG(0)
+                    + DISPLACE_VECTOR_MAG(1)
+                    + DISPLACE_VECTOR_MAG(2)
+                    + DISPLACE_VECTOR_MAG(3)
+                    + DISPLACE_VECTOR_MAG(4)
+                    ;
 
         // Normalize the pattern range.
-        if( this_rampMag > 0.0000001 ) this_rampPattern /= this_rampMag;
-        else this_rampPattern = 0.5;
+        if( rampMag > 0.0000001 ) rampPattern /= rampMag;
+        else rampPattern = 0.5;
 
         // Generate the pattern ramped masks.
         bxdfMask = linearstep(
@@ -634,12 +653,12 @@ shader v1_PxrSurface
                     // Remap the pattern in preparation for comparing with the Mask value.
                     // The Mask is used to shift the ramp pattern up/down sufficiently to
                     // produce the desired Mask-edgeWidth, Mask+edgeWidth transition.
-                    this_rampPattern + mix(
-                                        -1.0000001-PatternRamp_LowerCutoff - PatternRamp_BxdfSoftness,
-                                        2.0-PatternRamp_UpperCutoff + PatternRamp_BxdfSoftness,
-                                        // Grow/Erode the Masked area.
-                                        pow( Mask, pow( 3.0, -PatternRamp_BxdfTransition ))
-                                        )
+                    rampPattern + mix(
+                                    -1.0000001-PatternRamp_LowerCutoff - PatternRamp_BxdfSoftness,
+                                    2.0-PatternRamp_UpperCutoff + PatternRamp_BxdfSoftness,
+                                    // Grow/Erode the Masked area.
+                                    pow( Mask, pow( 3.0, -PatternRamp_BxdfTransition ))
+                                    )
                     );
 
         dispMask = linearstep(
@@ -648,17 +667,17 @@ shader v1_PxrSurface
                     // Remap the pattern in preparation for comparing with the Mask value.
                     // The Mask is used to shift the ramp pattern up/down sufficiently to
                     // produce the desired Mask-edgeWidth, Mask+edgeWidth transition.
-                    this_rampPattern + mix(
-                                        -1.0000001-PatternRamp_LowerCutoff - PatternRamp_DispSoftness,
-                                        2.0-PatternRamp_UpperCutoff + PatternRamp_DispSoftness,
-                                        Mask
-                                        )
+                    rampPattern + mix(
+                                    -1.0000001-PatternRamp_LowerCutoff - PatternRamp_DispSoftness,
+                                    2.0-PatternRamp_UpperCutoff + PatternRamp_DispSoftness,
+                                    Mask
+                                    )
                     );
     }
 
-    // Pre-multiply by this mask.
-    this_coverV *= dispMask;
+    // Pre-multiply by the displacement mask.
     this_deltaP *= dispMask;
+    this_coverV *= dispMask;
 
     // Note: coverV is not composited. It is only communicated
     // with the immediately overlying material layer.

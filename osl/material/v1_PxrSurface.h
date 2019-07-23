@@ -286,6 +286,10 @@
             "As such, <strong>Roughness</strong> must be reasonably large for this to produce any effect. " \
             "Positive and negative <strong>Anisotropy</strong> values will decrease the Roughness, " \
             "and therefore the response size, along axes that are perpendicular to each other. " \
+            "<br/><br/>" \
+            "NOTE: <em>Negative</em> <strong>Anisotropy</strong> will produce the correct response when " \
+            "the <strong>Anisotropy Direction</strong> indicates the surface &quot;brushing&quot; " \
+            "direction: when it is parallel to any fibers or scratching of the surface. " \
     ]], \
     vector PREFIX##_##AnisotropyDirection = PREFIX##_##AnisotropyDirectionUIDefault \
     [[ \
@@ -297,6 +301,10 @@
             "<br/><br/>" \
             "Note: though it is intended to be, it is not <em>strictly</em> necessary that this vector " \
             "actually be tangent to the surface. " \
+            "<br/>" \
+            "ALSO: <em>Negative</em> <strong>Anisotropy</strong> will produce the correct response when " \
+            "the <strong>Anisotropy Direction</strong> indicates the surface &quot;brushing&quot; " \
+            "direction: when it is parallel to any fibers or scratching of the surface. " \
     ]]
 
 //
@@ -319,6 +327,7 @@
             "<br/>alcohol = 1.358" \
             "<br/>human eye = 1.386" \
             "<br/>kerosene = 1.39" \
+            "<br/>vero clear = 1.47" \
             "<br/>rock salt = 1.5" \
             "<br/>glass = 1.52" \
             "<br/>amber = 1.55" \
@@ -901,6 +910,7 @@
             "<br/>alcohol = 1.358" \
             "<br/>human eye = 1.386" \
             "<br/>kerosene = 1.39" \
+            "<br/>vero clear = 1.47" \
             "<br/>rock salt = 1.5" \
             "<br/>glass = 1.52" \
             "<br/>amber = 1.55" \

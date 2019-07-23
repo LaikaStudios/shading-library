@@ -1,5 +1,5 @@
 /*
- *  Copyright 2018 Laika, LLC. Authored by Mitch Prater.
+ *  Copyright 2018-2019 Laika, LLC. Authored by Mitch Prater.
  *
  *  Licensed under the Apache License Version 2.0 http://apache.org/licenses/LICENSE-2.0,
  *  or the MIT license http://opensource.org/licenses/MIT, at your option.
@@ -163,13 +163,13 @@
     ]]
 
 
-
 float displace_float_pattern(
-        int    mode, // 0=Off, 1=On, -1=Invert
-        float  input,
-        float  magnitude,
-        float  mask
-) {
+    int    mode, // 0=Off, 1=On, -1=Invert
+    float  input,
+    float  magnitude,
+    float  mask
+    )
+{
     float  result = 0.0;
 
     if( mode == 1 ) result = input*magnitude*mask;
@@ -179,12 +179,13 @@ float displace_float_pattern(
 }
 
 float displace_float_amount(
-        int    mode, // 0=Off, 1=On, -1=Invert
-        float  input,
-        float  position,
-        float  magnitude,
-        float  mask
-) {
+    int    mode, // 0=Off, 1=On, -1=Invert
+    float  input,
+    float  position,
+    float  magnitude,
+    float  mask
+    )
+{
     float  result = 0.0;
 
     if( mode == 1 ) result = ( input + mix( -0.5, 0.0, position ))*magnitude*mask;
@@ -194,7 +195,7 @@ float displace_float_amount(
 }
 
 #define DISPLACE_FLOAT_MAG(NAME) \
-    (( Displacement_Float_On ## NAME == 0 ) ? 0.0 : abs( Displacement_Float_Magnitude ## NAME ))
+    (( Displacement_Float_On ## NAME ) ? abs( Displacement_Float_Magnitude ## NAME ) : 0.0 )
 
 #define DISPLACE_FLOAT_PATTERN(NAME) \
     displace_float_pattern( \
@@ -214,27 +215,65 @@ float displace_float_amount(
         )
 
 
+// Computes a common space displacement vector with
+// the given orientation and directional magnitude.
 vector displace_vector(
-        vector value,
-        int    mode,
-        float  mag,
-        float  mask
-) {
-    vector  result;
+    vector input,
+    int    mode, // -1=Negate, 1=None, 0=Expand
+    string directionSpace,
+    string magnitudeSpace,
+    float  magnitude,
+    float  mask
+    )
+{
+    vector  in = input;
 
-    if( mode != 0 ) result = value * mode;
-    else result = mix( -1, 1, value );
+    // Remapping modes.
+    // in = select( in, mix( vector(-1.0), vector(1.0), in ), mode > 1 ); // Expand.
+    // in = select( in, -in, mode == 1 || mode == 3 ); // Negate.
+    if( mode == -1 )
+    {
+        in = -in;
+    }
+    else if( mode == 0 )
+    {
+        in = mix( vector(-1.0), vector(1.0), in );
+    }
 
-    return result * mag * mask;
+    // Determine the Magnitude Space scale relative to a common space vector.
+    // Note: must use a vector transform to get the proper orienation,
+    // and a normal transform to get the proper scale.
+    normal Vmag = normalize( transform( directionSpace, "common", in )); // vector
+    float  magScale = length( transform( "common", magnitudeSpace, Vmag )); // normal
+
+    // Common space displacement vector with the original vector length.
+    vector Vdir = Vmag * length( in );
+
+    // Apply the Magnitude Space scaling, plus the unitless UI controls.
+    vector  result = Vdir * magScale * magnitude * mask;
+
+    // Done.
+    return result;
 }
 
+
 #define DISPLACE_VECTOR_MAG(NAME) \
-    (( Displacement_Vector_On ## NAME == 0 ) ? 0.0 : length( Displacement_Vector_Input ## NAME ) * Displacement_Vector_Magnitude ## NAME )
+    (( Displacement_Vector_On ## NAME ) ? length( Displacement_Vector_Input ## NAME ) * Displacement_Vector_Magnitude ## NAME * Displacement_Vector_Mask ## NAME : 0.0 )
 
 #define DISPLACE_VECTOR_PATTERN(NAME) \
-    (( Displacement_Vector_On ## NAME == 0 ) ? 0.0 : 0.5*(dot( N, Displacement_Vector_Input ## NAME )+1.0) * Displacement_Vector_Magnitude ## NAME * Displacement_Vector_Mask ## NAME )
+    (( Displacement_Vector_On ## NAME ) ? 0.5*(dot( N, Displacement_Vector_Input ## NAME )+1.0) * Displacement_Vector_Magnitude ## NAME * Displacement_Vector_Mask ## NAME : 0.0 )
 
-#define DISPLACE_VECTOR_AMOUNT(NAME) \
-    (( Displacement_Vector_On ## NAME == 0 ) ? vector(0.0) : displace_vector( Displacement_Vector_Input ## NAME, Displacement_Vector_Mode ## NAME, Displacement_Vector_Magnitude ## NAME, Displacement_Vector_Mask ## NAME ))
+#define DISPLACE_VECTOR_AMOUNT(NAME,DIRSPACE,MAGSPACE) ( \
+    Displacement_Vector_On ## NAME \
+        ? displace_vector( \
+            Displacement_Vector_Input ## NAME, \
+            Displacement_Vector_Mode ## NAME, \
+            DIRSPACE, \
+            MAGSPACE, \
+            Displacement_Vector_Magnitude ## NAME, \
+            Displacement_Vector_Mask ## NAME \
+            ) \
+        : vector(0.0) \
+    )
 
 #endif
