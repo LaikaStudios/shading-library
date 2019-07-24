@@ -19,9 +19,8 @@ shader v1_PxrSurface
 [[
     int rfm_nodeid = 1233936,
     string rfm_classification = "rendernode/RenderMan/pattern/material",
-    string URL = "https://app.laika.com/intranet/vfx/shading/film6_shading_nodes/material",
     string help = 
-        "A <a href='https://app.laika.com/intranet/vfx/shading/film6_shading_nodes/material'>Material</a> "
+        "A Material "
         "defines its response to light, its surface displacement, and its presence. "
         "Other materials of the same type can be composited together to produce a single layered material. "
         "The composited result is returned as a <strong>Material Output</strong>. "
@@ -43,9 +42,8 @@ shader v1_PxrSurface
     string Notes = ""
     [[
         int connectable = 0,
-        string URL = "https://app.laika.com/intranet/vfx/shading/film6_shading_nodes/material",
         string help = 
-            "A <a href='https://app.laika.com/intranet/vfx/shading/film6_shading_nodes/material'>Material</a> "
+            "A Material "
             "defines its response to light, its surface displacement, and its presence. "
             "Other materials of the same type can be composited together to produce a single layered material. "
             "The composited result is returned as a <strong>Material Output</strong>. "

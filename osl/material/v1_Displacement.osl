@@ -17,7 +17,6 @@ shader v1_Displacement
 [[
     int rfm_nodeid = 1233956,
     string rfm_classification = "rendernode/RenderMan/pattern/material",
-    string URL = "https://app.laika.com/intranet/vfx/shading/film6_shading_nodes/material",
     string help = 
         "Creates a <strong>Material</strong> layer that has only <strong>Displacement.</strong> "
         "<br/><br/>"
@@ -29,7 +28,6 @@ shader v1_Displacement
     string Notes = ""
     [[
         int connectable = 0,
-        string URL = "https://app.laika.com/intranet/vfx/shading/film6_shading_nodes/material",
         string help = 
             "Creates a <strong>Material</strong> layer that has only <strong>Displacement.</strong> "
             "<br/><br/>"
