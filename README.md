@@ -1,4 +1,4 @@
-https://img.shields.io/badge/License-Apache 2.0-blue.svg  https://img.shields.io/badge/License-MIT-blue.svg
+(https://img.shields.io/badge/License-Apache 2.0-blue.svg)  (https://img.shields.io/badge/License-MIT-blue.svg)
 
 # Production Shading Library
 
