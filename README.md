@@ -10,10 +10,10 @@ This release contains a set of shading nodes that provide a [Material Layering S
 If you make use of this repsitory, I strongly urge you to [subscribe to the discussion group](https://groups.google.com/group/laikastudios-shading-library). Please use this group to provide feedback on any bugs you may find or to discuss any feature requests.
 
 ## Requirements
-* [Pixar's](https://www.pixar.com) [RenderMan 22](https://rmanwiki.pixar.com/display/REN22/RenderMan)
-* [Pixar's](https://www.pixar.com) [RenderMan 22 for Katana 3](https://rmanwiki.pixar.com/display/RFK22/RenderMan+22+for+Katana)
+* [Pixar's](https://www.pixar.com) [RenderMan 23](https://rmanwiki.pixar.com/display/REN23/RenderMan)
+* [Pixar's](https://www.pixar.com) [RenderMan 23 for Katana 3](https://rmanwiki.pixar.com/display/RFK23/RenderMan+23+for+Katana)
 * [Foundry's](https://www.foundry.com) [Katana 3](https://www.foundry.com/products/katana)
-* A c++11 compatible compiler: clang++, g++, etc.
+* A c++14 compatible compiler: clang++, g++, etc.
 
 ## Documentation
 Documentation is on the [wiki page](https://github.com/LaikaStudios/shading-library/wiki).
