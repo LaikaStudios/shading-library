@@ -2,21 +2,21 @@
 # RMANTREE points to the RenderManProServer directory.
 # Set it if it's not already set in the environment.
 #
-RMANTREE ?= /opt/pixar/RenderManProServer-22.3
+RMANTREE ?= /opt/pixar/RenderManProServer-23.0
 
 #
 # Compiler and linker settings.
 #
 CC = clang++
 LD = clang++ -shared
-CFLAGS = -Wall -Wno-switch -Wno-reorder -Wno-sign-compare -Wno-narrowing -fPIC -std=c++11 -O3
+CFLAGS = -Wall -Wno-switch -Wno-reorder -Wno-sign-compare -Wno-narrowing -Wno-deprecated-declarations -fPIC -std=c++14 -O3
 INCLUDE = -I. -I./include -I${RMANTREE}/include
 
 #
 # Control variables.
 # These subdirectories will be searched for .cpp files, which will then be built into .so files.
 #
-SUBDIRS := data displace
+SUBDIRS := displace
 
 # These shaders won't be built. Use 'subdirectory/basename'.
 EXCLUDE := 
