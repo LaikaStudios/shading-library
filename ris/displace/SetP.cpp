@@ -22,8 +22,7 @@ class SetPFactory : public RixDisplacementFactory
     enum ui_Id
     {
         ui_Enable,
-        ui_Q,
-        ui_numParams // The number of shader parameters.
+        ui_Q
     };
 
     // Default shader parameter values.
