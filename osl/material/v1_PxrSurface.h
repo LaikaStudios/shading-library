@@ -566,7 +566,10 @@
     [[ \
         string page = "Diffuse", \
         string label = "Falloff Exponent", \
-        int slider = 1, float slidermin = 1.0, float slidermax = 4.0, \
+        int slider = 1, float slidermin = 0.0, float slidermax = 4.0, \
+        string conditionalVisPath = "../Diffuse_Roughness", \
+        string conditionalVisOp = "equalTo", \
+        string conditionalVisValue = "0", \
         string help = \
             "Raises the <strong>L.N</strong> value to this exponent for use in the " \
             "Lambert response. Only used when <strong>Roughness</strong> = 0. " \
