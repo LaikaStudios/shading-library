@@ -152,10 +152,6 @@ RixDisplacement* SetPFactory::BeginDisplacement(
     RixSCShadingMode         shadingMode,
     RtPointer                instanceData
 ) {
-    const bool  promoteToVarying = true;
-    const bool  leaveDetailAlone = false;
-    const int   nonArray = -1; // The array parameter index. -1 signifies a non-array parameter.
-
     // SetPDisp() parameters.
     RixSCDetail         detail_Enable;
     const RtFloat*      Enable;
@@ -163,7 +159,7 @@ RixDisplacement* SetPFactory::BeginDisplacement(
     const RtPoint3*     Q = NULL;
 
     // Get the parameter data.
-    detail_Enable = sCtx->EvalParam( ui_Enable, nonArray, &Enable, &default_Enable, leaveDetailAlone );
+    detail_Enable = sCtx->EvalParam( ui_Enable, -1, &Enable, &default_Enable, false );
     assert( detail_Enable == k_RixSCUniform || detail_Enable == k_RixSCVarying );
 
     RixSCType   type = k_RixSCPoint;
@@ -171,7 +167,7 @@ RixDisplacement* SetPFactory::BeginDisplacement(
 
     if( detail_Enable != k_RixSCUniform || Enable[0] != 0.0f )
     {
-        sCtx->EvalParam( ui_Q, nonArray, &Q, &default_Q, promoteToVarying );
+        sCtx->EvalParam( ui_Q, -1, &Q, &default_Q, true );
     }
     // XXX else what? Leaves Q = NULL.
 
