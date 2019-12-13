@@ -1,10 +1,10 @@
 /*
- *  Copyright 2016,2018 Laika, LLC. Authored by Mitch Prater.
+ *  Copyright 2016-2019 Laika, LLC. Authored by Mitch Prater.
  *
- *  Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
- *  http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
- *  http://opensource.org/licenses/MIT>, at your option. This file may not be
- *  copied, modified, or distributed except according to those terms.
+ *  Licensed under the Apache License Version 2.0 http://apache.org/licenses/LICENSE-2.0,
+ *  or the MIT license http://opensource.org/licenses/MIT, at your option.
+ *
+ *  This program may not be copied, modified, or distributed except according to those terms.
  */
 /*
  *  P = mix( P, Q, Enable ). That's it.
@@ -18,6 +18,7 @@
 class SetPFactory : public RixDisplacementFactory
 {
   private:
+
     enum ui_Id
     {
         ui_Enable,
@@ -70,7 +71,11 @@ class SetPFactory : public RixDisplacementFactory
     int  Init( RixContext &, RtUString const ) { return 0; }
     void Finalize( RixContext & ) {}
     void Synchronize( RixContext&, RixSCSyncMsg, const RixParameterList* ) {}
+#if _PRMANAPI_VERSION_ > 22
+    void CreateInstanceData( RixContext&, const RtUString, const RixParameterList*, InstanceData* ) {}
+#else
     int  CreateInstanceData( RixContext&, const RtUString, const RixParameterList*, InstanceData* ) { return 0; }
+#endif
 };
 
 
