@@ -27,15 +27,11 @@ class SetPFactory : public RixDisplacementFactory
     };
 
     // Default shader parameter values.
-    // Can't initialize these here without c++11...
     RtFloat   default_Enable;
     RtPoint3  default_Q;
 
   public:
-    // ...so the class constructor sets the default values.
-    // Note: these values will be used when the shader UI does not explicitly set
-    // the parameter's value - the default value in the .args file, while displayed
-    // by the UI, will not.
+
     SetPFactory()
     {
         default_Enable = RtFloat( 1.0f );
@@ -52,7 +48,6 @@ class SetPFactory : public RixDisplacementFactory
             RixSCParamInfo( RtUString( "Enable" ), k_RixSCFloat ),
             RixSCParamInfo( RtUString( "Q" ), k_RixSCPoint ),
 
-            // End of the table.
             RixSCParamInfo()
         };
 
@@ -84,63 +79,63 @@ class SetPFactory : public RixDisplacementFactory
  */
 class SetPDisp : public RixDisplacement
 {
-    private:
-        // Shader-specific parameter(s).
-        const RixSCDetail         m_detail_Enable;
-        const RtFloat*            m_Enable;
-        const RixSCConnectionInfo m_cinfo_Q;
-        const RtPoint3*           m_Q;
+  private:
+    // Shader-specific parameter(s).
+    const RixSCDetail         m_detail_Enable;
+    const RtFloat*            m_Enable;
+    const RixSCConnectionInfo m_cinfo_Q;
+    const RtPoint3*           m_Q;
 
-    public:
-        // Class constructor.
-        // An instance of this class is created in BeginDisplacement().
-        // The constructor's purpose is to set its class method variables
-        // for use in its GetDisplacement() method.
-        SetPDisp(
-            const RixShadingContext*  sCtx,
-            RixDisplacementFactory*   dFac,
+  public:
+    // Class constructor.
+    // An instance of this class is created in BeginDisplacement().
+    // The constructor's purpose is to set its class method variables
+    // for use in its GetDisplacement() method.
+    SetPDisp(
+        const RixShadingContext*  sCtx,
+        RixDisplacementFactory*   dFac,
 
-            const RixSCDetail         detail_Enable,
-            const RtFloat*            Enable,
-            const RixSCConnectionInfo cinfo_Q,
-            const RtPoint3*           Q
-        ) :
-            // Sets the protected RixDisplacement class variables
-            // 'shadingCtx' to sCtx, and 'displacementFactory' to dFac.
-            RixDisplacement( sCtx, dFac ),
+        const RixSCDetail         detail_Enable,
+        const RtFloat*            Enable,
+        const RixSCConnectionInfo cinfo_Q,
+        const RtPoint3*           Q
+    ) :
+        // Sets the protected RixDisplacement class variables
+        // 'shadingCtx' to sCtx, and 'displacementFactory' to dFac.
+        RixDisplacement( sCtx, dFac ),
 
-            // Sets user parameter variables.
-            m_detail_Enable( detail_Enable ),
-            m_Enable( Enable ),
-            m_cinfo_Q( cinfo_Q ),
-            m_Q( Q )
-        { }
+        // Sets user parameter variables.
+        m_detail_Enable( detail_Enable ),
+        m_Enable( Enable ),
+        m_cinfo_Q( cinfo_Q ),
+        m_Q( Q )
+    { }
 
-        // The class destructor is a no-op.
-        ~SetPDisp() {}
+    // The class destructor is a no-op.
+    ~SetPDisp() {}
 
 
-        // RixDisplacement::GetDisplacement() method.
-        // Called by the renderer to affect P.
-        // XXX What is the value of P: P or Po?
-        bool GetDisplacement( RtPoint3* P )
+    // RixDisplacement::GetDisplacement() method.
+    // Called by the renderer to affect P.
+    // XXX What is the value of P: P or Po?
+    bool GetDisplacement( RtPoint3* P )
+    {
+        // Leave P alone if Q is not connected.
+        if( m_cinfo_Q != k_RixSCNetworkValue ) return false;
+
+        if( m_detail_Enable == k_RixSCUniform )
         {
-            // Leave P alone if Q is not connected.
-            if( m_cinfo_Q != k_RixSCNetworkValue ) return false;
+            if( m_Enable[0] == 0.0f ) return false;
 
-            if( m_detail_Enable == k_RixSCUniform )
-            {
-                if( m_Enable[0] == 0.0f ) return false;
-
-                for( int i=0; i < shadingCtx->numPts; ++i ) P[i] = RixMix( P[i], m_Q[i], m_Enable[0] );
-            }
-            else
-            {
-                for( int i=0; i < shadingCtx->numPts; ++i ) P[i] = RixMix( P[i], m_Q[i], m_Enable[i] );
-            }
-
-            return true;
+            for( int i=0; i < shadingCtx->numPts; ++i ) P[i] = RixMix( P[i], m_Q[i], m_Enable[0] );
         }
+        else
+        {
+            for( int i=0; i < shadingCtx->numPts; ++i ) P[i] = RixMix( P[i], m_Q[i], m_Enable[i] );
+        }
+
+        return true;
+    }
 };
 
 
@@ -153,10 +148,9 @@ class SetPDisp : public RixDisplacement
  *  control the shader's functionality.
  */
 RixDisplacement* SetPFactory::BeginDisplacement(
-    const RixShadingContext* sCtx,        // See RixShading.h line 457.
-    RixSCShadingMode         shadingMode, // See RixShading.h line 333.
-    RtPointer                instanceData // Can be used to hold data in certain circumstances.
-                                          // XXX See RixShading.h line 170?
+    const RixShadingContext* sCtx,
+    RixSCShadingMode         shadingMode,
+    RtPointer                instanceData
 ) {
     const bool  promoteToVarying = true;
     const bool  leaveDetailAlone = false;
