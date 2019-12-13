@@ -875,7 +875,6 @@ shader v1_PxrSurface
 
         PARAM_OVER( MatOut, MatIn, Diffuse, Roughness, bxdfMask );
         PARAM_OVER( MatOut, MatIn, Diffuse, FalloffExponent, bxdfMask );
-        MatOut.Diffuse_FalloffExponent = max( 1.0, MatOut.Diffuse_FalloffExponent ); // Hack to keep this ≥ 1.
         PARAM_OVER( MatOut, MatIn, Diffuse, ShadingNormal, bxdfMask );
 
         float  useShadingNormal = isconnected( Diffuse_ShadingNormal ) ? Diffuse_UseShadingNormal : 0.0;
