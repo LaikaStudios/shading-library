@@ -119,7 +119,7 @@
 #define Diffuse_GainUIDefault                       commonGainUIDefault
 #define Diffuse_ColorUIDefault                      commonColorUIDefault
 #define Diffuse_RoughnessUIDefault                  0.0
-#define Diffuse_FalloffExponentUIDefault            1.0
+#define Diffuse_ExponentUIDefault                   1.0
 #define Diffuse_BackfaceGainUIDefault               0.0
 #define Diffuse_BackfaceColorUIDefault              commonColorUIDefault
 #define Diffuse_TransmitGainUIDefault               0.0
@@ -567,12 +567,13 @@
             "from the surface normal. As such, it does not produce linear changes in the perceived " \
             "diffuse blurriness with uniform increments of the <strong>Roughness</strong> value. " \
             "But, bigger = broader, smaller = narrower. Only a value from 0 to 1 is allowed. " \
-            "At 0, produces a Lambert response that is shaped using the <strong>Falloff Exponent</strong>. " \
+            "<br/><br/> " \
+            "At 0, produces a Lambert response that is shaped using the <strong>Exponent</strong> parameter. " \
     ]], \
-    float Diffuse_FalloffExponent = Diffuse_FalloffExponentUIDefault \
+    float Diffuse_Exponent = Diffuse_ExponentUIDefault \
     [[ \
         string page = "Diffuse", \
-        string label = "Falloff Exponent", \
+        string label = "Exponent", \
         int slider = 1, float slidermin = 0.0, float slidermax = 4.0, \
         string conditionalVisPath = "../Diffuse_Roughness", \
         string conditionalVisOp = "equalTo", \
@@ -1083,7 +1084,7 @@ struct material_v2_PxrSurface_s
 
     color  Diffuse_CG;
     float  Diffuse_Roughness;
-    float  Diffuse_FalloffExponent;
+    float  Diffuse_Exponent;
     color  Diffuse_BackfaceCG;
     color  Diffuse_TransmitCG;
     normal Diffuse_ShadingNormal;
@@ -1361,7 +1362,7 @@ struct material_v2_PxrSurface_s
 #define DIFFUSE_COPY(OUTPUT,INPUT,PREFIX) \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, CG ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, Roughness ); \
-    PARAM_COPY( OUTPUT, INPUT, PREFIX, FalloffExponent ); \
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, Exponent ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, BackfaceCG ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, TransmitCG ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, ShadingNormal ); \

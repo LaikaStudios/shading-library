@@ -892,7 +892,7 @@ shader v2_PxrSurface
                                 + ( Diffuse_TransmitGain*Diffuse_TransmitColor*bxdfMask )*( 1.0 - MatIn.bxdfMask );
 
         PARAM_OVER( MatOut, MatIn, Diffuse, Roughness, bxdfMask );
-        PARAM_OVER( MatOut, MatIn, Diffuse, FalloffExponent, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Diffuse, Exponent, bxdfMask );
         PARAM_OVER( MatOut, MatIn, Diffuse, ShadingNormal, bxdfMask );
 
         float  useShadingNormal = isconnected( Diffuse_ShadingNormal ) ? Diffuse_UseShadingNormal : 0.0;
