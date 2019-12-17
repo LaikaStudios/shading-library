@@ -18,20 +18,22 @@
 
 shader v2_PxrSurfaceAdapter
 [[
-    int rfm_nodeid = 1234033,
+    int rfm_nodeid = 1234036,
     string rfm_classification = "rendernode/RenderMan/pattern/material",
     string label = "PxrSurface Adapter",
     string help = 
-        "This connects the <strong>Material Output</strong> of an osl/material/v2_PxrSurface "
-        "to a displacement shader and a PxrSurface bxdf <strong>Input Material</strong> connection. "
+        "This adapts the <strong>Material Output</strong> of a v2_PxrSurface material "
+        "to a <strong>SetP</strong> displacement shader and a PxrSurface bxdf's "
+        "<strong>Input Material</strong> connection. "
 ]]
 (
     string Notes = ""
     [[
         int connectable = 0,
         string help = 
-            "This connects the <strong>Material Output</strong> of an osl/material/v2_PxrSurface "
-            "to a displacement shader and a PxrSurface bxdf <strong>Input Material</strong> connection. "
+            "This adapts the <strong>Material Output</strong> of a v2_PxrSurface material "
+            "to a <strong>SetP</strong> displacement shader and a PxrSurface bxdf's "
+            "<strong>Input Material</strong> connection. "
     ]],
 
     /*
@@ -40,7 +42,7 @@ shader v2_PxrSurfaceAdapter
     // The vstruct parameter. This is the single material connection point
     // for all the material parameters in the material struct.
     PXRSURFACE_MATERIAL_VSTRUCT( MaterialInput, Material Input,
-            Connect a PxrSurface Material shader's <strong>Material Output</strong> here.
+            Connect a v2_PxrSurface Material shader's <strong>Material Output</strong> here.
             ),
 
     // The struct parameter.
