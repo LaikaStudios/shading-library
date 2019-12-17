@@ -579,8 +579,10 @@
         string conditionalVisOp = "equalTo", \
         string conditionalVisValue = "0", \
         string help = \
-            "Raises the <strong>L.N</strong> value to this exponent for use in the " \
-            "Lambert response. Only used when <strong>Roughness</strong> = 0. " \
+            "Raises the <strong>L.N</strong> value to this <strong>Exponent</strong> for " \
+            "use in the Lambert response. " \
+            "<br/><br/> " \
+            "Only used when <strong>Roughness</strong> = 0. " \
     ]], \
     \
     SHADINGNORMAL_UI_DECLARE( Diffuse, Diffuse ), \
