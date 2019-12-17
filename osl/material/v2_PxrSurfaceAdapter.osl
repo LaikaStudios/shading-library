@@ -399,10 +399,10 @@ shader v2_PxrSurfaceAdapter
         COPY_PARAM( MatIn, Glass, RefractionCG );
         COPY_PARAM( MatIn, Glass, ManifoldExplorationIOR );
 
-        /* No vstructmember for extinction parameter in PxrSurface.args */
-        Glass_extinction = MatIn.Glass_ExtinctionCC;
         /* No vstructmember for ssAlbedo parameter in PxrSurface.args */
         Glass_ssAlbedo = MatIn.Glass_ScatterColor;
+        /* No vstructmember for extinction parameter in PxrSurface.args */
+        Glass_extinction = MatIn.Glass_ExtinctionCC;
 
         Glass_ShadingNormal = normalize( mix(
                             Global_ShadingNormal,
