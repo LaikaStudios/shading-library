@@ -74,7 +74,7 @@ shader v2_PxrSurface
     // for all the material parameters in the material struct.
     PXRSURFACE_MATERIAL_VSTRUCT( MaterialInput, Material Input,
             The connected <strong>Material Input</strong> layers OVER this one:
-            connect a PxrSurface <strong>Material Output</strong> here to
+            connect a v2_PxrSurface <strong>Material Output</strong> here to
             layer it OVER this material.
             ),
 
@@ -515,11 +515,11 @@ shader v2_PxrSurface
      *  parameters are members of the vstruct parameter.
      */
     output PXRSURFACE_MATERIAL_VSTRUCT( MaterialOutput, Material Output,
-            Connect this to a PxrSurface Material shader's <strong>Material Input</strong>
+            Connect this to a v2_PxrSurface material shader's <strong>Material Input</strong>
             to layer this OVER it.
             <br/><br/>
-            If this is the last Material in the layer chain connect this to a
-            <strong>PxrSurface_Material</strong> node.
+            If this is the last in the material layering chain connect it to a
+            <strong>v2_PxrSurfaceAdapter</strong> node.
             ),
 
     // The struct parameter.
