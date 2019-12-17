@@ -163,10 +163,10 @@
     PARAM_OUTPUT_ENABLE( VSTRUCTIN, VSTRUCTOUT, PREFIX, vector, AnisotropyDirection, glassAnisotropyDirection ), \
     \
     /* No vstructmember for ssAlbedo parameter in PxrSurface.args */ \
-    output color PREFIX##_ssAlbedo = color(0.0), \
+    output color PREFIX##_ssAlbedo = color(0.0) [[ string widget = "null" ]], \
     \
     /* No vstructmember for extinction parameter in PxrSurface.args */ \
-    output color PREFIX##_extinction = color(0.0)
+    output color PREFIX##_extinction = color(0.0) [[ string widget = "null" ]]
 
 #define GLOW_OUTPUT_PARAMS(VSTRUCTIN,VSTRUCTOUT,PREFIX) \
     PARAM_OUTPUT_SET_GAIN( VSTRUCTIN, VSTRUCTOUT, PREFIX, Gain, glowGain ), \
