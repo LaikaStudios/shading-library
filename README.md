@@ -12,7 +12,7 @@ If you make use of this repsitory, I strongly urge you to [subscribe to the disc
 ## Requirements
 * [Pixar's](https://www.pixar.com/renderman) [RenderMan 23](https://rmanwiki.pixar.com/display/REN23/RenderMan) </br></br>
 * [Foundry's](https://www.foundry.com) [Katana](https://www.foundry.com/products/katana)
-* [Pixar's](https://www.pixar.com/renderman) [RenderMan 23 for Katana 3.2 or 3.5](https://rmanwiki.pixar.com/display/RFK23/RenderMan+23+for+Katana) </br>or</br>
+* [Pixar's](https://www.pixar.com/renderman) [RenderMan 23 for Katana 3.2 or 3.5](https://rmanwiki.pixar.com/display/RFK23/RenderMan+23+for+Katana) </br>and/or</br>
 * [Autodesk's](https://www.autodesk.com) [Maya](https://www.autodesk.com/products/maya/overview)
 * [Pixar's](https://www.pixar.com/renderman) [RenderMan 23 for Maya 2017/2018/2019](https://rmanwiki.pixar.com/display/RFM23/RenderMan+23+for+Maya) </br></br>
 * A c++14 compatible compiler (clang++ is specified in the ris/Makefile)
