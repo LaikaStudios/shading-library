@@ -51,6 +51,7 @@ install : $(install)
 	-$(shell mkdir -p $(BUILD_DIR))
 	-$(COPY) --include="*.katana" --exclude="*" scene $(BUILD_DIR)
 	-$(COPY) --include="*.macro" --exclude="*" katana $(BUILD_DIR)
+	-$(COPY) --include="*.py" --exclude="*" katana $(BUILD_DIR)
 
 %.install : $(SUBDIRS)
 	-$(COPY) --include="*.oso" --include="*.so" --include="*.args" --exclude="*" $(subst .install,,$@) $(BUILD_DIR)
