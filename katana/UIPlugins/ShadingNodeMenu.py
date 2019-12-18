@@ -11,14 +11,7 @@ from RenderingAPI import RenderPlugins
 
 
 # A list of shading nodes that exist, but that are legacy'd or otherwise not good to use.
-excludeList = [
-    'osl/material/v1_Displacement',
-    'osl/material/v1_PxrSurface',
-    'osl/material/v1_PxrSurfaceAdapter',
-    'osl/material/v1_PxrSurfaceCompositor',
-    'osl/material/v1_PxrSurfaceEdit',
-    'osl/material/v1_PxrSurfaceModifier'
-    ]
+excludeList = []
 
 # A list of shading nodes that should not typically be used.
 # Flag them with a yellow color in the displayed list.
