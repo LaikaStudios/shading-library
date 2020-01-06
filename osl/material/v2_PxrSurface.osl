@@ -452,7 +452,7 @@ shader v2_PxrSurface
             "<br/>"
             "<strong>1</strong> produces soft edges in the mask pattern. "
             "<br/><br/>"
-            "Note: you can use the <strong>bxdfMask</strong> output to see the generated mask pattern. "
+            "Note: the <strong>bxdfMask</strong> output allows you to see the generated mask pattern. "
     ]],
 
     float PatternRamp_DispSoftness = 0.25
@@ -467,7 +467,7 @@ shader v2_PxrSurface
             "<br/>"
             "<strong>1</strong> produces soft edges in the mask pattern. "
             "<br/><br/>"
-            "Note: you can use the <strong>dispMask</strong> output to see the generated mask pattern. "
+            "Note: the <strong>dispMask</strong> output allows you to see the generated mask pattern. "
     ]],
 
     float PatternRamp_LowerCutoff = 0.0
@@ -515,10 +515,10 @@ shader v2_PxrSurface
      *  parameters are members of the vstruct parameter.
      */
     output PXRSURFACE_MATERIAL_VSTRUCT( MaterialOutput, Material Output,
-            Connect this to a v2_PxrSurface material shader's <strong>Material Input</strong>
-            to layer this OVER it.
+            Connect this to another v2_PxrSurface material shader's <strong>Material Input</strong>
+            to layer this <em>OVER</em> it.
             <br/><br/>
-            If this is the last in the material layering chain connect it to a
+            If this is the last in the material layering chain - connect it to a
             <strong>v2_PxrSurfaceAdapter</strong> node.
             ),
 
@@ -544,7 +544,7 @@ shader v2_PxrSurface
     SET_RESPONSE_ENABLE_PARAM( MaterialOutput, MaterialInput, Glow ),
 
     // This material's masks, as possibly modified by a pattern ramp.
-    output float  maxMask = 1.0 [[ string widget = "null" ]],
+    output float maxMask = 1.0 [[ string widget = "null" ]],
     output float bxdfMask = 1.0 [[ string widget = "null" ]],
     output float dispMask = 1.0 [[ string widget = "null" ]]
 )
@@ -1008,8 +1008,8 @@ shader v2_PxrSurface
         GLOW_COPY( MatOut, MatIn, Glow );
     }
 
-    // Output bxdfMask is only where this material is.
-    bxdfMask = bxdfMask*( 1.0 - MatIn.bxdfMask );
+    // This bxdfMask is only where this material is.
+    bxdfMask *= bxdfMask*( 1.0 - MatIn.bxdfMask );
 
     }
 }
