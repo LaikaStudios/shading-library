@@ -566,10 +566,11 @@ shader v2_PxrSurface
     else
     {
 
+    MatOut.maxMask = max( Mask, MatIn.maxMask );
+
     // Initialize this material's mask values.
     bxdfMask = Mask; // this_bxdfMask
     dispMask = Mask; // this_dispMask
-
 
     //
     //  Displacement.
@@ -1008,7 +1009,6 @@ shader v2_PxrSurface
 
     // This bxdfMask is only where this material is.
     bxdfMask *= bxdfMask*( 1.0 - MatIn.bxdfMask );
-    MatOut.maxMask = max( Mask, MatIn.maxMask );
 
     }
 }
