@@ -566,6 +566,7 @@ shader v2_PxrSurface
     else
     {
 
+    // Max of all active material Mask values.
     MatOut.maxMask = max( Mask, MatIn.maxMask );
 
     // Initialize this material's mask values.
