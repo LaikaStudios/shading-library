@@ -94,8 +94,6 @@ shader v2_PxrSurfaceAdapter
      *  Composited Mask outputs.
      */
     output float  maxMask = 1.0 [[ string widget = "null" ]],
-    output float  bxdfMask = 1.0 [[ string widget = "null" ]],
-    output float  dispMask = 1.0 [[ string widget = "null" ]],
 
     /*
      *  Utility Plug output.
@@ -180,7 +178,6 @@ shader v2_PxrSurfaceAdapter
     getattribute( "builtin", "Po", Po );
 
     out_P = Po + MatIn.deltaP;
-    dispMask = MatIn.dispMask;
 
 
     //
@@ -189,7 +186,6 @@ shader v2_PxrSurfaceAdapter
     //  When enabled, simply copy the response's parameter values
     //  to their corresponding vstruct output parameters.
     //
-    bxdfMask = MatIn.bxdfMask;
 
     // UVTangent default output.
     // When out_P has been connected to a displacement, Nn becomes the post-displacement normal.
