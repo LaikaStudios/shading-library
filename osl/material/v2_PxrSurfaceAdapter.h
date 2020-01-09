@@ -1,5 +1,5 @@
 /*
- *  Copyright 2018-2019 Laika, LLC. Authored by Mitch Prater.
+ *  Copyright 2018-2020 Laika, LLC. Authored by Mitch Prater.
  *
  *  Licensed under the Apache License Version 2.0 http://apache.org/licenses/LICENSE-2.0,
  *  or the MIT license http://opensource.org/licenses/MIT, at your option.
@@ -148,7 +148,7 @@
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, LongLength, longSubsurfaceDmfp ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, LongCG, longSubsurfaceColor ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, Directionality, subsurfaceDirectionality ), \
-    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, DiffuseBlend, subsurfaceDiffuseBlend ), \
+    /* XXX Not Really Connectable! PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, DiffuseBlend, subsurfaceDiffuseBlend ), */ \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, Bleed, subsurfaceBleed )
 
 #define GLASS_OUTPUT_PARAMS(VSTRUCTIN,VSTRUCTOUT,PREFIX) \
