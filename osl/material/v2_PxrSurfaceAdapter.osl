@@ -1,5 +1,5 @@
 /*
- *  Copyright 2018-2019 Laika, LLC. Authored by Mitch Prater.
+ *  Copyright 2018-2020 Laika, LLC. Authored by Mitch Prater.
  *
  *  Licensed under the Apache License Version 2.0 http://apache.org/licenses/LICENSE-2.0,
  *  or the MIT license http://opensource.org/licenses/MIT, at your option.
@@ -375,7 +375,7 @@ shader v2_PxrSurfaceAdapter
         COPY_PARAM( MatIn, Subsurface, LongLength );
         COPY_PARAM( MatIn, Subsurface, LongCG );
         COPY_PARAM( MatIn, Subsurface, Directionality );
-        COPY_PARAM( MatIn, Subsurface, DiffuseBlend );
+        // XXX Not Really Connectable! COPY_PARAM( MatIn, Subsurface, DiffuseBlend );
         COPY_PARAM( MatIn, Subsurface, Bleed );
     }
 

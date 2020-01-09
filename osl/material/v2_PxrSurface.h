@@ -1,5 +1,5 @@
 /*
- *  Copyright 2018-2019 Laika, LLC. Authored by Mitch Prater.
+ *  Copyright 2018-2020 Laika, LLC. Authored by Mitch Prater.
  *
  *  Licensed under the Apache License Version 2.0 http://apache.org/licenses/LICENSE-2.0,
  *  or the MIT license http://opensource.org/licenses/MIT, at your option.
@@ -798,15 +798,17 @@
             "the material. The end result is that hard corners will be accentuated and the response " \
             "will appear more diffuse overall. " \
     ]], \
+    /* XXX Cannot make a connection to PxrSurface subsurfaceDiffuseBlend parameter \
     float Subsurface_DiffuseBlend = Subsurface_DiffuseBlendUIDefault \
     [[ \
         string page = "Subsurface", \
-        string label = "Diffuse Blend (Path Traced)", \
+        string label = "(Path Traced) Diffuse Blend", \
         int slider = 1, float slidermin = 0.0, float slidermax = 1.0, \
         string help = \
             "Blends the Subsurface response with a Diffuse one: makes the response appear more diffuse. " \
             "However, this can help when dark artifacts are seen on very sharp edges. " \
     ]], \
+    */ \
     float Subsurface_Bleed = Subsurface_BleedUIDefault \
     [[ \
         string page = "Subsurface", \
@@ -1390,7 +1392,7 @@ struct material_v2_PxrSurface_s
     PARAM_COPY( OUTPUT, INPUT, PREFIX, LongLength ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, LongCG ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, Directionality ); \
-    PARAM_COPY( OUTPUT, INPUT, PREFIX, DiffuseBlend ); \
+    /* PARAM_COPY( OUTPUT, INPUT, PREFIX, DiffuseBlend ); */ \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, Bleed )
  
 #define GLASS_COPY(OUTPUT,INPUT,PREFIX) \
