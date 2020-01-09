@@ -1,5 +1,5 @@
 /*
- *  Copyright 2018-2019 Laika, LLC. Authored by Mitch Prater.
+ *  Copyright 2018-2020 Laika, LLC. Authored by Mitch Prater.
  *
  *  Licensed under the Apache License Version 2.0 http://apache.org/licenses/LICENSE-2.0,
  *  or the MIT license http://opensource.org/licenses/MIT, at your option.
@@ -452,7 +452,7 @@ shader v2_PxrSurface
             "<br/>"
             "<strong>1</strong> produces soft edges in the mask pattern. "
             "<br/><br/>"
-            "Note: the <strong>bxdfMask</strong> output allows you to see the generated mask pattern. "
+            "Note: you can use the <strong>bxdfMask</strong> output to see the generated mask pattern. "
     ]],
 
     float PatternRamp_DispSoftness = 0.25
@@ -467,7 +467,7 @@ shader v2_PxrSurface
             "<br/>"
             "<strong>1</strong> produces soft edges in the mask pattern. "
             "<br/><br/>"
-            "Note: the <strong>dispMask</strong> output allows you to see the generated mask pattern. "
+            "Note: you can use the <strong>dispMask</strong> output to see the generated mask pattern. "
     ]],
 
     float PatternRamp_LowerCutoff = 0.0
@@ -944,7 +944,7 @@ shader v2_PxrSurface
         PARAM_OVER( MatOut, MatIn, Subsurface, ShortLength, bxdfMask );
         PARAM_OVER( MatOut, MatIn, Subsurface, LongLength, bxdfMask );
         PARAM_OVER( MatOut, MatIn, Subsurface, Directionality, bxdfMask );
-        PARAM_OVER( MatOut, MatIn, Subsurface, DiffuseBlend, bxdfMask );
+        // XXX PARAM_OVER( MatOut, MatIn, Subsurface, DiffuseBlend, bxdfMask );
         PARAM_OVER( MatOut, MatIn, Subsurface, Bleed, bxdfMask );
     }
     else
@@ -1009,7 +1009,7 @@ shader v2_PxrSurface
     }
 
     // This bxdfMask is only where this material is.
-    bxdfMask *= bxdfMask*( 1.0 - MatIn.bxdfMask );
+    bxdfMask = bxdfMask*( 1.0 - MatIn.bxdfMask );
 
     }
 }
