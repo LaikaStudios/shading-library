@@ -10,8 +10,11 @@ from Katana import UI4, NodegraphAPI, LayeredMenuAPI, RenderingAPI, DrawingModul
 from RenderingAPI import RenderPlugins
 
 
-# A list of shading nodes that exist, but that are legacy'd or otherwise not good to use.
-excludeList = []
+# A list of shading nodes that exist, but that are legacy'd or we otherwise want to hide.
+excludeList = [
+    'osl/material/v2_PxrSurfaceAdapter',
+    'ris/displace/SetP'
+]
 
 # A list of shading nodes that should not typically be used.
 # Flag them with a yellow color in the displayed list.
@@ -58,9 +61,12 @@ def IkaPopulateCallback( layeredMenu ):
     # Note: Can set text to whatever I want the user to see when selecting a shading node.
     for shaderName in shaderNames:
         if( shaderName in excludeList ): continue
+        if( shaderName.startswith( 'Pxr' )): continue
+        if( shaderName.startswith( 'aaOceanPrmanShader' )): continue
+        if( shaderName.startswith( 'OmnidirectionalStereo' )): continue
 
         if( shaderName in yellowList ):
-            layeredMenu.addEntry( shaderName, text=shaderName, color=(0.7, 0.7, 0.1) )
+            layeredMenu.addEntry( shaderName, text=shaderName, color=(0.8, 0.7, 0.1) )
 
         elif( shaderName in blueList ):
             layeredMenu.addEntry( shaderName, text=shaderName, color=(0.4, 0.4, 1.0) )
@@ -70,35 +76,6 @@ def IkaPopulateCallback( layeredMenu ):
 
         elif( shaderName.startswith( 'ris' )):
             layeredMenu.addEntry( shaderName, text=shaderName, color=(0.3, 0.65, 0.73) )
-
-        else:
-            layeredMenu.addEntry( shaderName, text=shaderName, color=(0.7, 0.3, 0.3) )
-
-
-def PxrPopulateCallback( layeredMenu ):
-    """
-    Callback for the layered menu, which adds entries to the given
-    C{layeredMenu} based on the available shading nodes.
-
-    @type layeredMenu: L{LayeredMenuAPI.LayeredMenu}
-    @param layeredMenu: The layered menu to add entries to.
-    """
-    # Obtain a list of names of available PRMan shaders from the PRMan renderer info plug-in.
-    rendererInfoPlugin = RenderPlugins.GetInfoPlugin( 'prman' )
-    shaderType = RenderingAPI.RendererInfo.kRendererObjectTypeShader
-    shaderNames = rendererInfoPlugin.getRendererObjectNames( shaderType )
-
-    # Iterate over the names of shaders and add a menu entry for each of them to the given layered menu.
-    # Note: Can set text to whatever I want the user to see when selecting a shading node.
-    for shaderName in shaderNames:
-        if( shaderName in excludeList ): continue
-        if( shaderName.startswith( 'ris' ) or shaderName.startswith( 'osl' )): continue
-
-        if( shaderName in yellowList ):
-            layeredMenu.addEntry( shaderName, text=shaderName, color=(0.7, 0.7, 0.1) )
-
-        elif( shaderName in blueList ):
-            layeredMenu.addEntry( shaderName, text=shaderName, color=(0.4, 0.4, 1.0) )
 
         else:
             layeredMenu.addEntry( shaderName, text=shaderName, color=(0.7, 0.3, 0.3) )
