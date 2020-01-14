@@ -146,11 +146,11 @@
 #define Subsurface_PostTintUIDefault                color(1.0)
 #define Subsurface_TransmitGainUIDefault            0.0
 #define Subsurface_ShortGainUIDefault               0.0
-#define Subsurface_ShortLengthUIDefault             1.0
 #define Subsurface_ShortColorUIDefault              color(0.9,0.9,0.9)
+#define Subsurface_ShortLengthUIDefault             1.0
 #define Subsurface_LongGainUIDefault                0.0
-#define Subsurface_LongLengthUIDefault              100.0
 #define Subsurface_LongColorUIDefault               color(0.8,0.0,0.0)
+#define Subsurface_LongLengthUIDefault              100.0
 #define Subsurface_DirectionalityUIDefault          0.0
 #define Subsurface_DiffuseBlendUIDefault            0.0
 #define Subsurface_BleedUIDefault                   0.0
@@ -749,14 +749,6 @@
             "by the material, and so will not travel as far through it (and therefore will not be as " \
             "prevalent in the response). " \
     ]], \
-    color Subsurface_PathColor = Subsurface_PathColorUIDefault \
-    [[ \
-        string page = "Subsurface", \
-        string label = "Path Tint (not Multiple MFP)", \
-        string help = \
-            "Tints the Path <strong>Color</strong> used in the subsurface scattering computation. " \
-            "It is not used by the <em>Multiple Mean Free Paths</em> <strong>Model</strong>. " \
-    ]], \
     float Subsurface_PathLength = Subsurface_PathLengthUIDefault \
     [[ \
         string page = "Subsurface", \
@@ -770,6 +762,14 @@
             "Typically specified in millimeters, its relative scale compared to the modeling units " \
             "is definitively set by the PxrSurface_Controls " \
             "<strong>Scatter and Subsurface : Unit Length</strong> parameter. " \
+    ]], \
+    color Subsurface_PathColor = Subsurface_PathColorUIDefault \
+    [[ \
+        string page = "Subsurface", \
+        string label = "Path Tint (not Multiple MFP)", \
+        string help = \
+            "Tints the Path <strong>Color</strong> used in the subsurface scattering computation. " \
+            "It is not used by the <em>Multiple Mean Free Paths</em> <strong>Model</strong>. " \
     ]], \
     color Subsurface_PostTint = Subsurface_PostTintUIDefault \
     [[ \
@@ -1103,18 +1103,18 @@ struct material_v2_PxrSurface_s
     float  Scatter_RefractionIndex;
     color  Scatter_BacksideCG; // (Backside) IlluminationGain * (Backside) IlluminationTint
 
-    float  Subsurface_Gain;
-    color  Subsurface_Color;
-    float  Subsurface_PathLength;
+    float  Subsurface_Gain; // MediumGain
+    color  Subsurface_Color; // MediumColor
+    float  Subsurface_PathLength; // MediumLength
     color  Subsurface_PathColor;
     color  Subsurface_PostTint;
     float  Subsurface_TransmitGain;
-    float  Subsurface_ShortLength;
     float  Subsurface_ShortGain;
     color  Subsurface_ShortColor;
-    float  Subsurface_LongLength;
+    float  Subsurface_ShortLength;
     float  Subsurface_LongGain;
     color  Subsurface_LongColor;
+    float  Subsurface_LongLength;
     float  Subsurface_Directionality;
     float  Subsurface_DiffuseBlend;
     float  Subsurface_Bleed;
@@ -1139,6 +1139,7 @@ struct material_v2_PxrSurface_s
     color  Glow_CG;
 
     // Expansion members.
+    // XXX Probably no longer needed, since no future PxrSurface development.
     color  Expansion_color0;
     color  Expansion_color1;
     color  Expansion_color2;
@@ -1197,7 +1198,7 @@ struct material_v2_PxrSurface_s
 
 //
 //  The Response Enable parameters are only used to determine what ultimately needs
-//  to be connected to the bxdf node using the vstructConditionalExpr mechanism.
+//  to be connected to the PxrSurface bxdf using the vstructConditionalExpr mechanism.
 //  They are not used for any other purpose.
 //
 //  These are used to determine whether a response is used anywhere in the material layer stack.
@@ -1233,7 +1234,7 @@ struct material_v2_PxrSurface_s
 
 //
 //  The ShadingNormal Enable parameters are only used to determine what ultimately needs
-//  to be connected to the bxdf node using the vstructConditionalExpr mechanism.
+//  to be connected to the PxrSuface bxdf using the vstructConditionalExpr mechanism.
 //  They are not used for any other purpose.
 //
 //  These are used to determine whether a response's ShadingNormal is used
