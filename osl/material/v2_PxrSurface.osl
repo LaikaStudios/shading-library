@@ -928,20 +928,17 @@ shader v2_PxrSurface
     // Subsurface
     if( Subsurface_Enable )
     {
-        MatOut.Subsurface_CG = MatIn.Subsurface_CG
-                                + ( Subsurface_Gain*Subsurface_Color*bxdfMask )*( 1.0 - MatIn.bxdfMask );
-
-        MatOut.Subsurface_ShortCG = MatIn.Subsurface_ShortCG
-                                + ( Subsurface_ShortGain*Subsurface_ShortColor*bxdfMask )*( 1.0 - MatIn.bxdfMask );
-
-        MatOut.Subsurface_LongCG = MatIn.Subsurface_LongCG
-                                + ( Subsurface_LongGain*Subsurface_LongColor*bxdfMask )*( 1.0 - MatIn.bxdfMask );
-
+        PARAM_OVER( MatOut, MatIn, Subsurface, Gain, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Subsurface, Color, bxdfMask );
         PARAM_OVER( MatOut, MatIn, Subsurface, PathLength, bxdfMask );
         PARAM_OVER( MatOut, MatIn, Subsurface, PathColor, bxdfMask );
         PARAM_OVER( MatOut, MatIn, Subsurface, PostTint, bxdfMask );
         PARAM_OVER( MatOut, MatIn, Subsurface, TransmitGain, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Subsurface, ShortGain, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Subsurface, ShortColor, bxdfMask );
         PARAM_OVER( MatOut, MatIn, Subsurface, ShortLength, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Subsurface, LongGain, bxdfMask );
+        PARAM_OVER( MatOut, MatIn, Subsurface, LongColor, bxdfMask );
         PARAM_OVER( MatOut, MatIn, Subsurface, LongLength, bxdfMask );
         PARAM_OVER( MatOut, MatIn, Subsurface, Directionality, bxdfMask );
         // XXX PARAM_OVER( MatOut, MatIn, Subsurface, DiffuseBlend, bxdfMask );

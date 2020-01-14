@@ -136,17 +136,17 @@
 
 #define SUBSURFACE_OUTPUT_PARAMS(VSTRUCTIN,VSTRUCTOUT,PREFIX) \
     PARAM_OUTPUT_SET_GAIN( VSTRUCTIN, VSTRUCTOUT, PREFIX, Gain, subsurfaceGain ), \
-    PARAM_OUTPUT_SET_GAIN( VSTRUCTIN, VSTRUCTOUT, PREFIX, ShortGain, shortSubsurfaceGain ), \
-    PARAM_OUTPUT_SET_GAIN( VSTRUCTIN, VSTRUCTOUT, PREFIX, LongGain, longSubsurfaceGain ), \
-    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, CG, subsurfaceColor ), \
+    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, Color, subsurfaceColor ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, PathLength, subsurfaceDmfp ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, PathColor, subsurfaceDmfpColor ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, PostTint, subsurfacePostTint ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, TransmitGain, subsurfaceTransmitGain ), \
+    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, ShortGain, shortSubsurfaceGain ), \
+    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, ShortColor, shortSubsurfaceColor ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, ShortLength, shortSubsurfaceDmfp ), \
-    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, ShortCG, shortSubsurfaceColor ), \
+    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, LongGain, longSubsurfaceGain ), \
+    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, LongColor, longSubsurfaceColor ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, LongLength, longSubsurfaceDmfp ), \
-    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, LongCG, longSubsurfaceColor ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, Directionality, subsurfaceDirectionality ), \
     /* XXX Not Really Connectable! PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, DiffuseBlend, subsurfaceDiffuseBlend ), */ \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, Bleed, subsurfaceBleed )

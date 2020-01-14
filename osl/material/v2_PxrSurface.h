@@ -798,7 +798,8 @@
             "the material. The end result is that hard corners will be accentuated and the response " \
             "will appear more diffuse overall. " \
     ]], \
-    /* XXX Cannot make a connection to PxrSurface subsurfaceDiffuseBlend parameter \
+    /* XXX Cannot make a connection to PxrSurface subsurfaceDiffuseBlend parameter: \
+    https://renderman.pixar.com/forum/showthread.php?s=&threadid=43357 \
     float Subsurface_DiffuseBlend = Subsurface_DiffuseBlendUIDefault \
     [[ \
         string page = "Subsurface", \
@@ -1102,15 +1103,18 @@ struct material_v2_PxrSurface_s
     float  Scatter_RefractionIndex;
     color  Scatter_BacksideCG; // (Backside) IlluminationGain * (Backside) IlluminationTint
 
-    color  Subsurface_CG;
+    float  Subsurface_Gain;
+    color  Subsurface_Color;
     float  Subsurface_PathLength;
     color  Subsurface_PathColor;
     color  Subsurface_PostTint;
     float  Subsurface_TransmitGain;
     float  Subsurface_ShortLength;
-    color  Subsurface_ShortCG;
+    float  Subsurface_ShortGain;
+    color  Subsurface_ShortColor;
     float  Subsurface_LongLength;
-    color  Subsurface_LongCG;
+    float  Subsurface_LongGain;
+    color  Subsurface_LongColor;
     float  Subsurface_Directionality;
     float  Subsurface_DiffuseBlend;
     float  Subsurface_Bleed;
@@ -1382,17 +1386,20 @@ struct material_v2_PxrSurface_s
     PARAM_COPY( OUTPUT, INPUT, PREFIX, BacksideCG )
  
 #define SUBSURFACE_COPY(OUTPUT,INPUT,PREFIX) \
-    PARAM_COPY( OUTPUT, INPUT, PREFIX, CG ); \
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, Gain ); \
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, Color ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, PathLength ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, PathColor ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, PostTint ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, TransmitGain ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, ShortLength ); \
-    PARAM_COPY( OUTPUT, INPUT, PREFIX, ShortCG ); \
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, ShortGain ); \
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, ShortColor ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, LongLength ); \
-    PARAM_COPY( OUTPUT, INPUT, PREFIX, LongCG ); \
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, LongGain ); \
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, LongColor ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, Directionality ); \
-    /* PARAM_COPY( OUTPUT, INPUT, PREFIX, DiffuseBlend ); */ \
+    /* XXX PARAM_COPY( OUTPUT, INPUT, PREFIX, DiffuseBlend ); */ \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, Bleed )
  
 #define GLASS_COPY(OUTPUT,INPUT,PREFIX) \
