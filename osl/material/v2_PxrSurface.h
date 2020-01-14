@@ -956,7 +956,7 @@
             "Larger values attenuate more rapidly. " \
             "<br/><br/>" \
             "Note: this <em>must</em> be > 0 for <strong>Extinction Color</strong> and " \
-            "<strong>Scatter Color</strong> to work. " \
+            "<strong>Scatter Color</strong> to be usable. " \
     ]], \
     color Glass_ExtinctionColor = Glass_ExtinctionColorUIDefault \
     [[ \
@@ -967,10 +967,11 @@
         string conditionalVisValue = "0.0", \
         string help = \
             "Controls the light's <strong>Extinction</strong> within the object's interior. " \
-            "Larger values attenuate more, so the visible color will have the opposite hue. " \
+            "Larger values result in more attenuation, so the resulting coloration's hue will " \
+            "be opposite this color. " \
             "<br/><br/>" \
-            "Note: this <em>must</em> be something other than black for " \
-            "<strong>Scatter Color</strong> to work. " \
+            "Note: the <strong>Extinction Coeff*Color</strong> <em>must</em> be something " \
+            "other than black for <strong>Scatter Color</strong> to work. " \
     ]], \
     color Glass_ScatterColor = Glass_ScatterColorUIDefault \
     [[ \
@@ -980,15 +981,15 @@
         string conditionalVisOp = "greaterThan", \
         string conditionalVisValue = "0.0", \
         string help = \
-            "<strong>Extinction Color</strong> <em>must</em> be something other than black for this " \
-            "to work. " \
-            "<br/><br/>" \
             "Light rays Refracted into the object's interior normally pass straight through " \
             "it and are only tinted by the <strong>Refraction Color.</strong> " \
             "<br/><br/>" \
             "<strong>Scatter Color</strong> will cause light to also be scattered " \
             "within the object's interior, as would happen if the glass had microscopic " \
             "particulates or bubbles within it. " \
+            "<br/><br/>" \
+            "Note: the <strong>Extinction Coeff*Color</strong> <em>must</em> be something " \
+            "other than black for <strong>Scatter Color</strong> to work. " \
     ]], \
     float Glass_ManifoldExplorationIOR = Glass_ManifoldExplorationIORDefault \
     [[ \
