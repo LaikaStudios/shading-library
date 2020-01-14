@@ -371,12 +371,12 @@ shader v2_PxrSurfaceAdapter
         COPY_PARAM( MatIn, Subsurface, PathColor );
         COPY_PARAM( MatIn, Subsurface, PostTint );
         COPY_PARAM( MatIn, Subsurface, TransmitGain );
-        COPY_PARAM( MatIn, Subsurface, ShortLength );
         COPY_PARAM( MatIn, Subsurface, ShortGain );
         COPY_PARAM( MatIn, Subsurface, ShortColor );
-        COPY_PARAM( MatIn, Subsurface, LongLength );
+        COPY_PARAM( MatIn, Subsurface, ShortLength );
         COPY_PARAM( MatIn, Subsurface, LongGain );
         COPY_PARAM( MatIn, Subsurface, LongColor );
+        COPY_PARAM( MatIn, Subsurface, LongLength );
         COPY_PARAM( MatIn, Subsurface, Directionality );
         // XXX Not Really Connectable! COPY_PARAM( MatIn, Subsurface, DiffuseBlend );
         COPY_PARAM( MatIn, Subsurface, Bleed );
