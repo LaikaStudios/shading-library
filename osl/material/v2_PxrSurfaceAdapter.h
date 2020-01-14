@@ -135,7 +135,7 @@
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, BacksideCG, singlescatterDirectGainTint )
 
 #define SUBSURFACE_OUTPUT_PARAMS(VSTRUCTIN,VSTRUCTOUT,PREFIX) \
-    PARAM_OUTPUT_SET_GAIN( VSTRUCTIN, VSTRUCTOUT, PREFIX, Gain, subsurfaceGain ), \
+    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, Gain, subsurfaceGain ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, Color, subsurfaceColor ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, PathLength, subsurfaceDmfp ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, PathColor, subsurfaceDmfpColor ), \
