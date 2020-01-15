@@ -412,35 +412,33 @@ shader v2_PxrSurface
         string widget = "checkBox",
         string help =
             "When <em>On</em>, use this material's <strong>Displacement</strong> to generate "
-            "a pattern ramp and apply it to the material <strong>Mask</strong>. "
-            "This can produce a more physically plausible transition from one material to the next. "
+            "a pattern ramp and apply it to this material's <strong>Mask</strong>. "
+            "Doing so can produce a more physically plausible transition from this material to the next. "
             "<br/><br/>"
-            "Note: when this is <em>On</em>, the material <strong>Mask</strong> "
+            "Note: when this is <em>On</em>, this material's <strong>Mask</strong> "
             "must contain a broad, smooth ramp from 0 to 1 - not a hard edged transition. "
             "If you're using a painted texture with hard edges, use the texture <strong>Blur</strong> "
             "control to turn them into a smooth ramp for use with this functionality. "
             "Or better still, blur the texture itself before using it. "
     ]],
 
-    float PatternRamp_BxdfTransition = 0.0
+    float PatternRamp_Transition = 0.0
     [[
         string page = "Pattern Ramp",
-        string label = "Bxdf Transition",
+        string label = "Transition",
         int slider = 1, float slidermin = -1.0, float slidermax = 1.0,
         string help =
-            "Controls the location of the <strong>Pattern Ramp</strong> transition used for "
-            "surface responses by shifting it higher up or lower down on the displacement: "
+            "Controls the location of the <strong>Pattern Ramp</strong> Transition "
+            "by shifting it higher up or lower down on the Displacement: "
             "<br/><br/>"
             "<strong>Negative</strong> values will erode this material. "
             "<br/><br/>"
-            "<strong>0.0</strong> leaves the transition at the center of mask pattern. "
+            "<strong>0.0</strong> leaves the transition at the center (0.5) of the <strong>Mask</strong> pattern. "
             "<br/><br/>"
             "<strong>Positive</strong> values will grow this material. "
-            "<br/><br/>"
-            "Note: you can use the <strong>bxdfMask</strong> output to see the generated mask pattern. "
     ]],
 
-    float PatternRamp_BxdfSoftness = 0.05
+    float PatternRamp_BxdfSoftness = 0.0
     [[
         string page = "Pattern Ramp",
         string label = "Bxdf Softness",
@@ -448,14 +446,14 @@ shader v2_PxrSurface
         string help =
             "Adjusts the <strong>Pattern Ramp</strong> edge hardness/softness used for the surface responses: "
             "<br/><br/>"
-            "<strong>0</strong> produces a hard edge in the mask pattern. "
+            "<strong>0</strong> produces a hard edge in the Mask pattern. "
             "<br/>"
-            "<strong>1</strong> produces soft edges in the mask pattern. "
+            "<strong>1</strong> produces soft edges in the Mask pattern. "
             "<br/><br/>"
             "Note: you can use the <strong>bxdfMask</strong> output to see the generated mask pattern. "
     ]],
 
-    float PatternRamp_DispSoftness = 0.25
+    float PatternRamp_DispSoftness = 0.0
     [[
         string page = "Pattern Ramp",
         string label = "Disp Softness",
@@ -463,9 +461,9 @@ shader v2_PxrSurface
         string help =
             "Adjusts the <strong>Pattern Ramp</strong> edge hardness/softness used for displacement: "
             "<br/><br/>"
-            "<strong>0</strong> produces a hard edge in the mask pattern. "
+            "<strong>0</strong> produces a hard edge in the Mask pattern. "
             "<br/>"
-            "<strong>1</strong> produces soft edges in the mask pattern. "
+            "<strong>1</strong> produces soft edges in the Mask pattern. "
             "<br/><br/>"
             "Note: you can use the <strong>dispMask</strong> output to see the generated mask pattern. "
     ]],
@@ -478,10 +476,10 @@ shader v2_PxrSurface
         string help =
             "This material's <strong>Displacement</strong> is first normalized to approximately "
             "a 0-1 ranged value. It's this normalized displacement value that is used to generate "
-            "the mask's pattern ramp. The normalization can only be approximate however, so the "
+            "the pattern ramped mask. This normalization can only be approximate however, so the "
             "<strong>Lower Cutoff</strong> and <strong>Upper Cutoff</strong> values are used to "
-            "ensure the pattern ramp goes fully to 0 and 1 by clipping the normalized displacement "
-            "if necessary. "
+            "ensure the pattern ramp goes fully to 0 and 1 by remapping and clipping the normalized "
+            "displacement value within this range if necessary. "
     ]],
 
     float PatternRamp_UpperCutoff = 1.0
@@ -492,10 +490,10 @@ shader v2_PxrSurface
         string help =
             "This material's <strong>Displacement</strong> is first normalized to approximately "
             "a 0-1 ranged value. It's this normalized displacement value that is used to generate "
-            "pattern ramp. The normalization can only be approximate however, so the "
+            "the pattern ramped mask. This normalization can only be approximate however, so the "
             "<strong>Lower Cutoff</strong> and <strong>Upper Cutoff</strong> values are used to "
-            "ensure the pattern ramp goes fully to 0 and 1 by clipping the normalized displacement "
-            "if necessary. "
+            "ensure the pattern ramp goes fully to 0 and 1 by remapping and clipping the normalized "
+            "displacement value within this range if necessary. "
     ]],
 
 
@@ -664,10 +662,10 @@ shader v2_PxrSurface
                     // The Mask is used to shift the ramp pattern up/down sufficiently to
                     // produce the desired Mask-edgeWidth, Mask+edgeWidth transition.
                     this_rampPattern + mix(
-                                        -1.0000001-PatternRamp_LowerCutoff - PatternRamp_BxdfSoftness,
+                                        -1.0-PatternRamp_LowerCutoff - PatternRamp_BxdfSoftness,
                                         2.0-PatternRamp_UpperCutoff + PatternRamp_BxdfSoftness,
                                         // Grow/Erode the Masked area.
-                                        pow( Mask, pow( 3.0, -PatternRamp_BxdfTransition ))
+                                        pow( Mask, pow( 3.0, -PatternRamp_Transition ))
                                         )
                     );
 
@@ -678,9 +676,10 @@ shader v2_PxrSurface
                     // The Mask is used to shift the ramp pattern up/down sufficiently to
                     // produce the desired Mask-edgeWidth, Mask+edgeWidth transition.
                     this_rampPattern + mix(
-                                        -1.0000001-PatternRamp_LowerCutoff - PatternRamp_DispSoftness,
+                                        -1.0-PatternRamp_LowerCutoff - PatternRamp_DispSoftness,
                                         2.0-PatternRamp_UpperCutoff + PatternRamp_DispSoftness,
-                                        Mask
+                                        // Grow/Erode the Masked area.
+                                        pow( Mask, pow( 3.0, -PatternRamp_Transition ))
                                         )
                     );
     }
