@@ -6,14 +6,14 @@ export PIXAR_ROOT="/opt/pixar"
 
 # RenderMan version.
 export RMAN_MAJOR="23"
-export RMAN_MINOR="0"
+export RMAN_MINOR="2"
 export RMAN_MICRO=""
 export RMAN_VERSION="${RMAN_MAJOR}.${RMAN_MINOR}${RMAN_MICRO}"
 
 # Katana version.
 export KATANA_MAJOR="3"
 export KATANA_MINOR="2"
-export KATANA_MICRO="v3"
+export KATANA_MICRO="v4"
 export KATANA_SHORT_VERSION="${KATANA_MAJOR}.${KATANA_MINOR}"
 
 # RenderMan and shading-library software locations.
