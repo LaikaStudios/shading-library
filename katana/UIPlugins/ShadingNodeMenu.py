@@ -26,21 +26,23 @@ blueList = []
 
 # Color dict.
 # Sets the node color per shader category.
+    # 'integrator'   :[ 0.00, 0.00, 0.00 ],
+    # 'lightfilter'  :[ 0.00, 0.00, 0.00 ],
 colorDict = {
-    'bxdf'         :[ 0.20, 0.30, 0.40 ],
-    'convert'      :[ 0.00, 0.00, 0.00 ],
-    'data'         :[ 0.20, 0.36, 0.10 ],
-    'displace'     :[ 0.28, 0.24, 0.48 ],
-    'integrator'   :[ 0.00, 0.00, 0.00 ],
-    'layer'        :[ 0.27, 0.40, 0.54 ],
-    'lightfilter'  :[ 0.00, 0.00, 0.00 ],
-    'manifold'     :[ 0.45, 0.25, 0.25 ],
-    'parameter'    :[ 0.36, 0.25, 0.38 ],
-    'pattern'      :[ 0.21, 0.47, 0.35 ],
-    'samplefilter' :[ 0.00, 0.00, 0.00 ],
-    'texture'      :[ 0.32, 0.43, 0.24 ],
-    'utility'      :[ 0.40, 0.35, 0.20 ],
-    'vector'       :[ 0.55, 0.17, 0.30 ]
+    'bxdf'         :[ 0.2380, 0.3196, 0.4420 ],
+    'convert'      :[ 0.3900, 0.2910, 0.2100 ],
+    'data'         :[ 0.2139, 0.3773, 0.4061 ],
+    'displace'     :[ 0.2482, 0.2380, 0.4420 ],
+    'displayfilter':[ 0.3000, 0.3900, 0.2100 ],
+    'manifold'     :[ 0.3968, 0.2232, 0.2232 ],
+    'material'     :[ 0.3918, 0.2324, 0.4316 ],
+    'parameter'    :[ 0.2821, 0.2170, 0.4030 ],
+    'pattern'      :[ 0.2100, 0.3900, 0.3360 ],
+    'samplefilter' :[ 0.3900, 0.2100, 0.3180 ],
+    'string'       :[ 0.3810, 0.3900, 0.2100 ],
+    'texture'      :[ 0.2100, 0.3900, 0.2280 ],
+    'utility'      :[ 0.3900, 0.3450, 0.2100 ],
+    'vector'       :[ 0.4030, 0.2170, 0.3286 ]
     }
 
 
@@ -61,12 +63,12 @@ def IkaPopulateCallback( layeredMenu ):
     # Note: Can set text to whatever I want the user to see when selecting a shading node.
     for shaderName in shaderNames:
         if( shaderName in excludeList ): continue
-        if( shaderName.startswith( 'Pxr' )): continue
-        if( shaderName.startswith( 'aaOceanPrmanShader' )): continue
-        if( shaderName.startswith( 'OmnidirectionalStereo' )): continue
+
+        if( shaderName.lower().find( 'lightfilter' ) != -1 ): continue
+        if( shaderName.startswith( 'Pxr' ) and shaderName.endswith( 'Light' )): continue
 
         if( shaderName in yellowList ):
-            layeredMenu.addEntry( shaderName, text=shaderName, color=(0.8, 0.7, 0.1) )
+            layeredMenu.addEntry( shaderName, text=shaderName, color=(0.7, 0.7, 0.1) )
 
         elif( shaderName in blueList ):
             layeredMenu.addEntry( shaderName, text=shaderName, color=(0.4, 0.4, 1.0) )
@@ -105,19 +107,7 @@ def ActionCallback( value ):
         name = value
 
     # Create a node containing the chosen type.
-    if( name.find( 'displayfilter' ) == 0 ):
-        node = NodegraphAPI.CreateNode( 'Material', NodegraphAPI.GetRootNode() )
-        node.setShader( 'prmanDisplayfilter', value )
-
-    elif( name.find( 'lightfilter' ) == 0 ):
-        node = NodegraphAPI.CreateNode( 'Material', NodegraphAPI.GetRootNode() )
-        node.setShader( 'prmanLightfilter', value )
-
-    elif( name.find( 'samplefilter' ) == 0 ):
-        node = NodegraphAPI.CreateNode( 'Material', NodegraphAPI.GetRootNode() )
-        node.setShader( 'prmanSamplefilter', value )
-
-    elif( name.find( 'integrator' ) == 0 ):
+    if( name.find( 'integrator' ) == 0 ):
         node = NodegraphAPI.CreateNode( 'PrmanIntegratorSettings', NodegraphAPI.GetRootNode() )
 
     else:
@@ -135,6 +125,7 @@ def ActionCallback( value ):
             DrawingModule.SetCustomNodeColor( node, color[0], color[1], color[2] )
             break
 
+    # Update the Node Graph.
     for tab in UI4.App.Tabs.GetTabsByType( 'Node Graph' ):
         tab.update()
 
