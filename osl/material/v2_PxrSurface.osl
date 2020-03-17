@@ -433,11 +433,7 @@ shader v2_PxrSurface
     SET_RESPONSE_ENABLE_PARAM( MaterialOutput, MaterialInput, Glass ),
     SET_SHADINGNORMAL_ENABLE_PARAM( MaterialOutput, MaterialInput, Glass ),
     SET_ANISOTROPYDIRECTION_ENABLE_PARAM( MaterialOutput, MaterialInput, Glass ),
-    SET_RESPONSE_ENABLE_PARAM( MaterialOutput, MaterialInput, Glow ),
-
-    // This material's masks, as possibly modified by a pattern ramp.
-    output float bxdfMask = 1.0 [[ string widget = "null" ]],
-    output float dispMask = 1.0 [[ string widget = "null" ]]
+    SET_RESPONSE_ENABLE_PARAM( MaterialOutput, MaterialInput, Glow )
 )
 /*
  *  Material functionality: Output = Input OVER this.
@@ -462,8 +458,8 @@ shader v2_PxrSurface
     MatOut.maxMask = max( Mask, MatIn.maxMask );
 
     // Initialize this material's mask values.
-    bxdfMask = Mask; // this_bxdfMask
-    dispMask = Mask; // this_dispMask
+    float  bxdfMask = Mask; // this_bxdfMask
+    float  dispMask = Mask; // this_dispMask
 
     //
     //  Displacement.
