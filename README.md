@@ -16,7 +16,7 @@ If you make use of this repsitory, I strongly urge you to [subscribe to the disc
 * A c++11 compatible compiler: clang++, g++, etc.
 
 ## Documentation
-Documentation is on the [wiki page](https://github.com/LaikaStudios/shading-library/wiki).
+Documentation is on the [wiki page](https://github.com/LaikaStudios/shading-library/wiki/v1_Material-Layering-System).
 
 ## License
 Licensed under either of
