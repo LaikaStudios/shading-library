@@ -26,8 +26,9 @@
 //  which typically produces a black response.
 //  This function prevents the normal from becoming backfacing along I,
 //  but allows it to rotate around I, maintaining its curvature
-//  perpendicular to I.
+//  perpendicular to I, thus preserving its appearance.
 //  Based on RixAdjustNormal().
+//  Note: back facing normals that becoming front facing are not visible.
 //----------------------------------------------------------------------
 normal ikaBumpCompensation( normal n )
 {
