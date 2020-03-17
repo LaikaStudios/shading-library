@@ -18,7 +18,7 @@ If you make use of this repsitory, I strongly urge you to [subscribe to the disc
 * A c++14 compatible compiler (clang++ is specified in the ris/Makefile)
 
 ## Documentation
-Documentation is on the [wiki page](https://github.com/LaikaStudios/shading-library/wiki).
+Documentation is on the [wiki page](https://github.com/LaikaStudios/shading-library/wiki/dev.Home).
 
 ## License
 Licensed under either of
