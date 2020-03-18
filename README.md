@@ -27,7 +27,7 @@ To build the contents, execute
 
     make clean; make
 
-in your local checkout directory of the shading-library. This will put the built contents in a `build` sub-directory.
+in your local checkout directory of the shading-library. This will put the built contents into a `build` sub-directory.
 
 # Katana Environment
 Assuming you checked out this git repository to `~/shading-library` and have built it, katana's execution environment should have the following environment variables set. Make any alterations necessary for your specific set of software.
