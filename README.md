@@ -29,7 +29,7 @@ To build the contents, execute
 
 in your local checkout directory of the shading-library. This will put the built contents into a `build` sub-directory.
 
-# Katana Environment
+# Environment
 Assuming you checked out this git repository to `~/shading-library` and have built it, katana's execution environment should have the following environment variables set. Make any alterations necessary for your specific set of software.
 
 Using `bash` shell:
