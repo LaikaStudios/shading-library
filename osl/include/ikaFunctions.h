@@ -1,5 +1,5 @@
 /*
- *  Copyright 2018 Laika, LLC. Authored by Mitch Prater.
+ *  Copyright 2018-2019 Laika, LLC. Authored by Mitch Prater.
  *
  *  Licensed under the Apache License Version 2.0 http://apache.org/licenses/LICENSE-2.0,
  *  or the MIT license http://opensource.org/licenses/MIT, at your option.
@@ -16,6 +16,37 @@
 //----------------------------------------------------------------------
 #define IKA_DEGREES(R) degrees(R)
 #define IKA_RADIANS(D) radians(D)
+
+
+//----------------------------------------------------------------------
+//  bumped normal compensation
+//
+//  If a bump makes a front facing N back facing, those surfaces would not
+//  be visible in a displaced surface; but they are with a bumped normal,
+//  which typically produces a black response.
+//  This function prevents the normal from becoming backfacing along I,
+//  but allows it to rotate around I, maintaining its curvature
+//  perpendicular to I, thus preserving its appearance.
+//  Based on RixAdjustNormal().
+//  Note: back facing normals that becoming front facing are not visible.
+//----------------------------------------------------------------------
+normal ikaBumpCompensation( normal n )
+{
+    normal  Nb = n;
+
+    if( dot( I,N ) < 0.0 ) // Front facing surface.
+    {
+        vector In = normalize( I );
+        float  IdotN = dot( In, n );
+        if( IdotN > 0.0 )
+        {
+            Nb -= 1.001*IdotN * In; // Make Nb roughly perpendicular to I.
+            Nb = normalize( Nb );
+        }
+    }
+
+    return Nb;
+}
 
 
 //----------------------------------------------------------------------
@@ -50,6 +81,5 @@ color ikaMax( color a, float b )
 {
     return max( a, color(b) );
 }
-
 
 #endif

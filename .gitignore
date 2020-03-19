@@ -2,4 +2,5 @@
 *.so
 *.oso
 *.swp
+*.pyc
 /build

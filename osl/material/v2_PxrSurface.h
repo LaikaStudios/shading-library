@@ -1,5 +1,5 @@
 /*
- *  Copyright 2018 Laika, LLC. Authored by Mitch Prater.
+ *  Copyright 2018-2020 Laika, LLC. Authored by Mitch Prater.
  *
  *  Licensed under the Apache License Version 2.0 http://apache.org/licenses/LICENSE-2.0,
  *  or the MIT license http://opensource.org/licenses/MIT, at your option.
@@ -11,8 +11,8 @@
     The first is the set of user interface parameters that control the material.
     The second is the data struct passed from one layer to another.
  */
-#ifndef MATERIAL_V1_PXRSURFACE_H
-#define MATERIAL_V1_PXRSURFACE_H
+#ifndef MATERIAL_V2_PXRSURFACE_H
+#define MATERIAL_V2_PXRSURFACE_H
 
 
 /**************************************************************************************************
@@ -105,6 +105,8 @@
 #define Iridescence_ThicknessUIDefault              800.0
 #define Iridescence_AnisotropyUIDefault             commonAnisotropyUIDefault
 #define Iridescence_AnisotropyDirectionUIDefault    commonAnisotropyDirectionUIDefault
+#define Iridescence_ShadingNormalUIDefault          commonShadingNormalUIDefault
+#define Iridescence_UseShadingNormalUIDefault       commonUseShadingNormalUIDefault
 
 #define Fuzz_EnableUIDefault                        commonEnableUIDefault
 #define Fuzz_GainUIDefault                          commonGainUIDefault
@@ -117,7 +119,7 @@
 #define Diffuse_GainUIDefault                       commonGainUIDefault
 #define Diffuse_ColorUIDefault                      commonColorUIDefault
 #define Diffuse_RoughnessUIDefault                  0.0
-#define Diffuse_FalloffExponentUIDefault            1.0
+#define Diffuse_ExponentUIDefault                   1.0
 #define Diffuse_BackfaceGainUIDefault               0.0
 #define Diffuse_BackfaceColorUIDefault              commonColorUIDefault
 #define Diffuse_TransmitGainUIDefault               0.0
@@ -144,11 +146,11 @@
 #define Subsurface_PostTintUIDefault                color(1.0)
 #define Subsurface_TransmitGainUIDefault            0.0
 #define Subsurface_ShortGainUIDefault               0.0
-#define Subsurface_ShortLengthUIDefault             1.0
 #define Subsurface_ShortColorUIDefault              color(0.9,0.9,0.9)
+#define Subsurface_ShortLengthUIDefault             1.0
 #define Subsurface_LongGainUIDefault                0.0
-#define Subsurface_LongLengthUIDefault              100.0
 #define Subsurface_LongColorUIDefault               color(0.8,0.0,0.0)
+#define Subsurface_LongLengthUIDefault              100.0
 #define Subsurface_DirectionalityUIDefault          0.0
 #define Subsurface_DiffuseBlendUIDefault            0.0
 #define Subsurface_BleedUIDefault                   0.0
@@ -161,11 +163,15 @@
 #define Glass_RoughnessUIDefault                    0.1
 #define Glass_AnisotropyUIDefault                   commonAnisotropyUIDefault
 #define Glass_AnisotropyDirectionUIDefault          commonAnisotropyDirectionUIDefault
+#define Glass_ShadingNormalUIDefault                commonShadingNormalUIDefault
+#define Glass_UseShadingNormalUIDefault             commonUseShadingNormalUIDefault
 #define Glass_RefractionGainUIDefault               commonGainUIDefault
+#define Glass_RefractionColorUIDefault              commonRefractionColorUIDefault
 #define Glass_RefractionIndexUIDefault              commonRefractionIndexUIDefault
-#define Glass_RefractionColorUIDefault              commonColorUIDefault
-#define Glass_ScatterAmountUIDefault                0.0
-#define Glass_ScatterColorUIDefault                 color(-1.0)
+#define Glass_ExtinctionCoeffUIDefault              commonExtinctionCoeffUIDefault
+#define Glass_ExtinctionColorUIDefault              color(0.5)
+#define Glass_ScatterColorUIDefault                 color(0.0)
+#define Glass_ManifoldExplorationIORDefault         -1.0
 
 #define Glow_EnableUIDefault                        commonEnableUIDefault
 #define Glow_GainUIDefault                          commonGainUIDefault
@@ -228,14 +234,14 @@
     color PREFIX##_##FaceColor = PREFIX##_##FaceColorUIDefault \
     [[ \
         string page = #PAGE, \
-        string label = "(Artistic) Face Color", \
+        string label = "Face Color (Artistic)", \
         string help = \
             "Controls the color of this response perpendicular to the surface. " \
     ]], \
     float PREFIX##_##FresnelExponent = PREFIX##_##FresnelExponentUIDefault \
     [[ \
         string page = #PAGE, \
-        string label = "(Artistic) Fresnel Exponent", \
+        string label = "Fresnel Exponent (Artistic)", \
         int slider = 1, float slidermin = 0.0, float slidermax = 10.0, \
         string help = \
             "Shapes the Fresnel curve: the intensity falloff from the Edge Color to the Face Color. " \
@@ -314,7 +320,7 @@
     float PREFIX##_##RefractionIndex = PREFIX##_##RefractionIndexUIDefault \
     [[ \
         string page = #PAGE, \
-        string label = "(Physical) Refraction Index", \
+        string label = "Refraction Index (Physical)", \
         int slider = 1, float slidermin = 1.0, float slidermax = 4.0, float slidercenter = 1.5, \
         string help = \
             "This is actually the ratio of the refractive index of the material, " \
@@ -341,7 +347,7 @@
     color PREFIX##_##RefractionColor = PREFIX##_##RefractionColorUIDefault \
     [[ \
         string page = #PAGE, \
-        string label = "(Physical) Refraction Color", \
+        string label = "Refraction Color (Physical)", \
         string help = \
             "Allows you to reproduce spectral Fresnel effects. " \
             "This should typically have an HSV color value of 1 (a full intensity color) " \
@@ -356,7 +362,7 @@
     float PREFIX##_##ExtinctionCoeff = PREFIX##_##ExtinctionCoeffUIDefault \
     [[ \
         string page = #PAGE, \
-        string label = "(Physical) Extinction Coeff", \
+        string label = "Extinction Coeff (Physical)", \
         int slider = 1, float slidermin = 0.0, float slidermax = 7.0, \
         string help = \
             "The metallic <strong>Extinction Coefficient</strong> is a refractive property of conductive " \
@@ -381,7 +387,7 @@
     color PREFIX##_##ExtinctionColor = PREFIX##_##ExtinctionColorUIDefault \
     [[ \
         string page = #PAGE, \
-        string label = "(Physical) Extinction Color", \
+        string label = "Extinction Color (Physical)", \
         string help = \
             "Determines the spectral characteristics of the extinction component of the response " \
             "(i.e. the color). " \
@@ -426,7 +432,7 @@
     float PREFIX##_##LayerThickness = PREFIX##_##LayerThicknessUIDefault \
     [[ \
         string page = #PAGE, \
-        string label = "(Physical) Layer Thickness", \
+        string label = "Layer Thickness (Physical)", \
         int slider = 1, float slidermin = 0.0, float slidermax = 1.0, \
         string help = \
             "The thickness of the " #PAGE " layer. " \
@@ -439,7 +445,7 @@
     color PREFIX##_##LayerColor = PREFIX##_##LayerColorUIDefault \
     [[ \
         string page = #PAGE, \
-        string label = "(Physical) Layer Color", \
+        string label = "Layer Color (Physical)", \
         string help = \
             "Determines the spectral characteristics of the " #PAGE " layer i.e. the color). " \
             "<br/><br/>" \
@@ -469,7 +475,7 @@
     color Iridescence_FaceColor = Iridescence_FaceColorUIDefault \
     [[ \
         string page = "Iridescence", \
-        string label = "(Artistic) Face Color", \
+        string label = "Face Color (Artistic)", \
         string help = \
             "Artistic Iridescence simply rotates around the color wheel in hue from the " \
             "<strong>Face Color</strong> to the <strong>Edge Color</strong> as a function " \
@@ -478,7 +484,7 @@
     color Iridescence_EdgeColor = Iridescence_EdgeColorUIDefault \
     [[ \
         string page = "Iridescence", \
-        string label = "(Artistic) Edge Color", \
+        string label = "Edge Color (Artistic)", \
         string help = \
             "Artistic Iridescence simply rotates around the color wheel in hue from the " \
             "<strong>Face Color</strong> to the <strong>Edge Color</strong> as a function " \
@@ -487,7 +493,7 @@
     float Iridescence_Exponent = Iridescence_ExponentUIDefault \
     [[ \
         string page = "Iridescence", \
-        string label = "(Artistic) Exponent", \
+        string label = "Exponent (Artistic)", \
         int slider = 1, float slidermin = 0.25, float slidermax = 4.0, float slidercenter = 1.0, \
         string help = \
             "Raises the <strong>V.N</strong> value to this exponent before using the result as the " \
@@ -496,7 +502,7 @@
     float Iridescence_Repetitions = Iridescence_RepetitionsUIDefault \
     [[ \
         string page = "Iridescence", \
-        string label = "(Artistic) Repetitions", \
+        string label = "Repetitions (Artistic)", \
         int slider = 1, float slidermin = 0.0, float slidermax = 3.0, \
         string help = \
             "Determines how many cycles from the <strong>Face Color</strong> to the " \
@@ -505,7 +511,7 @@
     float Iridescence_Thickness = Iridescence_ThicknessUIDefault \
     [[ \
         string page = "Iridescence", \
-        string label = "(Physical) Thickness", \
+        string label = "Thickness (Physical)", \
         int slider = 1, float slidermin = 100.0, float slidermax = 1200.0, \
         string help = \
             "The (clear) thin-film thickness in nanometers. The resulting coloration is produced by " \
@@ -523,7 +529,8 @@
             "But, bigger = blurrier, smaller = sharper. Only a value from 0 to 1 is allowed. " \
     ]], \
     \
-    ANISOTROPY_UI_DECLARE( Iridescence, Iridescence )
+    ANISOTROPY_UI_DECLARE( Iridescence, Iridescence ), \
+    SHADINGNORMAL_UI_DECLARE( Iridescence, Iridescence )
 
 
 //
@@ -560,19 +567,22 @@
             "from the surface normal. As such, it does not produce linear changes in the perceived " \
             "diffuse blurriness with uniform increments of the <strong>Roughness</strong> value. " \
             "But, bigger = broader, smaller = narrower. Only a value from 0 to 1 is allowed. " \
-            "At 0, produces a Lambert response that is shaped using the <strong>Falloff Exponent</strong>. " \
+            "<br/><br/> " \
+            "At 0, produces a Lambert response that is shaped using the <strong>Exponent</strong> parameter. " \
     ]], \
-    float Diffuse_FalloffExponent = Diffuse_FalloffExponentUIDefault \
+    float Diffuse_Exponent = Diffuse_ExponentUIDefault \
     [[ \
         string page = "Diffuse", \
-        string label = "Falloff Exponent", \
+        string label = "Exponent", \
         int slider = 1, float slidermin = 0.0, float slidermax = 4.0, \
         string conditionalVisPath = "../Diffuse_Roughness", \
         string conditionalVisOp = "equalTo", \
         string conditionalVisValue = "0", \
         string help = \
-            "Raises the <strong>L.N</strong> value to this exponent for use in the " \
-            "Lambert response. Only used when <strong>Roughness</strong> = 0. " \
+            "Raises the <strong>L.N</strong> value to this <strong>Exponent</strong> for " \
+            "use in the Lambert response. " \
+            "<br/><br/> " \
+            "Only used when <strong>Roughness</strong> = 0. " \
     ]], \
     \
     SHADINGNORMAL_UI_DECLARE( Diffuse, Diffuse ), \
@@ -580,7 +590,7 @@
     float Diffuse_TransmitGain = Diffuse_TransmitGainUIDefault \
     [[ \
         string page = "Diffuse", \
-        string label = "(Double Sided) Transmit Gain", \
+        string label = "Transmit Gain (Double Sided)", \
         int slider = 1, float slidermin = 0.0, float slidermax = 1.0, \
         string help = \
             "Controls the front side response to light hitting the back side of the surface. " \
@@ -592,7 +602,7 @@
     color Diffuse_TransmitColor = Diffuse_TransmitColorUIDefault \
     [[ \
         string page = "Diffuse", \
-        string label = "(Double Sided) Transmit Color", \
+        string label = "Transmit Color (Double Sided)", \
         string help = \
             "Controls the front side response to light hitting the back side of the surface. " \
             "This does not simulate scattering through a solid object, " \
@@ -603,7 +613,7 @@
     float Diffuse_BackfaceGain = Diffuse_BackfaceGainUIDefault \
     [[ \
         string page = "Diffuse", \
-        string label = "(Double Sided) Backface Gain", \
+        string label = "Backface Gain (Double Sided)", \
         int slider = 1, float slidermin = 0.0, float slidermax = 1.0, \
         string help = \
             "Combined with <strong>Backface Color</strong>, determines the alternate coloration " \
@@ -614,7 +624,7 @@
     color Diffuse_BackfaceColor = Diffuse_BackfaceColorUIDefault \
     [[ \
         string page = "Diffuse", \
-        string label = "(Double Sided) Backface Color", \
+        string label = "Backface Color (Double Sided)", \
         string help = \
             "Combined with <strong>Backface Gain</strong>, determines the alternate coloration " \
             "to use on the back faces of the geometry. " \
@@ -704,7 +714,7 @@
     float Scatter_IlluminationGain = Scatter_IlluminationGainUIDefault \
     [[ \
         string page = "Scatter", \
-        string label = "(Backside) Illumination Gain", \
+        string label = "Illumination Gain (Backside)", \
         int slider = 1, float slidermin = 0.0, float slidermax = 1.0, \
         string help = \
             "Controls the degree to which direct illumination striking the back side of the object " \
@@ -713,7 +723,7 @@
     color Scatter_IlluminationTint = Scatter_IlluminationTintUIDefault \
     [[ \
         string page = "Scatter", \
-        string label = "(Backside) Illumination Tint", \
+        string label = "Illumination Tint (Backside)", \
         string help = \
             "Adjusts the coloration (tint) of the direct illumination striking the back side of the object. " \
     ]]
@@ -739,14 +749,6 @@
             "by the material, and so will not travel as far through it (and therefore will not be as " \
             "prevalent in the response). " \
     ]], \
-    color Subsurface_PathColor = Subsurface_PathColorUIDefault \
-    [[ \
-        string page = "Subsurface", \
-        string label = "(not Multiple MFP) Path Tint", \
-        string help = \
-            "Tints the Path <strong>Color</strong> used in the subsurface scattering computation. " \
-            "It is not used by the <em>Multiple Mean Free Paths</em> <strong>Model</strong>. " \
-    ]], \
     float Subsurface_PathLength = Subsurface_PathLengthUIDefault \
     [[ \
         string page = "Subsurface", \
@@ -761,6 +763,14 @@
             "is definitively set by the PxrSurface_Controls " \
             "<strong>Scatter and Subsurface : Unit Length</strong> parameter. " \
     ]], \
+    color Subsurface_PathColor = Subsurface_PathColorUIDefault \
+    [[ \
+        string page = "Subsurface", \
+        string label = "Path Tint (not Multiple MFP)", \
+        string help = \
+            "Tints the Path <strong>Color</strong> used in the subsurface scattering computation. " \
+            "It is not used by the <em>Multiple Mean Free Paths</em> <strong>Model</strong>. " \
+    ]], \
     color Subsurface_PostTint = Subsurface_PostTintUIDefault \
     [[ \
         string page = "Subsurface", \
@@ -772,7 +782,7 @@
     float Subsurface_TransmitGain = Subsurface_TransmitGainUIDefault \
     [[ \
         string page = "Subsurface", \
-        string label = "(Double Sided) Transmit Gain", \
+        string label = "Transmit Gain (Double Sided)", \
         int slider = 1, float slidermin = 0.0, float slidermax = 1.0, \
         string help = \
             "Adjusts the gain of the response to light transmitted through the material. " \
@@ -780,7 +790,7 @@
     float Subsurface_Directionality = Subsurface_DirectionalityUIDefault \
     [[ \
         string page = "Subsurface", \
-        string label = "(Path Traced) Directionality", \
+        string label = "Directionality (Path Traced)", \
         int slider = 1, float slidermin = 0.0, float slidermax = 1.0, \
         string help = \
             "Increasing <strong>Directionality</strong> intensifies the amount of forward scattering " \
@@ -788,6 +798,8 @@
             "the material. The end result is that hard corners will be accentuated and the response " \
             "will appear more diffuse overall. " \
     ]], \
+    /* XXX Cannot make a connection to PxrSurface subsurfaceDiffuseBlend parameter: \
+    https://renderman.pixar.com/forum/showthread.php?s=&threadid=43357 \
     float Subsurface_DiffuseBlend = Subsurface_DiffuseBlendUIDefault \
     [[ \
         string page = "Subsurface", \
@@ -797,10 +809,11 @@
             "Blends the Subsurface response with a Diffuse one: makes the response appear more diffuse. " \
             "However, this can help when dark artifacts are seen on very sharp edges. " \
     ]], \
+    */ \
     float Subsurface_Bleed = Subsurface_BleedUIDefault \
     [[ \
         string page = "Subsurface", \
-        string label = "(Non-Expon Path Traced) Bleed", \
+        string label = "Bleed (Non-Expon Path Traced)", \
         int slider = 1, float slidermin = 0.0, float slidermax = 1.0, \
         string help = \
             "Effectively increases the <strong>Path Length</strong> (i.e. <em>Mean Free Path</em>), " \
@@ -810,7 +823,7 @@
     float Subsurface_ShortGain = Subsurface_ShortGainUIDefault \
     [[ \
         string page = "Subsurface", \
-        string label = "(Multiple MFP) Short Gain", \
+        string label = "Short Gain (Multiple MFP)", \
         int slider = 1, float slidermin = 0.0, float slidermax = 1.0, \
         string help = \
             "Controls the intensity of the <strong>Short</strong> " \
@@ -819,7 +832,7 @@
     color Subsurface_ShortColor = Subsurface_ShortColorUIDefault \
     [[ \
         string page = "Subsurface", \
-        string label = "(Multiple MFP) Short Color", \
+        string label = "Short Color (Multiple MFP)", \
         string help = \
             "Controls the spectral qualities of the <strong>Short</strong> " \
             "path length component of the response. " \
@@ -827,7 +840,7 @@
     float Subsurface_ShortLength = Subsurface_ShortLengthUIDefault \
     [[ \
         string page = "Subsurface", \
-        string label = "(Multiple MFP) Short Length", \
+        string label = "Short Length (Multiple MFP)", \
         int slider = 1, float slidermin = 0.0, float slidermax = 10.0, \
         string help = \
             "Controls the <em>Mean Free Path</em> scattering distance used in the " \
@@ -836,7 +849,7 @@
     float Subsurface_LongGain = Subsurface_LongGainUIDefault \
     [[ \
         string page = "Subsurface", \
-        string label = "(Multiple MFP) Long Gain", \
+        string label = "Long Gain (Multiple MFP)", \
         int slider = 1, float slidermin = 0.0, float slidermax = 1.0, \
         string help = \
             "Controls the intensity of the <strong>Long</strong> " \
@@ -845,7 +858,7 @@
     color Subsurface_LongColor = Subsurface_LongColorUIDefault \
     [[ \
         string page = "Subsurface", \
-        string label = "(Multiple MFP) Long Color", \
+        string label = "Long Color (Multiple MFP)", \
         string help = \
             "Controls the spectral qualities of the <strong>Long</strong> " \
             "path length component of the response. " \
@@ -853,7 +866,7 @@
     float Subsurface_LongLength = Subsurface_LongLengthUIDefault \
     [[ \
         string page = "Subsurface", \
-        string label = "(Multiple MFP) Long Length", \
+        string label = "Long Length (Multiple MFP)", \
         int slider = 1, float slidermin = 0.0, float slidermax = 100.0, \
         string help = \
             "Controls the <em>Mean Free Path</em> scattering distance used in the " \
@@ -888,6 +901,7 @@
     ]], \
     \
     ANISOTROPY_UI_DECLARE( Glass, Glass ), \
+    SHADINGNORMAL_UI_DECLARE( Glass, Glass ), \
     \
     float Glass_RefractionGain = Glass_RefractionGainUIDefault \
     [[ \
@@ -932,25 +946,59 @@
             "Sets the color of the glass. Affects the <strong>Refraction</strong> response by " \
             "tinting the light that passes into the glass. " \
     ]], \
-    float Glass_ScatterAmount = Glass_ScatterAmountUIDefault \
+    float Glass_ExtinctionCoeff = Glass_ExtinctionCoeffUIDefault \
     [[ \
         string page = "Glass", \
-        string label = "Scatter Amount", \
-        int slider = 1, float slidermin = 0.0, float slidermax = 1.0, \
+        string label = "Extinction Coeff", \
+        int slider = 1, float slidermin = 0.0, float slidermax = 5.0, \
         string help = \
-            "Light rays Refracted into the object's interior normally pass straight through " \
-            "it and are only tinted by the <strong>Refraction Color.</strong> " \
-            "Values > 0 cause light to also be <strong>Scattered</strong> " \
-            "within the object's interior, as would happen if the glass had microscopic " \
-            "particulates or bubbles within it. " \
+            "Controls the light's <strong>Extinction</strong> within the object's interior. " \
+            "Larger values attenuate more rapidly. " \
+            "<br/><br/>" \
+            "Note: this <em>must</em> be > 0 for <strong>Extinction Color</strong> and " \
+            "<strong>Scatter Color</strong> to be usable. " \
+    ]], \
+    color Glass_ExtinctionColor = Glass_ExtinctionColorUIDefault \
+    [[ \
+        string page = "Glass", \
+        string label = "Extinction Color", \
+        string conditionalVisPath = "../Glass_ExtinctionCoeff", \
+        string conditionalVisOp = "greaterThan", \
+        string conditionalVisValue = "0.0", \
+        string help = \
+            "Controls the light's <strong>Extinction</strong> within the object's interior. " \
+            "Larger values result in more attenuation, so the resulting coloration's hue will " \
+            "be opposite this color. " \
+            "<br/><br/>" \
+            "Note: the <strong>Extinction Coeff*Color</strong> <em>must</em> be something " \
+            "other than black for <strong>Scatter Color</strong> to work. " \
     ]], \
     color Glass_ScatterColor = Glass_ScatterColorUIDefault \
     [[ \
         string page = "Glass", \
         string label = "Scatter Color", \
+        string conditionalVisPath = "../Glass_ExtinctionCoeff", \
+        string conditionalVisOp = "greaterThan", \
+        string conditionalVisValue = "0.0", \
         string help = \
-            "By default (color -1), scattering will use the <strong>Refraction Color.</strong> " \
-            "Set this if you want the scattered light to be a different color than the glass. " \
+            "Light rays Refracted into the object's interior normally pass straight through " \
+            "it and are only tinted by the <strong>Refraction Color.</strong> " \
+            "<br/><br/>" \
+            "<strong>Scatter Color</strong> will cause light to also be scattered " \
+            "within the object's interior, as would happen if the glass had microscopic " \
+            "particulates or bubbles within it. " \
+            "<br/><br/>" \
+            "Note: the <strong>Extinction Coeff*Color</strong> <em>must</em> be something " \
+            "other than black for <strong>Scatter Color</strong> to work. " \
+    ]], \
+    float Glass_ManifoldExplorationIOR = Glass_ManifoldExplorationIORDefault \
+    [[ \
+        string page = "Glass", \
+        string label = "Manifold Exploration IOR", \
+        int slider = 1, float slidermin = 1.0, float slidermax = 4.0, float slidercenter = 1.5, \
+        string help = \
+            "The index of refraction used for <strong>Manifold Exploration</strong>. " \
+            "When set to -1, the <strong>Refraction Index</strong> will be used. " \
     ]]
 
 
@@ -958,9 +1006,9 @@
  *  Connection Struct and vstruct parameters
  **************************************************************************************************/
 //
-//  Composited values for a v1_PxrSurface material.
+//  Composited values for a v2_PxrSurface material.
 //
-struct material_v1_PxrSurface_s
+struct material_v2_PxrSurface_s
 {
     // Dummy Socket variable.
     int    socket;
@@ -975,12 +1023,14 @@ struct material_v1_PxrSurface_s
 
     // Accumulated Bxdf values.
     float  bxdfMask;
+    float  maxMask;
 
     float  Displacement_BumpPercent;
 
     normal Global_ShadingNormal;
     float  Global_UseShadingNormal;
     color  Global_ShadowColor;
+    color  Global_UserColor;
 
     color  ClearCoat_CG;
     color  ClearCoat_FaceCG;
@@ -1030,6 +1080,8 @@ struct material_v1_PxrSurface_s
     float  Iridescence_Anisotropy;
     vector Iridescence_AnisotropyDirection;
     float  Iridescence_UseAnisotropyDirection;
+    normal Iridescence_ShadingNormal;
+    float  Iridescence_UseShadingNormal;
 
     color  Fuzz_CG;
     float  Fuzz_ConeAngle;
@@ -1038,7 +1090,7 @@ struct material_v1_PxrSurface_s
 
     color  Diffuse_CG;
     float  Diffuse_Roughness;
-    float  Diffuse_FalloffExponent;
+    float  Diffuse_Exponent;
     color  Diffuse_BackfaceCG;
     color  Diffuse_TransmitCG;
     normal Diffuse_ShadingNormal;
@@ -1052,15 +1104,18 @@ struct material_v1_PxrSurface_s
     float  Scatter_RefractionIndex;
     color  Scatter_BacksideCG; // (Backside) IlluminationGain * (Backside) IlluminationTint
 
-    color  Subsurface_CG;
-    float  Subsurface_PathLength;
+    float  Subsurface_Gain; // MediumGain
+    color  Subsurface_Color; // MediumColor
+    float  Subsurface_PathLength; // MediumLength
     color  Subsurface_PathColor;
     color  Subsurface_PostTint;
     float  Subsurface_TransmitGain;
+    float  Subsurface_ShortGain;
+    color  Subsurface_ShortColor;
     float  Subsurface_ShortLength;
-    color  Subsurface_ShortCG;
+    float  Subsurface_LongGain;
+    color  Subsurface_LongColor;
     float  Subsurface_LongLength;
-    color  Subsurface_LongCG;
     float  Subsurface_Directionality;
     float  Subsurface_DiffuseBlend;
     float  Subsurface_Bleed;
@@ -1074,12 +1129,34 @@ struct material_v1_PxrSurface_s
     float  Glass_Anisotropy;
     vector Glass_AnisotropyDirection;
     float  Glass_UseAnisotropyDirection;
+    normal Glass_ShadingNormal;
+    float  Glass_UseShadingNormal;
     color  Glass_RefractionCG;
     float  Glass_RefractionIndex;
-    float  Glass_ScatterAmount;
-    color  Glass_ScatterCG;
+    color  Glass_ExtinctionCC;
+    color  Glass_ScatterColor;
+    float  Glass_ManifoldExplorationIOR;
 
     color  Glow_CG;
+
+    // Expansion members.
+    // XXX Probably no longer needed, since no future PxrSurface development.
+    color  Expansion_color0;
+    color  Expansion_color1;
+    color  Expansion_color2;
+    color  Expansion_color3;
+    float  Expansion_float0;
+    float  Expansion_float1;
+    float  Expansion_float2;
+    float  Expansion_float3;
+    float  Expansion_float4;
+    float  Expansion_float5;
+    float  Expansion_float6;
+    float  Expansion_float7;
+    vector Expansion_vector0;
+    vector Expansion_vector1;
+    normal Expansion_normal0;
+    normal Expansion_normal1;
 };
 
 //
@@ -1102,7 +1179,7 @@ struct material_v1_PxrSurface_s
     [[ \
         string label = #LABEL, \
         string readOnly = "true", \
-        string tag = "material_v1_PxrSurface", \
+        string tag = "material_v2_PxrSurface", \
         string help = #DESCRIPTION \
     ]]
 
@@ -1112,7 +1189,7 @@ struct material_v1_PxrSurface_s
 //  All struct values are initially pre-multiplied by alpha = 0 for proper compositing.
 //
 #define PXRSURFACE_MATERIAL_STRUCT(VSTRUCT,PARAM) \
-    material_v1_PxrSurface_s PARAM = { 0, 0.0 } \
+    material_v2_PxrSurface_s PARAM = { 0, 0.0 } \
     [[ \
         int connectable = 0, \
         string widget = "null", \
@@ -1122,7 +1199,7 @@ struct material_v1_PxrSurface_s
 
 //
 //  The Response Enable parameters are only used to determine what ultimately needs
-//  to be connected to the bxdf node using the vstructConditionalExpr mechanism.
+//  to be connected to the PxrSurface bxdf using the vstructConditionalExpr mechanism.
 //  They are not used for any other purpose.
 //
 //  These are used to determine whether a response is used anywhere in the material layer stack.
@@ -1158,7 +1235,7 @@ struct material_v1_PxrSurface_s
 
 //
 //  The ShadingNormal Enable parameters are only used to determine what ultimately needs
-//  to be connected to the bxdf node using the vstructConditionalExpr mechanism.
+//  to be connected to the PxrSuface bxdf using the vstructConditionalExpr mechanism.
 //  They are not used for any other purpose.
 //
 //  These are used to determine whether a response's ShadingNormal is used
@@ -1282,7 +1359,9 @@ struct material_v1_PxrSurface_s
     PARAM_COPY( OUTPUT, INPUT, PREFIX, Roughness ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, Anisotropy ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, AnisotropyDirection ); \
-    PARAM_COPY( OUTPUT, INPUT, PREFIX, UseAnisotropyDirection )
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, UseAnisotropyDirection ); \
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, ShadingNormal ); \
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, UseShadingNormal )
  
 #define FUZZ_COPY(OUTPUT,INPUT,PREFIX) \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, CG ); \
@@ -1293,7 +1372,7 @@ struct material_v1_PxrSurface_s
 #define DIFFUSE_COPY(OUTPUT,INPUT,PREFIX) \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, CG ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, Roughness ); \
-    PARAM_COPY( OUTPUT, INPUT, PREFIX, FalloffExponent ); \
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, Exponent ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, BackfaceCG ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, TransmitCG ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, ShadingNormal ); \
@@ -1309,17 +1388,20 @@ struct material_v1_PxrSurface_s
     PARAM_COPY( OUTPUT, INPUT, PREFIX, BacksideCG )
  
 #define SUBSURFACE_COPY(OUTPUT,INPUT,PREFIX) \
-    PARAM_COPY( OUTPUT, INPUT, PREFIX, CG ); \
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, Gain ); \
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, Color ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, PathLength ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, PathColor ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, PostTint ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, TransmitGain ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, ShortLength ); \
-    PARAM_COPY( OUTPUT, INPUT, PREFIX, ShortCG ); \
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, ShortGain ); \
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, ShortColor ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, LongLength ); \
-    PARAM_COPY( OUTPUT, INPUT, PREFIX, LongCG ); \
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, LongGain ); \
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, LongColor ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, Directionality ); \
-    PARAM_COPY( OUTPUT, INPUT, PREFIX, DiffuseBlend ); \
+    /* XXX PARAM_COPY( OUTPUT, INPUT, PREFIX, DiffuseBlend ); */ \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, Bleed )
  
 #define GLASS_COPY(OUTPUT,INPUT,PREFIX) \
@@ -1328,10 +1410,13 @@ struct material_v1_PxrSurface_s
     PARAM_COPY( OUTPUT, INPUT, PREFIX, Anisotropy ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, AnisotropyDirection ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, UseAnisotropyDirection ); \
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, ShadingNormal ); \
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, UseShadingNormal ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, RefractionCG ); \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, RefractionIndex ); \
-    PARAM_COPY( OUTPUT, INPUT, PREFIX, ScatterAmount );  \
-    PARAM_COPY( OUTPUT, INPUT, PREFIX, ScatterCG )
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, ExtinctionCC ); \
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, ScatterColor );  \
+    PARAM_COPY( OUTPUT, INPUT, PREFIX, ManifoldExplorationIOR )
  
 #define GLOW_COPY(OUTPUT,INPUT,PREFIX) \
     PARAM_COPY( OUTPUT, INPUT, PREFIX, CG )

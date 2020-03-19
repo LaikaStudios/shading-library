@@ -2,7 +2,7 @@
 # RMANTREE points to the RenderManProServer directory.
 # Set it if it's not already set in the environment.
 #
-RMANTREE ?= /opt/pixar/RenderManProServer-22.3
+RMANTREE ?= /opt/pixar/RenderManProServer-23.2
 
 #
 # Compiler settings.
@@ -15,7 +15,7 @@ INCLUDE = -I. -I./include
 # Control variables.
 # These subdirectories will be searched for .osl files, which will then be built into .oso files.
 #
-SUBDIRS := material utility
+SUBDIRS := material
 
 # These shaders won't be built. Use 'subdirectory/basename'.
 EXCLUDE := 

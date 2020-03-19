@@ -1,5 +1,5 @@
 /*
- *  Copyright 2018 Laika, LLC. Authored by Mitch Prater.
+ *  Copyright 2018-2020 Laika, LLC. Authored by Mitch Prater.
  *
  *  Licensed under the Apache License Version 2.0 http://apache.org/licenses/LICENSE-2.0,
  *  or the MIT license http://opensource.org/licenses/MIT, at your option.
@@ -9,10 +9,10 @@
 /*
     Defines the vstruct connection made with the PxrSurface bxdf.
 */
-#ifndef MATERIAL_V1_PXRSURFACEADAPTOR_H
-#define MATERIAL_V1_PXRSURFACEADAPTOR_H
+#ifndef MATERIAL_V2_PXRSURFACEADAPTOR_H
+#define MATERIAL_V2_PXRSURFACEADAPTOR_H
 
-#include "material/v1_PxrSurface.h"
+#include "material/v2_PxrSurface.h"
 
 
 //
@@ -104,6 +104,7 @@
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, Thickness, iridescenceThickness ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, Roughness, iridescenceRoughness ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, Anisotropy, iridescenceAnisotropy ), \
+    PARAM_OUTPUT_ENABLE( VSTRUCTIN, VSTRUCTOUT, PREFIX, normal, ShadingNormal, iridescenceBumpNormal ), \
     PARAM_OUTPUT_ENABLE( VSTRUCTIN, VSTRUCTOUT, PREFIX, vector, AnisotropyDirection, iridescenceAnisotropyDirection )
 
 #define FUZZ_OUTPUT_PARAMS(VSTRUCTIN,VSTRUCTOUT,PREFIX) \
@@ -118,7 +119,7 @@
     PARAM_OUTPUT_ENABLE( VSTRUCTIN, VSTRUCTOUT, PREFIX, normal, ShadingNormal, diffuseBumpNormal ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, CG, diffuseColor ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, Roughness, diffuseRoughness ), \
-    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, FalloffExponent, diffuseExponent ), \
+    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, Exponent, diffuseExponent ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, BackfaceCG, diffuseBackColor ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, TransmitCG, diffuseTransmitColor )
 
@@ -134,42 +135,38 @@
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, BacksideCG, singlescatterDirectGainTint )
 
 #define SUBSURFACE_OUTPUT_PARAMS(VSTRUCTIN,VSTRUCTOUT,PREFIX) \
-    PARAM_OUTPUT_SET_GAIN( VSTRUCTIN, VSTRUCTOUT, PREFIX, Gain, subsurfaceGain ), \
-    PARAM_OUTPUT_SET_GAIN( VSTRUCTIN, VSTRUCTOUT, PREFIX, ShortGain, shortSubsurfaceGain ), \
-    PARAM_OUTPUT_SET_GAIN( VSTRUCTIN, VSTRUCTOUT, PREFIX, LongGain, longSubsurfaceGain ), \
-    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, CG, subsurfaceColor ), \
+    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, Gain, subsurfaceGain ), \
+    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, Color, subsurfaceColor ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, PathLength, subsurfaceDmfp ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, PathColor, subsurfaceDmfpColor ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, PostTint, subsurfacePostTint ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, TransmitGain, subsurfaceTransmitGain ), \
+    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, ShortGain, shortSubsurfaceGain ), \
+    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, ShortColor, shortSubsurfaceColor ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, ShortLength, shortSubsurfaceDmfp ), \
-    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, ShortCG, shortSubsurfaceColor ), \
+    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, LongGain, longSubsurfaceGain ), \
+    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, LongColor, longSubsurfaceColor ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, LongLength, longSubsurfaceDmfp ), \
-    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, LongCG, longSubsurfaceColor ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, Directionality, subsurfaceDirectionality ), \
-    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, DiffuseBlend, subsurfaceDiffuseBlend ), \
+    /* XXX Not Really Connectable! PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, DiffuseBlend, subsurfaceDiffuseBlend ), */ \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, Bleed, subsurfaceBleed )
 
 #define GLASS_OUTPUT_PARAMS(VSTRUCTIN,VSTRUCTOUT,PREFIX) \
     PARAM_OUTPUT_SET_GAIN( VSTRUCTIN, VSTRUCTOUT, PREFIX, Gain, refractionGain ), \
-    PARAM_OUTPUT_ENABLE( VSTRUCTIN, VSTRUCTOUT, PREFIX, vector, AnisotropyDirection, glassAnisotropyDirection ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, ReflectionGain, reflectionGain ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, Roughness, glassRoughness ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, Anisotropy, glassAnisotropy ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, color, RefractionCG, refractionColor ), \
     PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, RefractionIndex, glassIor ), \
+    PARAM_OUTPUT( VSTRUCTIN, VSTRUCTOUT, PREFIX, float, ManifoldExplorationIOR, mwIor ), \
+    PARAM_OUTPUT_ENABLE( VSTRUCTIN, VSTRUCTOUT, PREFIX, normal, ShadingNormal, glassBumpNormal ), \
+    PARAM_OUTPUT_ENABLE( VSTRUCTIN, VSTRUCTOUT, PREFIX, vector, AnisotropyDirection, glassAnisotropyDirection ), \
     \
-    output color PREFIX##_ScatterCG = color(0.0) \
-    [[ \
-        string vstructmember = #VSTRUCTOUT ".ssAlbedo", \
-        string vstructConditionalExpr = "connect if " #VSTRUCTIN "_" #PREFIX "_Enable == 1" \
-    ]], \
+    /* No vstructmember for ssAlbedo parameter in PxrSurface.args */ \
+    output color PREFIX##_ssAlbedo = color(0.0) [[ string widget = "null" ]], \
     \
-    output color PREFIX##_ExtinctionCG = color(0.0) \
-    [[ \
-        string vstructmember = #VSTRUCTOUT ".extinction", \
-        string vstructConditionalExpr = "connect if " #VSTRUCTIN "_" #PREFIX "_Enable == 1" \
-    ]]
+    /* No vstructmember for extinction parameter in PxrSurface.args */ \
+    output color PREFIX##_extinction = color(0.0) [[ string widget = "null" ]]
 
 #define GLOW_OUTPUT_PARAMS(VSTRUCTIN,VSTRUCTOUT,PREFIX) \
     PARAM_OUTPUT_SET_GAIN( VSTRUCTIN, VSTRUCTOUT, PREFIX, Gain, glowGain ), \

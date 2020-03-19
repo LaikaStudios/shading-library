@@ -1,5 +1,5 @@
 /*
- *  Copyright 2018-2019 Laika, LLC. Authored by Mitch Prater.
+ *  Copyright 2018-2020 Laika, LLC. Authored by Mitch Prater.
  *
  *  Licensed under the Apache License Version 2.0 http://apache.org/licenses/LICENSE-2.0,
  *  or the MIT license http://opensource.org/licenses/MIT, at your option.
@@ -10,12 +10,12 @@
     Duplicate material displacement only.
  */
 #include "ikaConstants.h"
-#include "material/v1_Displacement.h"
-#include "material/v1_PxrSurface.h"
+#include "material/v2_Displacement.h"
+#include "material/v2_PxrSurface.h"
 
-shader v1_Displacement
+shader v2_Displacement
 [[
-    int rfm_nodeid = 1233956,
+    int rfm_nodeid = 1234002,
     string rfm_classification = "rendernode/RenderMan/pattern/material",
     string help = 
         "Creates a <strong>Material</strong> layer that has only <strong>Displacement.</strong> "
@@ -60,6 +60,7 @@ shader v1_Displacement
     ALL_ENABLE_PARAMS( MaterialInput, PrimarySpecular ),
     ALL_ENABLE_PARAMS( MaterialInput, SecondarySpecular ),
     RESPONSE_ENABLE_PARAM( MaterialInput, Iridescence ),
+    SHADINGNORMAL_ENABLE_PARAM( MaterialInput, Iridescence ),
     ANISOTROPYDIRECTION_ENABLE_PARAM( MaterialInput, Iridescence ),
     RESPONSE_ENABLE_PARAM( MaterialInput, Fuzz ),
     SHADINGNORMAL_ENABLE_PARAM( MaterialInput, Fuzz ),
@@ -68,6 +69,7 @@ shader v1_Displacement
     RESPONSE_ENABLE_PARAM( MaterialInput, Scatter ),
     RESPONSE_ENABLE_PARAM( MaterialInput, Subsurface ),
     RESPONSE_ENABLE_PARAM( MaterialInput, Glass ),
+    SHADINGNORMAL_ENABLE_PARAM( MaterialInput, Glass ),
     ANISOTROPYDIRECTION_ENABLE_PARAM( MaterialInput, Glass ),
     RESPONSE_ENABLE_PARAM( MaterialInput, Glow ),
 
@@ -92,16 +94,6 @@ shader v1_Displacement
             "determines the distribution of this material layer: where it is versus where it isn't. "
             "Specifically, it controls the blend between this material and the material "
             "composited UNDER it. "
-            "<br/><br/>"
-            "Can optionally be used in the generation of a <strong>Pattern Ramp</strong> based on "
-            "the <strong>Displacement</strong> to produce a more physically plausible transition "
-            "between this and other material layers. "
-            "<br/><br/>"
-            "Note: when <strong>Pattern Ramp</strong> is <em>On</em>, <strong>Mask</strong> "
-            "must contain a broad, smooth ramp from 0 to 1 - not a hard edged transition. "
-            "If you're using a painted texture with hard edges, use the texture <strong>Blur</strong> "
-            "control to turn them into a smooth ramp for use with this functionality. "
-            "Or better still, blur the texture itself before using it. "
     ]],
 
     //
@@ -228,71 +220,6 @@ shader v1_Displacement
     DISPLACE_VECTOR_UI_DECLARE(3),
     DISPLACE_VECTOR_UI_DECLARE(4),
 
-    //
-    //  Pattern Ramp parameters start here.
-    //
-    int PatternRamp_Enable = 0
-    [[
-        int connectable = 0,
-        string page = "Pattern Ramp",
-        string label = "Enable",
-        string widget = "checkBox",
-        string help =
-            "When <em>On</em>, use this material's <strong>Displacement</strong> to generate "
-            "a pattern ramp and apply it to the material <strong>Mask</strong>. "
-            "This can produce a more physically plausible transition from one material to the next. "
-            "<br/><br/>"
-            "Note: when this is <em>On</em>, the material <strong>Mask</strong> "
-            "must contain a broad, smooth ramp from 0 to 1 - not a hard edged transition. "
-            "If you're using a painted texture with hard edges, use the texture <strong>Blur</strong> "
-            "control to turn them into a smooth ramp for use with this functionality. "
-            "Or better still, blur the texture itself before using it. "
-    ]],
-
-    float PatternRamp_DispSoftness = 0.25
-    [[
-        string page = "Pattern Ramp",
-        string label = "Disp Softness",
-        int slider = 1, float slidermin = 0.0, float slidermax = 1.0,
-        string help =
-            "Adjusts the <strong>Pattern Ramp</strong> edge hardness/softness used for displacement: "
-            "<br/><br/>"
-            "<strong>0</strong> produces a hard edge in the mask pattern. "
-            "<br/>"
-            "<strong>1</strong> produces soft edges in the mask pattern. "
-            "<br/><br/>"
-            "Note: you can use the <strong>dispMask</strong> output to see the generated mask pattern. "
-    ]],
-
-    float PatternRamp_LowerCutoff = 0.0
-    [[
-        string page = "Pattern Ramp",
-        string label = "Lower Cutoff",
-        int slider = 1, float slidermin = -0.1, float slidermax = 0.5,
-        string help =
-            "This material's <strong>Displacement</strong> is first normalized to approximately "
-            "a 0-1 ranged value. It's this normalized displacement value that is used to generate "
-            "the mask's pattern ramp. The normalization can only be approximate however, so the "
-            "<strong>Lower Cutoff</strong> and <strong>Upper Cutoff</strong> values are used to "
-            "ensure the pattern ramp goes fully to 0 and 1 by clipping the normalized displacement "
-            "if necessary. "
-    ]],
-
-    float PatternRamp_UpperCutoff = 1.0
-    [[
-        string page = "Pattern Ramp",
-        string label = "Upper Cutoff",
-        int slider = 1, float slidermin = 0.5, float slidermax = 1.1,
-        string help =
-            "This material's <strong>Displacement</strong> is first normalized to approximately "
-            "a 0-1 ranged value. It's this normalized displacement value that is used to generate "
-            "pattern ramp. The normalization can only be approximate however, so the "
-            "<strong>Lower Cutoff</strong> and <strong>Upper Cutoff</strong> values are used to "
-            "ensure the pattern ramp goes fully to 0 and 1 by clipping the normalized displacement "
-            "if necessary. "
-    ]],
-
-
     // Utility socket.
     int Socket = 0
     [[
@@ -324,6 +251,7 @@ shader v1_Displacement
     SET_ALL_ENABLE_PARAMS( MaterialOutput, MaterialInput, PrimarySpecular ),
     SET_ALL_ENABLE_PARAMS( MaterialOutput, MaterialInput, SecondarySpecular ),
     SET_RESPONSE_ENABLE_PARAM( MaterialOutput, MaterialInput, Iridescence ),
+    SET_SHADINGNORMAL_ENABLE_PARAM( MaterialOutput, MaterialInput, Iridescence ),
     SET_ANISOTROPYDIRECTION_ENABLE_PARAM( MaterialOutput, MaterialInput, Iridescence ),
     SET_RESPONSE_ENABLE_PARAM( MaterialOutput, MaterialInput, Fuzz ),
     SET_SHADINGNORMAL_ENABLE_PARAM( MaterialOutput, MaterialInput, Fuzz ),
@@ -332,6 +260,7 @@ shader v1_Displacement
     SET_RESPONSE_ENABLE_PARAM( MaterialOutput, MaterialInput, Scatter ),
     SET_RESPONSE_ENABLE_PARAM( MaterialOutput, MaterialInput, Subsurface ),
     SET_RESPONSE_ENABLE_PARAM( MaterialOutput, MaterialInput, Glass ),
+    SET_SHADINGNORMAL_ENABLE_PARAM( MaterialOutput, MaterialInput, Glass ),
     SET_ANISOTROPYDIRECTION_ENABLE_PARAM( MaterialOutput, MaterialInput, Glass ),
     SET_RESPONSE_ENABLE_PARAM( MaterialOutput, MaterialInput, Glow ),
 
@@ -402,60 +331,6 @@ shader v1_Displacement
 
     // Globally scale the displacement. Displacement_MagScale is unitless.
     this_deltaP *= Displacement_MagScale;
-
-    // Modify the displacement mask with a patterned ramp?
-    if( PatternRamp_Enable )
-    {
-        float  rampPattern;
-        float  rampMag;
-
-        // Determine displacement-based ramp pattern.
-        rampPattern = DISPLACE_FLOAT_PATTERN(0)
-                        + DISPLACE_FLOAT_PATTERN(1)
-                        + DISPLACE_FLOAT_PATTERN(2)
-                        + DISPLACE_FLOAT_PATTERN(3)
-                        + DISPLACE_FLOAT_PATTERN(4)
-                        ;
-
-        rampPattern += DISPLACE_VECTOR_PATTERN(0)
-                        + DISPLACE_VECTOR_PATTERN(1)
-                        + DISPLACE_VECTOR_PATTERN(2)
-                        + DISPLACE_VECTOR_PATTERN(3)
-                        + DISPLACE_VECTOR_PATTERN(4)
-                        ;
-
-        rampMag = DISPLACE_FLOAT_MAG(0)
-                    + DISPLACE_FLOAT_MAG(1)
-                    + DISPLACE_FLOAT_MAG(2)
-                    + DISPLACE_FLOAT_MAG(3)
-                    + DISPLACE_FLOAT_MAG(4)
-                    ;
-
-        rampMag += DISPLACE_VECTOR_MAG(0)
-                    + DISPLACE_VECTOR_MAG(1)
-                    + DISPLACE_VECTOR_MAG(2)
-                    + DISPLACE_VECTOR_MAG(3)
-                    + DISPLACE_VECTOR_MAG(4)
-                    ;
-
-        // Normalize the pattern range.
-        if( rampMag > 0.0000001 ) rampPattern /= rampMag;
-        else rampPattern = 0.5;
-
-        // Generate the pattern ramped masks.
-        dispMask = linearstep(
-                    Mask - PatternRamp_DispSoftness,
-                    Mask + PatternRamp_DispSoftness,
-                    // Remap the pattern in preparation for comparing with the Mask value.
-                    // The Mask is used to shift the ramp pattern up/down sufficiently to
-                    // produce the desired Mask-edgeWidth, Mask+edgeWidth transition.
-                    rampPattern + mix(
-                                    -1.0000001-PatternRamp_LowerCutoff - PatternRamp_DispSoftness,
-                                    2.0-PatternRamp_UpperCutoff + PatternRamp_DispSoftness,
-                                    Mask
-                                    )
-                    );
-    }
 
     // Pre-multiply by the displacement mask.
     this_deltaP *= dispMask;

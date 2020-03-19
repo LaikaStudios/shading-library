@@ -2,7 +2,7 @@
 # RMANTREE points to the RenderManProServer directory.
 # Set it if it's not already set in the environment.
 #
-RMANTREE ?= /opt/pixar/RenderManProServer-22.6
+RMANTREE ?= /opt/pixar/RenderManProServer-23.2
 export RMANTREE
 
 #
@@ -51,6 +51,7 @@ install : $(install)
 	-$(shell mkdir -p $(BUILD_DIR))
 	-$(COPY) --include="*.katana" --exclude="*" scene $(BUILD_DIR)
 	-$(COPY) --include="*.macro" --exclude="*" katana $(BUILD_DIR)
+	-$(COPY) --include="*.py" --exclude="*" katana $(BUILD_DIR)
 
 %.install : $(SUBDIRS)
 	-$(COPY) --include="*.oso" --include="*.so" --include="*.args" --exclude="*" $(subst .install,,$@) $(BUILD_DIR)

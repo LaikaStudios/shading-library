@@ -6,8 +6,8 @@
  *
  *  This program may not be copied, modified, or distributed except according to those terms.
  */
-#ifndef MATERIAL_V1_DISPLACEMENT_H
-#define MATERIAL_V1_DISPLACEMENT_H
+#ifndef MATERIAL_V2_DISPLACEMENT_H
+#define MATERIAL_V2_DISPLACEMENT_H
 
 #define DISPLACE_FLOAT_UI_DECLARE(NAME) \
     int Displacement_Float_On ## NAME = 0 \

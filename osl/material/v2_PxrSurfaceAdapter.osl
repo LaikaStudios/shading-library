@@ -1,5 +1,5 @@
 /*
- *  Copyright 2018 Laika, LLC. Authored by Mitch Prater.
+ *  Copyright 2018-2020 Laika, LLC. Authored by Mitch Prater.
  *
  *  Licensed under the Apache License Version 2.0 http://apache.org/licenses/LICENSE-2.0,
  *  or the MIT license http://opensource.org/licenses/MIT, at your option.
@@ -8,28 +8,32 @@
  */
 /*
  *  This adapts the Material Output of a material shader to a
- *  displacement and its corresponding bxdf shader's parameters.
+ *  displacement and its corresponding bxdf shader's parameters:
+ *  PxrSurface in this case.
  */
 #include "ikaFunctions.h"
-#include "material/v1_PxrSurface.h"
-#include "material/v1_PxrSurfaceAdapter.h"
 
-shader v1_PxrSurfaceAdapter
+#include "material/v2_PxrSurface.h"
+#include "material/v2_PxrSurfaceAdapter.h"
+
+shader v2_PxrSurfaceAdapter
 [[
-    int rfm_nodeid = 0x12d411,
+    int rfm_nodeid = 1234036,
     string rfm_classification = "rendernode/RenderMan/pattern/material",
     string label = "PxrSurface Adapter",
     string help = 
-        "This connects the <strong>Material Output</strong> of an osl/material/PxrSurface "
-        "to a displacement shader and a PxrSurface bxdf <strong>Input Material</strong> connection. "
+        "This adapts the <strong>Material Output</strong> of a v2_PxrSurface material "
+        "to a <strong>SetP</strong> displacement shader and a PxrSurface bxdf's "
+        "<strong>Input Material</strong> connection. "
 ]]
 (
     string Notes = ""
     [[
         int connectable = 0,
         string help = 
-            "This connects the <strong>Material Output</strong> of an osl/material/PxrSurface "
-            "to a displacement shader and a PxrSurface bxdf <strong>Input Material</strong> connection. "
+            "This adapts the <strong>Material Output</strong> of a v2_PxrSurface material "
+            "to a <strong>SetP</strong> displacement shader and a PxrSurface bxdf's "
+            "<strong>Input Material</strong> connection. "
     ]],
 
     /*
@@ -38,7 +42,7 @@ shader v1_PxrSurfaceAdapter
     // The vstruct parameter. This is the single material connection point
     // for all the material parameters in the material struct.
     PXRSURFACE_MATERIAL_VSTRUCT( MaterialInput, Material Input,
-            Connect a PxrSurface Material shader's <strong>Material Output</strong> here.
+            Connect a v2_PxrSurface Material shader's <strong>Material Output</strong> here.
             ),
 
     // The struct parameter.
@@ -49,6 +53,7 @@ shader v1_PxrSurfaceAdapter
     ALL_ENABLE_PARAMS( MaterialInput, PrimarySpecular ),
     ALL_ENABLE_PARAMS( MaterialInput, SecondarySpecular ),
     RESPONSE_ENABLE_PARAM( MaterialInput, Iridescence ),
+    SHADINGNORMAL_ENABLE_PARAM( MaterialInput, Iridescence ),
     ANISOTROPYDIRECTION_ENABLE_PARAM( MaterialInput, Iridescence ),
     RESPONSE_ENABLE_PARAM( MaterialInput, Fuzz ),
     SHADINGNORMAL_ENABLE_PARAM( MaterialInput, Fuzz ),
@@ -57,17 +62,9 @@ shader v1_PxrSurfaceAdapter
     RESPONSE_ENABLE_PARAM( MaterialInput, Scatter ),
     RESPONSE_ENABLE_PARAM( MaterialInput, Subsurface ),
     RESPONSE_ENABLE_PARAM( MaterialInput, Glass ),
+    SHADINGNORMAL_ENABLE_PARAM( MaterialInput, Glass ),
     ANISOTROPYDIRECTION_ENABLE_PARAM( MaterialInput, Glass ),
     RESPONSE_ENABLE_PARAM( MaterialInput, Glow ),
-
-
-    /*
-     *  These inputs are connected to a GetPN node, and are used
-     *  in the generation the displaced point and shading normals.
-     *  They make the BumpPercent functionality possible.
-     */
-    point  Po = point(0.0),  // undisplaced: Po
-    normal No = normal(0.0), // undisplaced: No
 
 
     /*
@@ -92,6 +89,11 @@ shader v1_PxrSurfaceAdapter
         string help =
             "This represents the displaced surface and is connected to a SetP displacement shader."
     ]],
+
+    /*
+     *  Composited Mask outputs.
+     */
+    output float  maxMask = 1.0 [[ string widget = "null" ]],
 
     /*
      *  Utility Plug output.
@@ -166,9 +168,15 @@ shader v1_PxrSurfaceAdapter
  *  are specified in the output parameter declarations.
  */
 {
+    Plug = MatIn.socket;
+    maxMask = MatIn.maxMask;
+
     //
     // Displacement.
     //
+    point  Po;
+    getattribute( "builtin", "Po", Po );
+
     out_P = Po + MatIn.deltaP;
 
 
@@ -180,15 +188,19 @@ shader v1_PxrSurfaceAdapter
     //
 
     // UVTangent default output.
+    // When out_P has been connected to a displacement, Nn becomes the post-displacement normal.
     normal  Nn = normalize( N );
     vector  Tn, Bn;
     ikaCreateOrthonormalBasis( Nn, Tn, Bn );
 
     vector  defaultAnisotropyDirection = Tn;
 
-    // When out_P has been connected to a displacement, N becomes the post-displacement normal.
-    vector  deltaN = MatIn.Displacement_BumpPercent * vector( N - No );
-    normal  bumpShadingNormal = normalize( No + deltaN );
+    // Always the un-displaced normal.
+    normal  Non;
+    getattribute( "builtin", "Non", Non );
+
+    vector  deltaN = MatIn.Displacement_BumpPercent * vector( Nn - Non );
+    normal  bumpShadingNormal = normalize( Non + deltaN );
 
     // global Shading Normal -> PxrSurface BumpNormal.
     Global_ShadingNormal = normalize( mix(
@@ -196,12 +208,13 @@ shader v1_PxrSurfaceAdapter
                             MatIn.Global_ShadingNormal,
                             MatIn.Global_UseShadingNormal
                             ));
+    Global_ShadingNormal = ikaBumpCompensation( Global_ShadingNormal );
 
     // global ShadowColor -> PxrSurface ShadowColor.
     Global_ShadowColor = MatIn.Global_ShadowColor;
 
     // Clear Coat
-    if( MaterialInput_ClearCoat_Enable == 1 )
+    if( MaterialInput_ClearCoat_Enable )
     {
         COPY_PARAM( MatIn, ClearCoat, CG );
         COPY_PARAM( MatIn, ClearCoat, FaceCG );
@@ -216,7 +229,7 @@ shader v1_PxrSurfaceAdapter
 
         ClearCoat_ShadingNormal = normalize( mix(
                             Global_ShadingNormal,
-                            MatIn.ClearCoat_ShadingNormal,
+                            ikaBumpCompensation( MatIn.ClearCoat_ShadingNormal ),
                             MatIn.ClearCoat_UseShadingNormal
                             ));
 
@@ -228,7 +241,7 @@ shader v1_PxrSurfaceAdapter
     }
 
     // Primary Specular
-    if( MaterialInput_PrimarySpecular_Enable == 1 )
+    if( MaterialInput_PrimarySpecular_Enable )
     {
         COPY_PARAM( MatIn, PrimarySpecular, CG );
         COPY_PARAM( MatIn, PrimarySpecular, FaceCG );
@@ -242,7 +255,7 @@ shader v1_PxrSurfaceAdapter
 
         PrimarySpecular_ShadingNormal = normalize( mix(
                             Global_ShadingNormal,
-                            MatIn.PrimarySpecular_ShadingNormal,
+                            ikaBumpCompensation( MatIn.PrimarySpecular_ShadingNormal ),
                             MatIn.PrimarySpecular_UseShadingNormal
                             ));
 
@@ -254,7 +267,7 @@ shader v1_PxrSurfaceAdapter
     }
 
     // Secondary Specular
-    if( MaterialInput_SecondarySpecular_Enable == 1 )
+    if( MaterialInput_SecondarySpecular_Enable )
     {
         COPY_PARAM( MatIn, SecondarySpecular, CG );
         COPY_PARAM( MatIn, SecondarySpecular, FaceCG );
@@ -268,7 +281,7 @@ shader v1_PxrSurfaceAdapter
 
         SecondarySpecular_ShadingNormal = normalize( mix(
                             Global_ShadingNormal,
-                            MatIn.SecondarySpecular_ShadingNormal,
+                            ikaBumpCompensation( MatIn.SecondarySpecular_ShadingNormal ),
                             MatIn.SecondarySpecular_UseShadingNormal
                             ));
 
@@ -280,7 +293,7 @@ shader v1_PxrSurfaceAdapter
     }
 
     // Iridescence
-    if( MaterialInput_Iridescence_Enable == 1 )
+    if( MaterialInput_Iridescence_Enable )
     {
         Iridescence_FaceGain = MatIn.Iridescence_Gain;
         Iridescence_EdgeGain = MatIn.Iridescence_Gain;
@@ -293,6 +306,12 @@ shader v1_PxrSurfaceAdapter
         COPY_PARAM( MatIn, Iridescence, Roughness );
         COPY_PARAM( MatIn, Iridescence, Anisotropy );
 
+        Iridescence_ShadingNormal = normalize( mix(
+                            Global_ShadingNormal,
+                            MatIn.Iridescence_ShadingNormal,
+                            MatIn.Iridescence_UseShadingNormal
+                            ));
+
         Iridescence_AnisotropyDirection = mix(
                             defaultAnisotropyDirection,
                             MatIn.Iridescence_AnisotropyDirection,
@@ -301,36 +320,36 @@ shader v1_PxrSurfaceAdapter
     }
 
     // Fuzz
-    if( MaterialInput_Fuzz_Enable == 1 )
+    if( MaterialInput_Fuzz_Enable )
     {
         COPY_PARAM( MatIn, Fuzz, CG );
         COPY_PARAM( MatIn, Fuzz, ConeAngle );
 
         Fuzz_ShadingNormal = normalize( mix(
                             Global_ShadingNormal,
-                            MatIn.Fuzz_ShadingNormal,
+                            ikaBumpCompensation( MatIn.Fuzz_ShadingNormal ),
                             MatIn.Fuzz_UseShadingNormal
                             ));
     }
 
     // Diffuse
-    if( MaterialInput_Diffuse_Enable == 1 )
+    if( MaterialInput_Diffuse_Enable )
     {
         COPY_PARAM( MatIn, Diffuse, CG );
         COPY_PARAM( MatIn, Diffuse, Roughness );
-        COPY_PARAM( MatIn, Diffuse, FalloffExponent );
+        COPY_PARAM( MatIn, Diffuse, Exponent );
         COPY_PARAM( MatIn, Diffuse, BackfaceCG );
         COPY_PARAM( MatIn, Diffuse, TransmitCG );
 
         Diffuse_ShadingNormal = normalize( mix(
                             Global_ShadingNormal,
-                            MatIn.Diffuse_ShadingNormal,
+                            ikaBumpCompensation( MatIn.Diffuse_ShadingNormal ),
                             MatIn.Diffuse_UseShadingNormal
                             ));
     }
 
     // Scatter
-    if( MaterialInput_Scatter_Enable == 1 )
+    if( MaterialInput_Scatter_Enable )
     {
         COPY_PARAM( MatIn, Scatter, CG );
         COPY_PARAM( MatIn, Scatter, PathLength );
@@ -344,37 +363,46 @@ shader v1_PxrSurfaceAdapter
     }
 
     // Subsurface
-    if( MaterialInput_Subsurface_Enable == 1 )
+    if( MaterialInput_Subsurface_Enable )
     {
-        COPY_PARAM( MatIn, Subsurface, CG );
+        COPY_PARAM( MatIn, Subsurface, Gain );
+        COPY_PARAM( MatIn, Subsurface, Color );
         COPY_PARAM( MatIn, Subsurface, PathLength );
         COPY_PARAM( MatIn, Subsurface, PathColor );
         COPY_PARAM( MatIn, Subsurface, PostTint );
         COPY_PARAM( MatIn, Subsurface, TransmitGain );
+        COPY_PARAM( MatIn, Subsurface, ShortGain );
+        COPY_PARAM( MatIn, Subsurface, ShortColor );
         COPY_PARAM( MatIn, Subsurface, ShortLength );
-        COPY_PARAM( MatIn, Subsurface, ShortCG );
+        COPY_PARAM( MatIn, Subsurface, LongGain );
+        COPY_PARAM( MatIn, Subsurface, LongColor );
         COPY_PARAM( MatIn, Subsurface, LongLength );
-        COPY_PARAM( MatIn, Subsurface, LongCG );
         COPY_PARAM( MatIn, Subsurface, Directionality );
-        COPY_PARAM( MatIn, Subsurface, DiffuseBlend );
+        // XXX Not Really Connectable! COPY_PARAM( MatIn, Subsurface, DiffuseBlend );
         COPY_PARAM( MatIn, Subsurface, Bleed );
     }
 
     // Scatter & Subsurface
-    if( MaterialInput_Scatter_Enable == 1 || MaterialInput_Subsurface_Enable == 1 )
+    if( MaterialInput_Scatter_Enable || MaterialInput_Subsurface_Enable )
     {
         COPY_PARAM( MatIn, ScatterAndSubsurface, IlluminationTint );
         COPY_PARAM( MatIn, ScatterAndSubsurface, Roughness );
     }
 
     // Glass
-    if( MaterialInput_Glass_Enable == 1 )
+    if( MaterialInput_Glass_Enable )
     {
         COPY_PARAM( MatIn, Glass, ReflectionGain );
         COPY_PARAM( MatIn, Glass, Roughness );
         COPY_PARAM( MatIn, Glass, Anisotropy );
         COPY_PARAM( MatIn, Glass, RefractionCG );
-        COPY_PARAM( MatIn, Glass, ScatterCG );
+        COPY_PARAM( MatIn, Glass, ManifoldExplorationIOR );
+
+        Glass_ShadingNormal = normalize( mix(
+                            Global_ShadingNormal,
+                            ikaBumpCompensation( MatIn.Glass_ShadingNormal ),
+                            MatIn.Glass_UseShadingNormal
+                            ));
 
         Glass_AnisotropyDirection = mix(
                             defaultAnisotropyDirection,
@@ -385,13 +413,14 @@ shader v1_PxrSurfaceAdapter
         // Can't allow GlassIor to go below 1.0.
         Glass_RefractionIndex = max( 1.0, MatIn.Glass_RefractionIndex );
 
-        // Scatter Extinction.
-        float  scatterAmount = MatIn.Glass_ScatterAmount * MatIn.Glass_ScatterAmount * MatIn.Glass_ScatterAmount;
-        Glass_ExtinctionCG = color( scatterAmount );
+        /* No vstructmember for ssAlbedo parameter in PxrSurface.args */
+        Glass_ssAlbedo = MatIn.Glass_ScatterColor;
+        /* No vstructmember for extinction parameter in PxrSurface.args */
+        Glass_extinction = MatIn.Glass_ExtinctionCC;
     }
 
     // Glow
-    if( MaterialInput_Glow_Enable == 1 )
+    if( MaterialInput_Glow_Enable )
     {
         COPY_PARAM( MatIn, Glow, CG );
     }
