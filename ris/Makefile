@@ -8,15 +8,18 @@ RMANTREE ?= /opt/pixar/RenderManProServer-23.2
 # Compiler and linker settings.
 #
 CC = clang++
-LD = clang++ -shared
 CFLAGS = -Wall -Wno-switch -Wno-reorder -Wno-sign-compare -Wno-narrowing -Wno-deprecated-declarations -fPIC -std=c++14 -O3
-INCLUDE = -I. -I./include -I${RMANTREE}/include
+INCLUDE = -I. -I./include -I${RMANTREE}/include -I/usr/include/freetype2
+
+LD = clang++
+LFLAGS = -shared
+LIBS = -lfreetype
 
 #
 # Control variables.
 # These subdirectories will be searched for .cpp files, which will then be built into .so files.
 #
-SUBDIRS := displace
+SUBDIRS := displace displayfilter
 
 # These shaders won't be built. Use 'subdirectory/basename'.
 EXCLUDE := 
@@ -67,4 +70,4 @@ show_dso:
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ -c $<
 
 %.so : %.o
-	$(LD) -o $@ $<
+	$(LD) $(LFLAGS) $(LIBS) -o $@ $<
