@@ -405,14 +405,14 @@ void Annotate::setInstanceData(
     // Error check.
     if( InputChannelId == k_InvalidChannelId )
     {
-        rixMsg->Warning( "The Input channel \"%s\" has not been declared.", Input);
+        rixMsg->Warning( "The Input channel \"%s\" is invalid.", Input);
         delete iData;
         return;
     }
 
     if( OutputChannelId == k_InvalidChannelId )
     {
-        rixMsg->Warning( "The Output channel \"%s\" has not been declared.", Output);
+        rixMsg->Warning( "The Output channel \"%s\" is invalid.", Output);
         delete iData;
         return;
     }
@@ -453,8 +453,12 @@ void Annotate::setInstanceData(
     FT_Face  face;
     FT_Error err = FT_New_Face( library, File.CStr(), 0, &face );
 
-rixMsg->Info( "err = %d", err );
-    if( !err )
+    if( err )
+    {
+        rixMsg->Warning( "Error accessing Font file \"%s\" err = %d", File, err );
+        delete iData;
+    }
+    else
     {
         // Set the font's rendered glyph's em-square pixel height (and width).
         FT_Set_Pixel_Sizes( face, 0, size );
@@ -470,18 +474,9 @@ rixMsg->Info( "err = %d", err );
         instanceData->data = static_cast< void* >( iData );
         instanceData->freefunc = localInstanceData::Delete;
     }
-    else
-    {
-rixMsg->Info( "Delete iData" );
-        // Leave instanceData->data = NULL, etc.
-        delete iData;
-    }
 
     // Done with FreeType library.
-rixMsg->Info( "Done with FreeType" );
     FT_Done_FreeType( library );
-
-rixMsg->Info( "instanceData->data = %p", instanceData->data );
 }
 
 
@@ -494,8 +489,6 @@ void Annotate::Filter(
 ) {
     // Retrieve the non-connectable parameter values.
     const localInstanceData*  iData = static_cast< const localInstanceData* >( instanceData );
-
-rixMsg->Info( "iData = %p", iData );
 
     // Nothing to do.
     if( !iData ) return;
@@ -512,7 +505,7 @@ rixMsg->Info( "iData = %p", iData );
         RtFloat  Alpha;
         if( useAlpha ) fCtx.Read( iData->AlphaId, x, y, Alpha );
 
-        // Annotate::WriteTextPixel( &( iData->Text ), &( iData->Color ), x, y, useAlpha, &Input, &Alpha );
+        Annotate::WriteTextPixel( &( iData->Text ), &( iData->Color ), x, y, useAlpha, &Input, &Alpha );
 
         fCtx.Write( iData->OutputId, x, y, Input );
         if( useAlpha ) fCtx.Write( iData->AlphaId, x, y, Alpha );
