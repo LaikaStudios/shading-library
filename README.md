@@ -8,7 +8,7 @@ The Production Shading Library refers to [Laika's](https://www.laika.com) entire
 This release contains a set of shading nodes based on [Pixar's](https://www.pixar.com) [RenderMan](https://renderman.pixar.com/product) that provide:
 
 - [Material Layering System](https://github.com/LaikaStudios/shading-library/wiki/dev.Material-Layering-System)
-- [Image Annotation Displayfilter]()
+- [Annotate Displayfilter]()
 
 If you make use of this repsitory, I strongly urge you to [subscribe to the discussion group](https://groups.google.com/group/laikastudios-shading-library). Please use this group to provide feedback on any bugs you may find or to discuss any feature requests.
 
