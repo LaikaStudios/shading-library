@@ -79,13 +79,12 @@ class Annotate : public RixDisplayFilter
 
     enum ui_Id
     {
-        ui_File = 0,
+        ui_Text = 0,
         ui_Color,
-        ui_Height,
-
-        ui_Text,
         ui_Top,
         ui_Left,
+        ui_Height,
+        ui_Font,
 
         ui_Input,
         ui_Output,
@@ -102,19 +101,17 @@ class Annotate : public RixDisplayFilter
         static RixSCParamInfo s_ptable[] =
         {
             // inputs.
-            RixSCParamInfo( RtUString( "Font_File" ), k_RixSCString ),
-            RixSCParamInfo( RtUString( "Font_Color" ), k_RixSCColor ),
-            RixSCParamInfo( RtUString( "Font_Height" ), k_RixSCFloat ),
-
             RixSCParamInfo( RtUString( "Text" ), k_RixSCString ),
+            RixSCParamInfo( RtUString( "Color" ), k_RixSCColor ),
             RixSCParamInfo( RtUString( "Top" ),  k_RixSCFloat ),
             RixSCParamInfo( RtUString( "Left" ), k_RixSCFloat ),
+            RixSCParamInfo( RtUString( "Height" ), k_RixSCFloat ),
+            RixSCParamInfo( RtUString( "Font" ), k_RixSCString ),
 
             RixSCParamInfo( RtUString( "Input" ), k_RixSCString ),
             RixSCParamInfo( RtUString( "Output" ), k_RixSCString ),
             RixSCParamInfo( RtUString( "Alpha" ), k_RixSCInteger ),
 
-            RixSCParamInfo( RtUString( "Notes" ), k_RixSCString ),
             RixSCParamInfo()
         };
 
@@ -442,8 +439,8 @@ void Annotate::setInstanceData(
     const int  size = std::max( 8.0f, std::round( Height * yres ));
 
     // Get the desired font file.
-    RtUString  File( Rix::k_empty );
-    pList->EvalParam( ui_File, 0, &File );
+    RtUString  Font( Rix::k_empty );
+    pList->EvalParam( ui_Font, 0, &Font );
 
     // Init FreeType library.
     FT_Library  library;
@@ -451,11 +448,11 @@ void Annotate::setInstanceData(
 
     // Get the type face (i.e. font) from the specified file.
     FT_Face  face;
-    FT_Error err = FT_New_Face( library, File.CStr(), 0, &face );
+    FT_Error err = FT_New_Face( library, Font.CStr(), 0, &face );
 
     if( err )
     {
-        rixMsg->Warning( "Error accessing Font file \"%s\" err = %d", File, err );
+        rixMsg->Warning( "Error accessing Font file \"%s\" err = %d", Font, err );
         delete iData;
     }
     else
