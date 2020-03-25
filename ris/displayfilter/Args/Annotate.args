@@ -1,5 +1,5 @@
 <!--
- *  Copyright 2019-2020 Laika, LLC. Authored by Mitch Prater.
+ *  Copyright 2020 Laika, LLC. Authored by Mitch Prater.
  *
  *  Licensed under the Apache License Version 2.0 http://apache.org/licenses/LICENSE-2.0,
  *  or the MIT license http://opensource.org/licenses/MIT, at your option.
@@ -25,39 +25,9 @@
             Control the <strong>Font</strong> characteristics.
         </help>
 
-        <param name = "Font_File" label = "File"
-            connectable = "false"
-            type = "string"
-            widget = "assetIdInput" assetTypeTags = "otf|pfb|ttf" fileTypes = "otf|pfb|ttf"
-            default = "">
-            <help>
-                The <b>File</b> containing the desired <b>Font</b>.
-                <br/><br/>
-                On linux systems, these are typically in <code>/usr/share/fonts</code>.
-            </help>
-        </param>
-
-        <param name = "Font_Height" label = "Height"
-            connectable = "false"
-            type = "float"
-            slider = "true" slidermin = "0.01" slidermax = "0.05"
-            default = "0.03">
-            <help>
-                Character <strong>Height</strong> as a percentage of the image height (NDC space).
-            </help>
-        </param>
-
-        <param name = "Font_Color" label = "Color"
-            connectable = "false"
-            type = "color"
-            default = "1.0 0.7 0.0">
-            <help>
-                The <strong>Color</strong> of the Text.
-            </help>
-        </param>
     </page>
 
-    <param name = "Text" label = "Text"
+    <param name = "Text"
         connectable = "false"
         type = "string"
         default = "">
@@ -66,7 +36,16 @@
         </help>
     </param>
 
-    <param name = "Top" label = "Top"
+    <param name = "Color"
+        connectable = "false"
+        type = "color"
+        default = "1.0 0.7 0.0">
+        <help>
+            The <strong>Color</strong> of the Text.
+        </help>
+    </param>
+
+    <param name = "Top"
         connectable = "false"
         type = "float"
         slider = "true" slidermin = "0.0" slidermax = "1.0"
@@ -78,7 +57,7 @@
         </help>
     </param>
 
-    <param name = "Left" label = "Left"
+    <param name = "Left"
         connectable = "false"
         type = "float"
         slider = "true" slidermin = "0.0" slidermax = "1.0"
@@ -90,8 +69,29 @@
         </help>
     </param>
 
+    <param name = "Height"
+        connectable = "false"
+        type = "float"
+        slider = "true" slidermin = "0.01" slidermax = "0.05"
+        default = "0.03">
+        <help>
+            Character <strong>Height</strong> as a percentage of the image height (NDC space).
+        </help>
+    </param>
+
+    <param name = "Font"
+        connectable = "false"
+        type = "string"
+        widget = "assetIdInput" assetTypeTags = "otf|pfb|ttf" fileTypes = "otf|pfb|ttf"
+        default = "">
+        <help>
+            The file containing the desired <b>Font</b>.
+            <br/><br/>
+            On linux systems, these are typically in <code>/usr/share/fonts</code>.
+        </help>
+    </param>
+
     <param name = "Input"
-        label = "Input"
         connectable = "false"
         type = "string"
         default = "Ci">
@@ -101,7 +101,6 @@
     </param>
 
     <param name = "Output"
-        label = "Output"
         connectable = "false"
         type = "string"
         default = "Ci">
