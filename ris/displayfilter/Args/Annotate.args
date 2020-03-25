@@ -20,13 +20,6 @@
         </help>
     </param>
 
-    <page name = "Font" open = "true">
-        <help>
-            Control the <strong>Font</strong> characteristics.
-        </help>
-
-    </page>
-
     <param name = "Text"
         connectable = "false"
         type = "string"
