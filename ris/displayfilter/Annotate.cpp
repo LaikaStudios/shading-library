@@ -1,5 +1,5 @@
 /*
- *  Copyright 2019-2020 Laika, LLC. Authored by Mitch Prater.
+ *  Copyright 2020 Laika, LLC. Authored by Mitch Prater.
  *
  *  Licensed under the Apache License Version 2.0 http://apache.org/licenses/LICENSE-2.0,
  *  or the MIT license http://opensource.org/licenses/MIT, at your option.
@@ -323,7 +323,7 @@ void Annotate::WriteTextPixel(
 
             // Modify the display pixel.
             *Input = RixMix( *Input, *Color, a );
-            if( useAlpha ) *Alpha = a + *Alpha*( 1.0f - a );
+            if( useAlpha ) *Alpha = a + *Alpha*( 1.0f-a );
         }
     }
 }
@@ -451,30 +451,37 @@ void Annotate::setInstanceData(
 
     // Get the type face (i.e. font) from the specified file.
     FT_Face  face;
-    int  err = FT_New_Face( library, File.CStr(), 0, &face );
+    FT_Error err = FT_New_Face( library, File.CStr(), 0, &face );
 
-    if( false )
+rixMsg->Info( "err = %d", err );
+    if( !err )
     {
         // Set the font's rendered glyph's em-square pixel height (and width).
         FT_Set_Pixel_Sizes( face, 0, size );
 
-        // Generate the Text Images.
+        // Generate the Text Image iData.
         Annotate::GenerateTextImage( pList, face, size, xres, yres, ui_Text, ui_Top, ui_Left, &( iData->Text ));
+
+        // Done with FreeType face.
+        FT_Done_Face( face );
+
+        // Set instanceData to iData.
+        instanceData->datalen = sizeof( *iData );
+        instanceData->data = static_cast< void* >( iData );
+        instanceData->freefunc = localInstanceData::Delete;
     }
     else
     {
-        // No type face found, so can't render text.
-        iData->Text.alpha = NULL;
+rixMsg->Info( "Delete iData" );
+        // Leave instanceData->data = NULL, etc.
+        delete iData;
     }
-    
-    // Done with FreeType.
-    FT_Done_Face    ( face );
+
+    // Done with FreeType library.
+rixMsg->Info( "Done with FreeType" );
     FT_Done_FreeType( library );
 
-    // Set instanceData to local instance data.
-    instanceData->datalen = sizeof( *iData );
-    instanceData->data = static_cast< void* >( iData );
-    instanceData->freefunc = localInstanceData::Delete;
+rixMsg->Info( "instanceData->data = %p", instanceData->data );
 }
 
 
@@ -487,6 +494,11 @@ void Annotate::Filter(
 ) {
     // Retrieve the non-connectable parameter values.
     const localInstanceData*  iData = static_cast< const localInstanceData* >( instanceData );
+
+rixMsg->Info( "iData = %p", iData );
+
+    // Nothing to do.
+    if( !iData ) return;
 
     const bool  useAlpha = iData->AlphaId != k_InvalidChannelId;
 
