@@ -1,0 +1,116 @@
+<!--
+ *  Copyright 2020 Laika, LLC. Authored by Mitch Prater.
+ *
+ *  Licensed under the Apache License Version 2.0 http://apache.org/licenses/LICENSE-2.0,
+ *  or the MIT license http://opensource.org/licenses/MIT, at your option.
+ *
+ *  This file may not be copied, modified, or distributed except according to those terms.
+-->
+<args format="1.0">
+
+    <shaderType> <tag value = "displayfilter"/> </shaderType>
+    <rfmdata nodeid = "1233963" classification = "rendernode/RenderMan/displayfilter"/>
+
+    <param name = "Notes"
+        connectable = "false"
+        type = "string"
+        default = "">
+        <help>
+            Annotate the rendered image with the supplied <strong>Text</strong>.
+        </help>
+    </param>
+
+    <param name = "Text"
+        connectable = "false"
+        type = "string"
+        default = "">
+        <help>
+            <strong>Text</strong> to composite into the image.
+        </help>
+    </param>
+
+    <param name = "Color"
+        connectable = "false"
+        type = "color"
+        default = "1.0 0.7 0.0">
+        <help>
+            The <strong>Color</strong> of the Text.
+        </help>
+    </param>
+
+    <param name = "Top"
+        connectable = "false"
+        type = "float"
+        slider = "true" slidermin = "0.0" slidermax = "1.0"
+        default = "0.0">
+        <help>
+            Determines where the <strong>Top</strong> of the Text will be located.
+            <br/><br/>
+            In NDC coordinates: upper left (0,0) to lower right (1,1).
+        </help>
+    </param>
+
+    <param name = "Left"
+        connectable = "false"
+        type = "float"
+        slider = "true" slidermin = "0.0" slidermax = "1.0"
+        default = "0.0">
+        <help>
+            Determines where the <strong>Left</strong> edge of the Text will be located.
+            <br/><br/>
+            In NDC coordinates: upper left (0,0) to lower right (1,1).
+        </help>
+    </param>
+
+    <param name = "Height"
+        connectable = "false"
+        type = "float"
+        slider = "true" slidermin = "0.01" slidermax = "0.05"
+        default = "0.03">
+        <help>
+            Character <strong>Height</strong> as a percentage of the image height (NDC space).
+        </help>
+    </param>
+
+    <param name = "Font"
+        connectable = "false"
+        type = "string"
+        widget = "assetIdInput" assetTypeTags = "otf|pfb|ttf" fileTypes = "otf|pfb|ttf"
+        default = "">
+        <help>
+            The file containing the desired <b>Font</b>.
+            <br/><br/>
+            On linux systems, these are typically in <code>/usr/share/fonts</code>.
+        </help>
+    </param>
+
+    <param name = "Input"
+        connectable = "false"
+        type = "string"
+        default = "Ci">
+        <help>
+            The name of the display channel to be annotated.
+        </help>
+    </param>
+
+    <param name = "Output"
+        connectable = "false"
+        type = "string"
+        default = "Ci">
+        <help>
+            The name of the display channel to write the annotated image to.
+            This may be the same as the <strong>Input.</strong>
+        </help>
+    </param>
+
+    <param name = "Alpha"
+        connectable = "false"
+        type = "int"
+        widget = "checkBox"
+        default = "1">
+        <help>
+            Include the Text's alpha in the alpha (a) channel.
+        </help>
+    </param>
+
+</args>
