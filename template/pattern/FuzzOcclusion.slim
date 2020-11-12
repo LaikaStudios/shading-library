@@ -1,0 +1,303 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV float FuzzOcclusion 0 {
+		description {
+			Uses raytracing to generate occlusion for the Fuzz brdf.
+            Since the Fuzz uses a non-standard illumination response direction, the built-in
+            shadowing done in the lights can't be used. This template creates the Fuzz-specific
+            occlusion based on only the geometry.
+		}
+
+        parameter point Q {
+            label {P}
+            description {
+                The surface point.
+            }
+            detail mustvary "laika,Pcurrent"
+        }
+
+        parameter normal Nn {
+            label {N}
+            description {
+                The normalized surface normal.
+            }
+            detail mustvary "pixar,SurfaceNormal"
+        }
+
+        parameter vector In {
+            label {I}
+            description {
+                The normalized eye vector (points from the camera to the surface).
+            }
+            detail mustvary "pixar,IncidentDirection"
+        }
+
+        parameter string TraceSet {
+            label {Trace Set}
+            description {
+                The name of the object set or sets that will cast shadows.
+            }
+            provider variable
+            detail varying
+            default {}
+        }
+
+        parameter float Samples {
+            label {Samples}
+            description {
+                The number of shadow samples. More samples produce better quality.
+            }
+            provider variable
+            detail uniform
+            subtype slider
+            range {2 128 2}
+            default 16
+        }
+
+        parameter float Adaptive {
+            label {Adaptive}
+            description {
+                If on, will allow fewer samples to be used if little variation is detected in the first
+                set of samples, specified by Min Samples.
+            }
+            provider constant
+            detail uniform
+            subtype switch
+            default 1
+
+            msghandler {
+                SetValue {
+                    set adaptiveParam %obj
+                    set adaptiveValue [$adaptiveParam GetValue]
+                    set app [$adaptiveParam GetAppearance]
+
+                    if {$adaptiveValue == 0} {
+                        set disp hidden
+                    } else {
+                        set disp ""
+                    }
+
+                    set minsamplesParam [$app GetProperties -name MinSamples]
+                    $minsamplesParam SetDisplayLevel $disp
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        parameter float MinSamples {
+            label {Min Samples}
+            description {
+                The minimum number of samples to use when Adaptive sampling is on.
+                When Samples is greater than 64, this should generally be about Samples/4.
+            }
+            provider constant
+            detail uniform
+            subtype slider
+            range {2 128 2}
+            default 16
+        }
+
+        parameter float Bias {
+            label {Bias}
+            description {
+                Controls the surface offset to remove self-shadowing artifacts.
+                The required value is dependent on your scene size and scale.
+                -1 means use the "trace" "bias" attribute value.
+            }
+            provider variable
+            detail uniform
+            subtype slider
+            range {0 .1 .001}
+            default .01
+        }
+
+        parameter float MaxVariation {
+            label {Max Variation}
+            description {
+                Controls the interpolation of occlusion across areas with low variation.
+                Smaller values produce higher quality (less interpolation).
+                At 0, there is no interpolation. Values such as 0.02 or 0.03 usually produce the
+                same image as 0.0, but up to twice as fast.
+            }
+            provider constant
+            detail uniform
+            subtype slider
+            range {0 .1 .001}
+            default .025
+        }
+
+        parameter string HitSides {
+            label {Hit Sides}
+            description {
+                When one-sided geometry is encountered (specified by Sides 1),
+                the hit is rejected if the side does not match the value of Hit Sides.
+                When set to Both, the sidedness of the geometry is ignored.
+            }
+            provider constant
+            detail uniform
+            subtype selector
+            range {
+                Both both
+                Front front
+                Back back
+            }
+            default {both}
+        }
+
+        parameter string HitMode {
+            label {Hit Mode}
+            description {
+                Selects whether to determine the opacity of the hit surface by examining
+                the geometry's "shade" "diffusehitmode" attribute, its opacity attribute - Os,
+                or by running its shader and examining the resulting Oi.
+            }
+            provider constant
+            detail uniform
+            subtype selector
+            range {
+                "diffusehitmode" default
+                "Os" primitive
+                "Oi" shader
+            }
+            default default
+        }
+
+        parameter float MaxDist {
+            label {Max Dist}
+            description {
+                Controls how far rays can travel before they're considered not to have hit anything.
+                -1 means infinity. Larger distances will require more geometry to be tested,
+                and so may result in longer render times. Smaller values localize the occlusion to
+                nearby geometry.
+            }
+            provider constant
+            detail uniform
+            subtype slider
+            range {0 1000}
+            default -1
+        }
+
+        parameter float FalloffMode {
+            label {Falloff Mode}
+            description {
+                Controls how the occlusion fades with distance by selecting between
+                two different distance weighting functions.
+                When Exponential, the occlusion is weighted by exp(-Falloff*distance).
+                When Power, the occlusion is weighted by pow(1-distance/Max Dist, Falloff).
+            }
+            provider constant
+            detail uniform
+            subtype selector
+            range {
+                Exponential 0
+                Power 1
+            }
+            default 0
+        }
+
+        parameter float Falloff {
+            label {Falloff}
+            description {
+                Coupled with Falloff Mode, controls how the occlusion fades with distance.
+                Larger numbers produce more rapid fading. A 0 value results in no additional
+                fading with distance (other than that produced naturally).
+            }
+            provider constant
+            detail uniform
+            subtype slider
+            range {0 4}
+            default 0
+        }
+
+        parameter float Seed {
+            label {Seed}
+            description {
+                If set to a fixed, non-negative number, the ray directions from each point
+                will be fixed from frame to frame. If set to -1 or the frame number, the directions
+                will change from frame to frame.
+            }
+            provider constant
+            detail uniform
+            subtype slider
+            range {-1 32767 1}
+            default -1
+        }
+
+
+        parameter float result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+
+        RSLFunction {
+            void vfxFuzzOcclusion (
+                varying point   Q;
+                varying normal  Nn;
+                varying vector  In;
+                uniform string  TraceSet;
+                uniform float   Samples;
+                uniform float   Adaptive;
+                uniform float   MinSamples;
+                uniform float   Bias;
+                uniform float   MaxVariation;
+                uniform string  HitSides;
+                uniform string  HitMode;
+                uniform float   MaxDist;
+                uniform float   FalloffMode;
+                uniform float   Falloff;
+                uniform float   Seed;
+
+                output float    result;
+            ) {
+                // Biased sample point.
+                varying point   Po = Q + Bias*Nn;
+
+                // Fuzz response direction. Perpendicular to the surface, in the I direction.
+                varying vector  S = normalize (In - (In.Nn)*Nn);
+
+                // occlusion() will never go below 50% since it can't do tangent plane clipping.
+                // That also means half its samples are wasted.
+                // But it's still faster than using gather().
+                result = occlusion (Po, S, 2*Samples,
+                    "bias",  0,
+                    "subset", TraceSet,
+                    "coneangle", PI/2,
+                    "distribution", "cosine",
+                    "samplebase", 1,
+                    "adaptive", Adaptive,
+                    "minsamples", 2*MinSamples,
+                    "maxvariation", MaxVariation,
+                    "hitsides", HitSides,
+                    "hitmode", HitMode,
+                    "maxdist", MaxDist,
+                    "falloffmode", FalloffMode,
+                    "falloff", Falloff,
+                    "seed", Seed
+                );
+                result = 1 - linear (.5, 1, result);
+            }
+        }
+    }
+
+  }
+}

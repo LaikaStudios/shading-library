@@ -1,0 +1,219 @@
+##
+##  Copyright(c) 2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    namespace eval ::Slim::Laika::ExposureIntensityConversion {
+        proc sRGBDecode {f} {
+            set abs_f  [expr abs($f)]
+            set sign_f [expr ($abs_f == $f) ? 1 : -1]
+
+            if {0.03928 < $abs_f} {
+                set l_sRGB [expr pow (($abs_f + 0.055) / 1.055, 2.4)]
+            } else {
+                set l_sRGB [expr $abs_f / 12.92]
+            }
+
+            set l_pow [expr pow ($abs_f, 2.0)]
+
+            if {1.0 < $abs_f} {
+                return [expr $l_pow * $sign_f]
+            } else {
+                return [expr $l_sRGB * $sign_f]
+            }
+        }
+
+        proc sRGBEncode {f} {
+            set abs_f  [expr abs($f)]
+            set sign_f [expr ($abs_f == $f) ? 1 : -1]
+
+            if {0.00304 < $abs_f} {
+                set l_sRGB [expr 1.055 * pow ($abs_f, 1.0/2.4) - 0.055]
+            } else {
+                set l_sRGB [expr $abs_f * 12.92]
+            }
+
+            set l_pow [expr pow($abs_f,1.0/2.0)]
+
+            if {1.0 < $abs_f} {
+                return [expr $l_pow * $sign_f]
+            } else {
+                return [expr $l_sRGB * $sign_f]
+            }
+        }
+    }
+
+
+    templateV float Exposure 1 {
+        description {
+            Provides an linear Exposure control and outputs an sRGB Intensity value.
+            Also provides utilities for converting Intensity and Exposure values to each other.
+        }
+
+        slimattribute string Conversion {
+            label {Conversion}
+            description {
+                Selects which conversion result to output.
+            }
+            subtype selector
+            range {
+                "Exposure -> Intensity" ExpToInt
+                "Intensity -> Exposure" IntToExp
+            }
+            default ExpToInt
+
+            msghandler {
+                SetValue - RevertValue {
+                    set app [%obj GetAppearance]
+                    set value [%obj GetValue]
+
+                    if {$value == "ExpToInt"} {
+                        [$app GetProperties -name Exposure] SetDisplayLevel ""
+                        [$app GetProperties -name IntResult] SetDisplayLevel ""
+                        [$app GetProperties -name Intensity] SetDisplayLevel "hidden"
+                        [$app GetProperties -name ExpResult] SetDisplayLevel "hidden"
+                    } else {
+                        [$app GetProperties -name Exposure] SetDisplayLevel "hidden"
+                        [$app GetProperties -name IntResult] SetDisplayLevel "hidden"
+                        [$app GetProperties -name Intensity] SetDisplayLevel ""
+                        [$app GetProperties -name ExpResult] SetDisplayLevel ""
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        parameter float Exposure {
+            label {Exposure}
+            description {
+                (Exposure)
+                A simple exposure control for adjusting intensities.
+            }
+            detail varying
+            subtype slider
+            range {-4 4}
+            default 0
+
+            msghandler {
+                SetValue - RevertValue - ScrubValue - CreateConnection - SetConnection - SetValueProvider {
+                    set app [%obj GetAppearance]
+                    set value [%obj GetValue]
+                    set connection [%obj GetConnectedFunction]
+                    set result [$app GetProperties -name IntResult]
+
+                    if {$value <= 1000.0} {
+                        $result SetValue [::Slim::Laika::ExposureIntensityConversion::sRGBEncode [expr pow(2.0,$value)]]
+                    } else {
+                        $result SetValue "Exposure value is too high to convert."
+                    }
+
+                    if {$connection != ""} {
+                        $result SetValue ""
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        parameter string IntResult {
+            label {Intensity}
+            description {
+                The resulting Intensity value.
+            }
+            detail uniform
+            default "1"
+        }
+
+        parameter float Intensity {
+            display hidden
+            label {Intensity}
+            description {
+                (Intensity)
+                A simple control for adjusting intensities:
+                the value of a typical Intensity parameter.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+
+            msghandler {
+                SetValue - RevertValue - ScrubValue - CreateConnection - SetConnection - SetValueProvider {
+                    set app [%obj GetAppearance]
+                    set value [%obj GetValue]
+                    set connection [%obj GetConnectedFunction]
+                    set result [$app GetProperties -name ExpResult]
+
+                    if {$value > 0} {
+                        $result SetValue [expr log([::Slim::Laika::ExposureIntensityConversion::sRGBDecode $value]) / log(2.0)]
+                    } else {
+                        $result SetValue "No Exposure value for non-positive Intensity."
+                    }
+
+                    if {$connection != ""} {
+                        $result SetValue ""
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        parameter string ExpResult {
+            display hidden
+            label {Exposure}
+            description {
+                The resulting Exposure value.
+            }
+            detail uniform
+            default "0"
+        }
+
+
+        parameter float Output {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {color.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                set templateName [safeeval %c GetName]
+                generateBody {
+output "
+                    varying float   _Exposure = [getvar Exposure];
+                    varying float   _Intensity = [getvar Intensity];
+"
+                    switch [getval Conversion] {
+                        ExpToInt {
+output "                    Output = colorLinearToSRGB (pow (2, _Exposure));"
+                        }
+                        IntToExp {
+output "                    Output = log (colorSRGBToLinear (_Intensity)) / log(2.0);"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+  }
+}

@@ -1,0 +1,13 @@
+Lights are effected in the following manner.
+
+The light produces an intial colorintensity value: CiLight.
+
+A coreV7/light.h struct is initialized with the light's colorintensity and other data.
+
+Each light effector modifies the light_s in turn, typically by multiplying the light->Color value by a tint it produces.
+
+The end result contained in the light_s struct is used to produce the light's illumination.
+
+The coreV7/effector.h file contains standard effector parameters and functions that contain and access the data of a particular light effector.
+
+Light effectors are characterized by whether they effect the light's radiance, its sample generation, or its shadowing computations. A given light effector will implement a radianceEffect(), sampleEffect(), or shadowEffect() method that the light will use.

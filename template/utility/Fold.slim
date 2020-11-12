@@ -1,0 +1,154 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    set TemplatePrototype {
+        templateV %Type %TypeFold 0 {
+            description {
+                Similar to an abs() function, but Folds the Input at the value specified rather than at 0.
+            }
+
+            parameter %Type Input {
+                label {Input}
+                description {
+                    The Input value.
+                }
+                detail varying
+                default {%Default}
+            }
+
+            parameter float Crease {
+                label {Crease}
+                description {
+                    The location of the Crease. The Input value is folded at this value.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default .5
+            }
+
+            slimattribute string Type {
+                label {Type}
+                description {
+                    Selects the type of Crease to produce:
+                    Filtered: filterstep(); Clamp Filtered: clamp(filterstep()); Manual: lets you adjust the Width.
+                    Use Clamp Filtered rather than Filtered when the result is used for displacement.
+                }
+                subtype selector
+                range {
+                    "Filtered" Filtered
+                    "Clamp Filtered" Clamp
+                    "Manual" Manual
+                }
+                default Manual
+
+                msghandler {
+                    SetValue - RevertValue {
+                        set param %obj
+                        set app [$param GetAppearance]
+
+                        set paramValue [$param GetValue]
+                        switch $paramValue {
+                            Manual {
+                                [$app GetProperties -name Width] SetDisplayLevel ""
+                            }
+                            default {
+                                [$app GetProperties -name Width] SetDisplayLevel "hidden"
+                            }
+                        }
+
+                        $app UpdateEditor
+                    }
+                }
+            }
+
+            parameter float Width {
+                label {Width}
+                description {
+                    Lets you directly control the width of the Crease.
+                    Will smooth out the (possibly aliased) hard edge that would otherwise be produced.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 0
+            }
+
+            slimattribute float Invert {
+                label {Invert}
+                description {
+                    Inverts the result.
+                }
+                subtype switch
+                default 0
+            }
+
+            parameter %Type Output {
+                display hidden
+                access output
+            }
+
+            RSLInclude {sl.h}
+
+            RSLSource DynamicFunction {
+                proc primvars {} {}
+                proc function {} {
+                    generateBody {
+output "
+                        varying %Type   value;
+
+                        value = [getvar Input] - [getvar Crease];
+"
+                        switch [getval Type] {
+                            Manual {
+output "                        value = %Type _mix (-value, value, %Type _smoothstep (-[getvar Width], [getvar Width], value));"
+                            }
+                            Filtered {
+output "                        value = %Type _mix (-value, value, _filterstep (0, value));"
+                            }
+                            Clamp {
+output "                        value = %Type _mix (-value, value, _clamp (_filterstep (0, value), 0, 1));"
+                            }
+                        }
+output "
+                        value += %Type mix ([getvar Crease]/2, .5-[getvar Crease]/2, step (.5, [getvar Crease]));
+"
+                        if {[getval Invert]} {
+output "                    Output = %Type 1 - value;"
+                        } else {
+output "                    Output = value;"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #
+    # Generate the various types of template.
+    #
+    foreach  {type def} {float 0 color {0 0 0}} {
+        regsub -all %Type $TemplatePrototype $type result
+        regsub -all %Default $result $def result
+        if [catch $result msg] {
+            ::RAT::LogMsg ERROR $msg
+        }
+    }
+
+  }
+}

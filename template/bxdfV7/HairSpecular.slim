@@ -1,0 +1,398 @@
+##
+##  Copyright(c) 2012-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions pstuart {
+  extensions laika vfx {
+
+    templateV bxdfV7HairSpecular_s bxdfV7HairSpecular 0 {
+        description {
+            Specular hair response.
+        }
+
+        parameter float OnOff {
+            label {On Off}
+            description {
+                Turn this response on or off.
+                On(1) = Normal Computation.
+                Bypass(0) = Don't show its response in the result.
+                Kill(-1) = Remove it from the Material.
+                <
+            }
+            detail varying
+            subtype selector
+            range {
+                "On" 1
+                "Bypass" 0
+                "Kill" -1
+            }
+            default 1
+        }
+        parameter coshader OnOff_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float NormOnOff {
+            label {Normalize On}
+            description {
+                Does this response participate in the Intensity Normalization within this Layer or not?
+                Note that when this is first turned off, the intensities of all the normalized responses
+                (including it) will change. But once it's been removed from that computation, further changes
+                will not interact with the rest of the responses.
+                <
+            }
+            detail varying
+            subtype switch
+            default 1
+        }
+        parameter coshader NormOnOff_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float Intensity {
+            description {
+                The Intensity of the response.
+                <
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+        parameter coshader Intensity_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter color Color {
+            label {Color}
+            description {
+                The color of the response.
+                <
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter coshader Color_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float ColorMix {
+            label {Use Color}
+            description {
+                Determines how much of the Color is used in the response.
+                <
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+        parameter coshader ColorMix_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float HighlightShift {
+            label {HighlightShift}
+            description {
+                Highlight shift in degrees from root to tip.
+                <
+            }
+            detail varying
+            subtype slider
+            range {5 10}
+            default 7.5
+        }
+        parameter coshader HighlightShift_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+        
+        parameter float HighlightWidth {
+            label {HighlightWidth}
+            description {
+                Highlight width in degrees.
+                <
+            }
+            detail uniform
+            subtype slider
+            range {5 10}
+            default 7.5
+        }
+        parameter coshader HighlightWidth_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+        
+        parameter color TransmitColor {
+            label {TransmitColor}
+            description {
+                Color of light transmitted through hair (TT and TRT)
+                <
+            }
+            detail varying
+            default {.6 .5 .4}
+        }
+        parameter coshader TransmitColor_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float ReflectIntensity {
+            label {ReflectIntensity}
+            description {
+                Reflection amount.
+                <
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0.04
+        }
+        parameter coshader ReflectIntensity_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+        
+        parameter float Seed {
+            label {Seed}
+            description {
+                Seed value for random glint orientation.
+                <
+            }
+            detail varying
+            default -1
+        }
+        parameter coshader Seed_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter vector Orientation {
+            label {Orientation}
+            description {
+                Orientation vector of the glints.            
+                <
+            }
+            provider connection
+            detail mustvary "pixar,SurfaceNormal"
+            default {0 0 1}
+        }
+        parameter coshader Orientation_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        collection void1 FresnelOverride {
+            label {Fresnel Override}
+            description {
+                These controls allow you to alter the Fresnel Value that
+                will be used. This overrides any Fresnel function that's connected to
+                the Material with the Fresnel parameter.
+            }
+
+            parameter float FresnelInfluence {
+                label {Influence}
+                description {
+                    How much of the alternate Fresnel Value is used?
+                    This is a mix between the connected Fresnel function and the alternate Fresnel Value.
+                    <
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 1
+            }
+            parameter coshader FresnelInfluence_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter color FresnelValue {
+                label {Fresnel Value}
+                description {
+                    An alternate Fresnel Value to use.
+                    <
+                }
+                detail varying
+                default {1 1 1}
+            }
+            parameter coshader FresnelValue_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+        }
+
+        parameter color DirectTint {
+            label {Direct Tint}
+            description {
+                Tint the response to direct illumination.
+                <
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter coshader DirectTint_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter color IndirectTint {
+            label {Indirect Tint}
+            description {
+                Tint the response to indirect illumination.
+                <
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter coshader IndirectTint_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float SampleDensity {
+            label {Sample Density}
+            description {
+                Sets the sample density to use. The actual number of samples
+                used is a function of the response size.
+                When Default (-1), use the Attribute user:surf_density value.
+                <
+            }
+            detail uniform
+            subtype slider
+            range {-1 150 1}
+            default -1
+        }
+        parameter coshader SampleDensity_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter bxdfV7HairSpecular_s result {
+            display hidden
+            access output
+        }
+
+
+#        RSLInclude {bxdfV7/HairSpecular.h} -within body
+
+        RSLInclude {color.h}
+        RSLInclude {coreV7/override.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    set overrideParam "OnOff"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "NormOnOff"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "Intensity"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "Color"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying color _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "ColorMix"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "HighlightShift"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "HighlightWidth"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "uniform float _$overrideParam = overrideU( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "TransmitColor"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying color _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "ReflectIntensity"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "Seed"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "Orientation"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying vector _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "SampleDensity"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "uniform float _$overrideParam = overrideU( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "FresnelInfluence"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "FresnelValue"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying color _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+output "
+                    result->OnOff = _OnOff;
+                    result->NormOnOff = _NormOnOff * step( -0.5, _OnOff );  // Do not normalize if killed.
+                    result->Intensity = _Intensity;
+                    result->Color = _Color;
+                    result->ColorMix = _ColorMix;
+                    result->HighlightShift = _HighlightShift;
+                    result->HighlightWidth = _HighlightWidth;
+                    result->TransmitColor = _TransmitColor;
+                    result->ReflectIntensity = _ReflectIntensity;
+                    result->Seed = _Seed;
+                    result->Orientation = _Orientation;
+                    result->DirectTint = colorSRGBToLinear( [getvar DirectTint] );
+                    result->IndirectTint = colorSRGBToLinear( [getvar IndirectTint] );
+                    result->SampleDensity = _SampleDensity;
+                    result->FresnelInfluence = _FresnelInfluence;
+                    result->FresnelValue = _FresnelValue;
+"
+                }
+            }
+        }
+    }
+
+  }
+}

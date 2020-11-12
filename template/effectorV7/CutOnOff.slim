@@ -1,0 +1,211 @@
+##
+##  Copyright(c) 2010-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV lighteffector leV7CutOnOff 0 {
+        description {
+            Creates a cut on and cut off distance-based variation along the Z axis
+            of the Control Space coordinate system.
+        }
+
+        eval [::__categoryParam "ikaRadianceEffector"]
+
+        parameter float Enable {
+            label {Enable}
+            description {
+                Controls how much effect this will have on the illumination.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        parameter color Color {
+            label {Color}
+            description {
+                Applied to the overall illumination.
+                sRGB space.
+            }
+            detail varying
+            default {0 0 0}
+        }
+        parameter float Intensity {
+            description {
+                Applied to the overall illumination.
+                sRGB space.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter color DiffuseTint {
+            label {Diffuse Tint}
+            description {
+                A multiplier applied to the diffuse illumination.
+                sRGB space.
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter float DiffuseIntensity {
+            label {Diffuse Intensity}
+            description {
+                A multiplier applied to the diffuse illumination.
+                sRGB space.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter color SpecularTint {
+            label {Specular Tint}
+            description {
+                A multiplier applied to the specular illumination.
+                sRGB space.
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter float SpecularIntensity {
+            label {Specular Intensity}
+            description {
+                A multiplier applied to the specular illumination.
+                sRGB space.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float Invert {
+            label {Invert}
+            description {
+                If checked, the effected region will be inverted.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        parameter float CutOn {
+            label {CutOn Location}
+            description {
+                Sets the CutOn location: where the effect starts.
+            }
+            subtype slider
+            default -1
+        }
+        parameter float CutOnWidth {
+            label {CutOn Width}
+            description {
+                Sets the width of the effect's transition.
+            }
+            subtype slider
+            range {0 10}
+            default 0
+        }
+
+        parameter float CutOff {
+            label {CutOff Location}
+            description {
+                Sets the CutOff location: where the effect ends.
+            }
+            subtype slider
+            default 1
+        }
+        parameter float CutOffWidth {
+            label {CutOff Width}
+            description {
+                Sets the width of the effect's transition.
+            }
+            subtype slider
+            range {0 10}
+            default 0
+        }
+
+        parameter string Space {
+            label {Control Space}
+            description {
+                This is set to the name of a coordinate system.
+                If "shader" or blank, the object this is attached to will define the space.
+            }
+            provider variable
+            detail uniform
+            subtype place3d
+            default "shader"
+        }
+
+
+        RSLInclude {coreV7/light.h}
+        RSLInclude {effectorV7/CutOnOff.h}
+
+        RSLClass {
+output "
+            private effectorV7CutOnOff_s    _le;
+"
+
+            #   Dummy method for Katana coshader-as-light workaround.
+            generateMethod "public void light (output vector L; output color Cl)" {
+output "
+                L = vector 0;
+                Cl = color 0;
+"
+            }
+
+            #
+            #  Intialize globals.
+            #
+            generateMethod "public void begin()" {
+                generate *
+output "
+                _le->Enable = [getvar Enable];
+                _le->Color = [getvar Color];
+                _le->Intensity = [getvar Intensity];
+                _le->DiffuseTint = [getvar DiffuseTint];
+                _le->DiffuseIntensity = [getvar DiffuseIntensity];
+                _le->SpecularTint = [getvar SpecularTint];
+                _le->SpecularIntensity = [getvar SpecularIntensity];
+                _le->Invert = [getvar Invert];
+                _le->CutOnMin = [getvar CutOn] - [getvar CutOnWidth]/2;
+                _le->CutOnMax = [getvar CutOn] + [getvar CutOnWidth]/2;
+                _le->CutOffMin = [getvar CutOff] - [getvar CutOffWidth]/2;
+                _le->CutOffMax = [getvar CutOff] + [getvar CutOffWidth]/2;
+                _le->Space = [getvar Space];
+
+                _le->begin();
+"
+            }
+
+            #
+            #   LightEffector method.
+            #
+            generateMethod "public void radianceEffect( output light_s _light )" {
+output "
+                _le->radianceEffect( _light );
+"
+            }
+        }
+    }
+
+  }
+}

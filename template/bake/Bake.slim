@@ -1,0 +1,945 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    #
+    # Calls procs in SlimClientExpression.tcl to update hidden parameters with pertient data
+    # so they can be accessed by the shader to control its functioning, and to command RMS to
+    # create the necessary passes. 
+    #
+    namespace eval ::Slim::Laika::Bake {
+        proc updatePassSettings { prop } {
+            set app [$prop GetAppearance]
+
+            set mode [[$app GetProperties -name OperatingMode] GetValue]
+            set bakeType [[$app GetProperties -name BakeType] GetValue]
+            set disable  [[$app GetProperties -name Disable] GetValue]
+            set filename [[$app GetProperties -name FileName] GetValue]
+            set subname  [[$app GetProperties -name FileSubName] GetValue]
+
+            # Disable = 2 is bypass mode. Otherwise we want to generate the baked file names
+            # so we can read from them.
+            if {$disable == 2} {
+                set disable 1
+            } else {
+                set disable 0
+            }
+
+            # Handle File Name parameters.
+            if {($mode == "Auto") && (($bakeType == "ptcToPtc") || ($bakeType == "ptcToBkm"))} {
+                [$app GetProperties -name FileName] SetDisplayLevel ""
+                [$app GetProperties -name FileSubName] SetDisplayLevel ""
+            } else {
+                [$app GetProperties -name FileName] SetDisplayLevel "hidden"
+                [$app GetProperties -name FileSubName] SetDisplayLevel "hidden"
+
+                set filename {$SHADERGROUP}
+            }
+
+            # Set bake pass id.
+            set bakePassID [$app GetProperties -name BakePassId]
+            $bakePassID SetValue "\[bakepassid \"\" $filename $bakeType\]"
+
+            # Handle the bake parameters for 3D baking.
+            # All baked data can go into one ptc and one bake file.
+            set bakePtcFile [$app GetProperties -name PtcFile]
+            set bakeBakedFile [$app GetProperties -name BakedFile]
+
+            switch $bakeType {
+                ptcToPtc - ptcToBkm {
+                    if {$mode == "Auto"} {
+                        set paramLabelList {}
+                        set labelParams [$app GetProperties -name BakeParam_Label_*]
+                        foreach {labelParam} $labelParams {
+                            set paramLabel [$labelParam GetValue]
+                            lappend paramLabelList $paramLabel
+                        }
+                        set channelList [join $paramLabelList ","]
+
+                        $bakePtcFile SetValue "\[ptcfile \"$subname\" $filename $bakeType\]" 
+                        $bakeBakedFile SetValue "\[bakemap -atlas \"$subname\" -map $filename -chan \"$channelList\" -style $bakeType -disable $disable\]"
+                    } else {
+                        $bakePtcFile SetValue ""
+                        $bakeBakedFile SetValue ""
+                    }
+                }
+                default {
+                    $bakePtcFile SetValue ""
+                    $bakeBakedFile SetValue ""
+                }
+            }
+
+            # Handle each bake parameter collection for 2D baking.
+            # 2D baking requires a separate ptc and bake file for each baked parameter.
+            set bakeCollections [$app GetProperties -name "BakeParam_Collection_*"]
+            foreach bakeColl $bakeCollections {
+                set bakeCollName [$bakeColl GetName]
+                set autoExt [string range $bakeCollName 20 end]
+
+                set bakePtcFile [$app GetProperties -name BakeParam_PtcFile$autoExt]
+                set bakeBakedFile [$app GetProperties -name BakeParam_BakedFile$autoExt]
+
+                switch $bakeType {
+                    ptcToPtex - ptcToTex {
+                        if {$mode == "Auto"} {
+                            set bakeLabel [[$app GetProperties -name BakeParam_Label$autoExt] GetValue]
+
+                            $bakePtcFile SetValue "\[ptcfile \"$bakeLabel\" $filename $bakeType\]" 
+                            $bakeBakedFile SetValue "\[bakemap -atlas \"$bakeLabel\" -map $filename -chan \"$bakeLabel\" -style $bakeType -disable $disable\]"
+                        } else {
+                            $bakePtcFile SetValue ""
+                            $bakeBakedFile SetValue ""
+                        }
+                    }
+                    default {
+                        $bakePtcFile SetValue ""
+                        $bakeBakedFile SetValue ""
+                    }
+                }
+            }
+        }
+    }
+
+	templateV multiple Bake 1 {
+		description {
+            Bakes any number of values of any type into whatever format of bake file you choose.
+            Each baked parameter is passed through to its own output when baking.
+            Or you can choose to bypass baking and reading altogether.
+            When reading, the bake inputs are ignored (not executed) and the baked
+            data read from the file(s) is output.
+		}
+
+        # Hidden parameters for bake pass identification.
+        parameter string CurrentPassid {
+            display hidden
+            description {This hidden parameter captures the current pass id.}
+            provider variable
+            default {$PASSID}
+        }
+        parameter string BakePassId {
+            display hidden
+            description {This hidden parameter contains the id of the bake pass from the bakepassid proc.}
+            provider variable
+            default {}
+        }
+
+        # Hidden parameters for setting up 3D file baking.
+        # The hidden parameters used for 2D baking are made by the BakeParam custom ui.
+        parameter string PtcFile {
+            display hidden
+            description {This hidden parameter contains the ptc file name from the ptcfile proc.}
+            provider variable
+            default {}
+        }  
+        parameter string BakedFile {
+            display hidden
+            description {This hidden parameter contains the bake file name from the bakemap proc.}
+            provider variable
+            default {}
+        }
+
+        # User parameters.
+        slimattribute string OperatingMode {
+            label {Mode}
+            description {
+                Selects how the data file name(s) and bake/read operations will be determined.
+                Automatic lets RMS handle the whole thing.
+                Manual lets you manage everything.
+            }
+            subtype selector
+            range {
+                Automatic Auto
+                Manual Manual
+            }
+            default Auto
+
+            msghandler {
+                SetValue - RevertValue {
+                    ::Slim::Laika::Bake::updatePassSettings %obj
+
+                    set typeParam %obj
+                    set app [$typeParam GetAppearance]
+
+                    set typeValue [$typeParam GetValue]
+                    switch $typeValue {
+                        Auto {
+                            [$app GetProperties -name WriteRead] SetDisplayLevel "hidden"
+#                            [$app GetProperties -name FilePath] SetDisplayLevel "hidden"
+                            [$app GetProperties -name writeFile] SetDisplayLevel "hidden"
+                            [$app GetProperties -name readFile] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Disable] SetDisplayLevel ""
+                            [$app GetProperties -name FileName] SetDisplayLevel ""
+#                            [$app GetProperties -name FileSubName] SetDisplayLevel ""
+                        }
+                        Manual {
+                            [$app GetProperties -name WriteRead] SetDisplayLevel ""
+#                            [$app GetProperties -name FilePath] SetDisplayLevel ""
+                            [$app GetProperties -name writeFile] SetDisplayLevel ""
+                            [$app GetProperties -name readFile] SetDisplayLevel ""
+                            [$app GetProperties -name Disable] SetDisplayLevel "hidden"
+                            [$app GetProperties -name FileName] SetDisplayLevel "hidden"
+#                            [$app GetProperties -name FileSubName] SetDisplayLevel "hidden"
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        slimattribute string BakeType {
+            label {Bake Type}
+            description {
+                Selects what file format to bake to.
+                Point Cloud and Brick Map are 3D formats and can contain any number of baked values
+                in a single file.
+                Ptex and Texture are 2D formats. These require a separate file for every baked value.
+            }
+            subtype selector
+            range {
+                "Point Cloud"  ptcToPtc
+                "Brick Map"    ptcToBkm
+                "Ptex Texture" ptcToPtex
+                "Texture"      ptcToTex
+            }
+            default ptcToPtc
+
+            msghandler {
+                SetValue - RevertValue {
+                    ::Slim::Laika::Bake::updatePassSettings %obj
+
+                    set typeParam %obj
+                    set app [$typeParam GetAppearance]
+
+                    set typeValue [$typeParam GetValue]
+                    switch $typeValue {
+                        ptcToPtc {
+                            [$app GetProperties -name 3dReadOptions] SetDisplayLevel ""
+                            [$app GetProperties -name lerp] SetDisplayLevel "hidden"
+                            [$app GetProperties -name maxdepth] SetDisplayLevel "hidden"
+                            [$app GetProperties -name filterscale] SetDisplayLevel "hidden"
+                            [$app GetProperties -name 2dReadOptions] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Pc] SetDisplayLevel ""
+
+                            set useN [$app GetProperties -name UseN]
+                            $useN SetDisplayLevel ""
+                            switch [$useN GetValue] {
+                                0 { [$app GetProperties -name Nc] SetDisplayLevel "hidden" }
+                                1 { [$app GetProperties -name Nc] SetDisplayLevel "" }
+                            }
+
+                            [$app GetProperties -name UV] SetDisplayLevel "hidden"
+                        }
+                        ptcToBkm {
+                            [$app GetProperties -name 3dReadOptions] SetDisplayLevel ""
+                            [$app GetProperties -name lerp] SetDisplayLevel ""
+                            [$app GetProperties -name maxdepth] SetDisplayLevel ""
+                            [$app GetProperties -name filterscale] SetDisplayLevel ""
+                            [$app GetProperties -name 2dReadOptions] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Pc] SetDisplayLevel ""
+
+                            set useN [$app GetProperties -name UseN]
+                            $useN SetDisplayLevel ""
+                            switch [$useN GetValue] {
+                                0 { [$app GetProperties -name Nc] SetDisplayLevel "hidden" }
+                                1 { [$app GetProperties -name Nc] SetDisplayLevel "" }
+                            }
+
+                            [$app GetProperties -name UV] SetDisplayLevel "hidden"
+                        }
+                        ptcToPtex {
+#                            [$app GetProperties -name FileSubName] SetDisplayLevel "hidden"
+                            [$app GetProperties -name 3dReadOptions] SetDisplayLevel "hidden"
+                            [$app GetProperties -name 2dReadOptions] SetDisplayLevel ""
+                            [$app GetProperties -name ptexFilter] SetDisplayLevel ""
+                            [$app GetProperties -name texFilter] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Pc] SetDisplayLevel "hidden"
+                            [$app GetProperties -name UseN] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Nc] SetDisplayLevel "hidden"
+                            [$app GetProperties -name UV] SetDisplayLevel "hidden"
+                        }
+                        ptcToTex {
+#                            [$app GetProperties -name FileSubName] SetDisplayLevel "hidden"
+                            [$app GetProperties -name 3dReadOptions] SetDisplayLevel "hidden"
+                            [$app GetProperties -name 2dReadOptions] SetDisplayLevel ""
+                            [$app GetProperties -name ptexFilter] SetDisplayLevel "hidden"
+                            [$app GetProperties -name texFilter] SetDisplayLevel ""
+                            [$app GetProperties -name Pc] SetDisplayLevel "hidden"
+                            [$app GetProperties -name UseN] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Nc] SetDisplayLevel "hidden"
+                            [$app GetProperties -name UV] SetDisplayLevel ""
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        parameter float Disable {
+            label {Operation}
+            description {
+                Select automatic Bake/Read operation (0); Read only (1);
+                or Bypass (2) any writing or reading of data.
+                Note that in Read mode, the bake render passes will still be created,
+                but no data will be written. It's up to you to turn them off in the
+                RenderMan Controls.
+            }
+            provider constant
+            detail varying
+            subtype selector
+            range {
+                "Bake/Read" 0
+                "Read" 1
+                "Bypass" 2
+            }
+            default 0
+
+            msghandler {
+                SetValue - RevertValue {
+                    ::Slim::Laika::Bake::updatePassSettings %obj
+                }
+            }
+        }
+
+        slimattribute string FileName {
+            label {Object Set}
+            description {
+                This must be the name of a Maya object Set.
+                Used to determine which objects will contribute data, and to generate the baked file name.
+                Or you can use $SHADERGROUP, which causes the creation of one bake file for every object
+                the shader is attached to.
+            }
+            default {$SHADERGROUP}
+
+            msghandler {
+                SetValue - RevertValue {
+                    ::Slim::Laika::Bake::updatePassSettings %obj
+                }
+            }
+        }
+
+        slimattribute string FileSubName {
+            label {File Sub-Name}
+            description {
+                An optional sub-name for 3D baked data files.
+                You can use this to create more fine-grained control of where the data goes if necessary.
+                This gets appended onto the end of the Object Set value in the baked file name.
+            }
+            default ""
+
+            msghandler {
+                SetValue - RevertValue {
+                    ::Slim::Laika::Bake::updatePassSettings %obj
+                }
+            }
+        }
+
+        parameter float WriteRead {
+            display hidden
+            label {Operation}
+            description {
+                Selects whether to Bake to or Read from the data file(s).
+                0=Bake, 1=Read, 2=Bypass.
+            }
+            provider constant
+            detail varying
+            subtype selector
+            range {
+                "Bake" 0
+                "Read" 1
+                "Bypass" 2
+            }
+            default 2
+        }
+
+        parameter string FilePath {
+            display hidden
+            label {File Path}
+            description {
+                The directory where the baked data file(s) will go.
+                This will be ignored if the file name is a full path:
+                starts with /.
+            }
+            provider constant
+            detail varying
+            default {${PROJ}texture}
+        }
+
+        parameter string writeFile {
+            display hidden
+            label {Bake File}
+            description {
+                The file to bake data to.
+            }
+            provider constant
+            detail varying
+            subtype file
+            default {}
+        }
+
+        parameter string readFile {
+            display hidden
+            label {Read File}
+            description {
+                The name of the baked data file:
+                the name of a point cloud (.ptc), organized point cloud (.optc),
+                brick map (.bkm), .ptex, or .tex file to read.
+                If you have more than one shader that will bake the same data to a 3D format,
+                you must save them to different Bake Files, and use ptmerge to combine them
+                into one file after rendering.
+            }
+            provider constant
+            detail varying
+            subtype file
+            default {}
+        }
+
+        collection void BakeOptions {
+            label {Bake Options}
+
+            parameter float RayHits {
+                label {Include Ray Hits}
+                description {
+                    If on, values generated by ray trace hits will also be baked.
+                    Otherwise, only regularly rendered values will be baked.
+                }
+                provider constant
+                detail uniform
+                subtype switch
+                default 0
+            }
+
+            parameter float interpolate {
+                label {Interpolate}
+                description {
+                    If on, only a single value per micropolygon will be baked.
+                    Otherwise, the values at all four corners of the shaded micropolygon will be written, 
+                    which will overlap with the neighboring micropolygons. This only effects regularly
+                    rendered data points, not ray hits.
+                }
+                provider constant
+                detail uniform
+                subtype switch
+                default 1
+            }
+        }
+
+        collection void 3dReadOptions {
+            label {Read Options}
+
+            parameter float maxdist {
+                label {Max Dist}
+                description {
+                    Set the maximum lookup distance. Points in the baked data that are further away
+                    than this will be ignored.
+                }
+                provider constant
+                detail uniform
+                subtype slider
+                range {0 10}
+                default 8
+            }
+
+            parameter float lerp {
+                display hidden
+                label {Lerp}
+                description {
+                    When set, do two lookups in the brick map (at two different octree depths)
+                    and linearly interpolate the results.
+                }
+                provider constant
+                detail uniform
+                subtype switch
+                default 0
+            }
+
+            parameter float maxdepth {
+                display hidden
+                label {Max Depth}
+                description {
+                    Sets the maximum brick map octree depth for reading.
+                }
+                provider constant
+                detail uniform
+                subtype slider
+                range {0 10 1}
+                default 10
+            }
+
+            parameter float filterscale {
+                display hidden
+                label {Filter Scale}
+                description {
+                    Scales the effective Shading Rate used for brick map access.
+                }
+                provider constant
+                detail uniform
+                subtype slider
+                range {0 10}
+                default 1
+            }
+        }
+
+        collection void 2dReadOptions {
+            label {Read Options}
+            display hidden
+
+            parameter float texBlur {
+                label {Blur}
+                description {
+                    Texture blur. Adds this to the nominal filter size.
+                    Specified as a percentage of the full uv space.
+                }
+                provider constant
+                detail uniform
+                subtype slider
+                range {0 1}
+                default 0
+            }
+
+            parameter float texWidth {
+                label {Width}
+                description {
+                    Texture width. Scales the nominal filter size by this amount.
+                }
+                provider constant
+                detail uniform
+                subtype slider
+                range {1 10}
+                default 1
+            }
+
+            parameter float texLerp {
+                label {Lerp}
+                description {
+                    When set, do two lookups in the texture map (at two different resolutions)
+                    and linearly interpolate the results.
+                }
+                provider constant
+                detail uniform
+                subtype switch
+                default 0
+            }
+
+            parameter string ptexFilter {
+                label {Filter}
+                description {
+                    Selects what texture filter to use when accessing texture data.
+                }
+                provider constant
+                detail uniform
+                subtype selector
+                range {
+                    "Bilinear" bilinear
+                    "Box" box
+                    "B-spline" bspline
+                    "Catmull-rom" catmull-rom
+                    "Gaussian" gaussian
+                    "Mitchell" mitchell
+                }
+                default box
+            }
+
+            parameter string texFilter {
+                label {Filter}
+                description {
+                    Selects what texture filter to use when accessing texture data.
+                }
+                provider constant
+                detail uniform
+                subtype selector
+                range {
+                    "Box" box
+                    "Disk" disk
+                    "Elliptical Weighted Average" ewa
+                    "Gaussian" gaussian
+                    "Lagrangian" lagrangian
+                    "Radial-bspline" radial-bspline
+                }
+                default box
+            }
+        }
+
+        collection manifold UV {
+            display hidden
+            label {UV}
+            description {
+                The space used for baking and reading Texure format data.
+            }
+            detail mustvary "laika,UV"
+            parameter point Q {detail mustvary}
+            parameter vector dQu {detail mustvary}
+            parameter vector dQv {detail mustvary}
+        }
+
+        parameter point Pc {
+            label {P}
+            description {
+                The location associated with 3D baked data points.
+            }
+            detail mustvary "laika,Pref"
+        }
+
+        slimattribute float UseN {
+            label {Provide N}
+            description {
+                When off, calculatenormal(P) will be used as the normal for the baked 3D points.
+                When baking non-illumination data, as this template will typically be used for,
+                this is what you want.
+                If on, the N parameter value will be used instead as the normal for the
+                baked 3D points.
+            }
+            subtype switch
+            default 0
+
+            msghandler {
+                SetValue - RevertValue {
+                    set param %obj
+                    set app [$param GetAppearance]
+
+                    set paramValue [$param GetValue]
+                    switch $paramValue {
+                        0 { [$app GetProperties -name Nc] SetDisplayLevel "hidden" }
+                        1 { [$app GetProperties -name Nc] SetDisplayLevel "" }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        parameter normal Nc {
+            display hidden
+            label {N}
+            description {
+                An override normal to associate with baked 3D data.
+                This can be (0,0,0) for volume illumination data.
+            }
+            detail mustvary "laika,ShadingNormal"
+        }
+
+        collection customuiFullWidth BakeParams {
+            customui laika BakeParam
+            subtype propertycreator
+            drawmode children
+            state open
+            userdata { addString "Add Bake Parameter" }
+        }
+
+
+        RSLInclude {prman.h}
+
+		RSLSource GenerativeFunction {
+            proc primvars {} {
+                declare {} varying float __faceindex 0
+            }
+            proc function {} {
+                # Get all the necessary data from the hidden parameters for generating the bake and read sl code.
+                set paramLabelList {}
+                set labelVarList {}
+                set inFileVarList {}
+                set outFileLabelVarList {}
+
+                set bakeCollections [safeeval %c GetProperties -name "BakeParam_Collection_*"]
+                foreach bakeColl $bakeCollections {
+                    set bakeCollName [safeeval $bakeColl GetName]
+                    set autoExt [string range $bakeCollName 20 end]
+
+                    set bakeParam [safeeval %c GetProperties -name BakeParam_BakedFile$autoExt]
+                    set inFile [safeeval $bakeParam GetName]
+
+                    set bakeParam [safeeval %c GetProperties -name BakeParam_PtcFile$autoExt]
+                    set outFile [safeeval $bakeParam GetName]
+
+                    set bakeParam [safeeval %c GetProperties -name BakeParam_Label$autoExt]
+                    set paramLabel [safeeval $bakeParam GetValue]
+
+                    set bakeParam [safeeval %c GetProperties -name BakeParam_Input$autoExt]
+                    set inputparam [safeeval $bakeParam GetName]
+
+                    set bakeParam [safeeval %c GetProperties -name BakeParam_Output$autoExt]
+                    set outputparam [safeeval $bakeParam GetName]
+
+                    lappend paramLabelList $paramLabel
+                    lappend inOutList $inputparam $outputparam
+
+                    lappend labelVarList $paramLabel $outputparam
+                    lappend inFileVarList $inFile $outputparam
+                    lappend outFileLabelVarList $outFile $paramLabel $outputparam
+                }
+
+                # Create a comma separated string containing all their labels.
+                set paramLabels [join $paramLabelList ","]
+
+
+                # Generate the sl.
+                generateBody {
+output "
+                    varying normal  PN;
+
+                    //
+                    // Are we writing or reading data; or neither?
+                    // write=0, read=1, bypass=2
+                    //
+                    uniform float   writeread;
+                    uniform string  outFile, inFile;
+
+                    uniform float   userPreviewRender = 0;
+                    option (\"user:PreviewRender\", userPreviewRender);
+"
+                    switch [getval OperatingMode] {
+                        Auto {
+output "                    writeread = ([getvar CurrentPassid] == [getvar BakePassId]) ? 0 : 1;"
+output "                    writeread = ([getvar Disable] == 0) ? writeread : [getvar Disable];"
+output "                    writeread = (userPreviewRender == 1) ? 2 : writeread;"
+                        }
+                        Manual {
+output "                    writeread = [getvar WriteRead];"
+                        }
+                    }
+
+output "
+                    //
+                    // If we're not reading,
+                    // we'll either bake data, or skip any file I/O.
+                    //
+                    if (writeread != 1) {
+                        //
+                        // Generate the bake parameter values and assign
+                        // the results to the corresponding output parameters.
+                        //
+"
+                        foreach {in out} $inOutList {
+                            set input [generate $in]
+                            regsub -all ({|}) $input "" input
+output "                    $out = $input;"
+                        }
+output "
+                        //
+                        // Bake data (to a point cloud file) if we're writing
+                        // and the raytracing status is appropriate.
+                        // Otherwise, we're done.
+                        //
+                        uniform float   raydepth = 0;
+                        rayinfo (\"depth\", raydepth);
+
+                        if (writeread == 0 && (raydepth == 0 || RayHits == 1)) {
+"
+                            switch [getval BakeType] {
+                                ptcToPtc - ptcToBkm {
+                                    generate Pc
+
+                                    switch [getval UseN] {
+                                        0 {
+output "                                    PN = normalize (calculatenormal([getvar Pc])); "
+                                        }
+                                        1 {
+                                            generate Nc
+output "                                    PN = [getvar Nc]; "
+                                        }
+                                    }
+
+                                    generate PtcFile writeFile interpolate
+
+                                    switch [getval OperatingMode] {
+                                        Auto {
+output "                                    outFile = [getvar PtcFile];"
+                                        }
+                                        Manual {
+output "                                    outFile = [getvar writeFile];"
+                                        }
+                                    }
+output "
+                                    bake3d (outFile,
+                                        \"$paramLabels\",
+                                        [getvar Pc], PN,
+                                        \"coordsystem\", \"_disable\",
+                                        \"interpolate\", [getvar interpolate]
+"
+                                        foreach {label name} $labelVarList {
+output "                                    ,\"$label\", $name"
+                                        }
+output "
+                                    );
+"
+                                }
+                                ptcToPtex {
+                                    generate interpolate
+output "
+                                    varying float   faceindex = 2 * __faceindex;
+                                    faceindex = mix (faceindex, faceindex+1, prmanOrientation());
+"
+                                    foreach {outFile label var} $outFileLabelVarList {
+output "
+                                        bake3d ($outFile,
+                                            \"$label\",
+                                            point(u,v,faceindex), normal(0,0,1),
+                                            \"coordsystem\", \"_disable\",
+                                            \"interpolate\", [getvar interpolate],
+                                            \"$label\", $var
+                                        );
+"
+                                    }
+                                }
+                                ptcToTex {
+                                    generate Q dQu dQv
+                                    generate Nc interpolate
+
+                                    foreach {outFile label var} $outFileLabelVarList {
+output "
+                                        bake3d ($outFile,
+                                            \"$label\",
+                                            point(xcomp([getvar Q]),ycomp([getvar Q]),0), [getvar Nc],
+                                            \"coordsystem\", \"_disable\",
+                                            \"interpolate\", [getvar interpolate],
+                                            \"$label\", $var
+                                        );
+"
+                                    }
+                                }
+                            }
+output "
+                        }
+                    }
+
+                    //
+                    // Read baked data.
+                    //
+                    else {
+"
+                        switch [getval OperatingMode] {
+                            Auto {
+output "                        inFile = [getvar BakedFile];"
+                            }
+                            Manual {
+output "                        inFile = [getvar readFile];"
+                            }
+                        }
+
+                        switch [getval BakeType] {
+                            ptcToPtc {
+                                generate Pc maxdist
+
+                                switch [getval UseN] {
+                                    0 {
+output "                                PN = normalize (calculatenormal([getvar Pc])); "
+                                    }
+                                    1 {
+                                        generate Nc
+output "                                PN = [getvar Nc]; "
+                                    }
+                                }
+output "
+                                if (inFile != \"\") {
+                                    texture3d (inFile,
+                                        [getvar Pc], PN,
+                                        \"coordsystem\", \"_disable\",
+                                        \"maxdist\", [getvar maxdist]
+"
+                                        foreach {label name} $labelVarList {
+output "                                    ,\"$label\", $name"
+                                        }
+output "
+                                    );
+                                }
+"
+                            }
+                            ptcToBkm {
+                                generate Pc
+                                generate maxdist lerp maxdepth filterscale
+
+                                switch [getval UseN] {
+                                    0 {
+output "                                PN = normalize (calculatenormal([getvar Pc])); "
+                                    }
+                                    1 {
+                                        generate Nc
+output "                                PN = [getvar Nc]; "
+                                    }
+                                }
+output "
+                                if (inFile != \"\") {
+                                    texture3d (inFile,
+                                        [getvar Pc], PN,
+                                        \"coordsystem\", \"_disable\",
+                                        \"maxdist\", [getvar maxdist],
+                                        \"lerp\", [getvar lerp],
+                                        \"maxdepth\", [getvar maxdepth],
+                                        \"filterscale\", [getvar filterscale]
+"
+                                        foreach {label name} $labelVarList {
+output "                                    ,\"$label\", $name"
+                                        }
+output "
+                                    );
+                                }
+"
+                            }
+                            ptcToPtex {
+                                generate texBlur texWidth texLerp ptexFilter
+output "
+                                varying float   faceindex = 2 * round(__faceindex);
+                                faceindex = mix (faceindex, faceindex+1, prmanOrientation());
+"
+                                foreach {inFile var} $inFileVarList {
+output "
+                                    if ($inFile != \"\")
+                                        $var = ptexture ($inFile, 0, faceindex,
+                                            \"blur\", [getvar texBlur],
+                                            \"width\", [getvar texWidth],
+                                            \"lerp\", [getvar texLerp],
+                                            \"filter\", [getvar ptexFilter]
+                                        );
+"
+                                }
+                            }
+                            ptcToTex {
+                                generate Q dQu dQv
+                                generate texBlur texWidth texLerp texFilter
+output "
+                                varying float   ss, tt, ds, dt;
+
+                                ss = xcomp([getvar Q]);
+                                tt = ycomp([getvar Q]);
+
+                                ds = sqrt(xcomp([getvar dQu])*xcomp([getvar dQu]) + xcomp([getvar dQv])*xcomp([getvar dQv]));
+                                dt = sqrt(ycomp([getvar dQu])*ycomp([getvar dQu]) + ycomp([getvar dQv])*ycomp([getvar dQv]));
+"
+                                foreach {inFile var} $inFileVarList {
+output "
+                                    if ($inFile != \"\")
+                                        $var = texture ($inFile, ss, tt, ss+ds, tt, ss, tt+dt, ss+ds, tt+dt,
+                                            \"blur\", [getvar texBlur],
+                                            \"width\", [getvar texWidth],
+                                            \"lerp\", [getvar texLerp],
+                                            \"filter\", [getvar texFilter]
+                                        );
+"
+                                }
+                            }
+                        }
+output "
+                    }
+"
+                }
+            }
+        }
+    }
+
+  }
+}

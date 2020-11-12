@@ -1,0 +1,470 @@
+##
+##  Copyright(c) 2010 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+ extensions laika vfx {
+
+    templateV multiple Turbulence 1 {
+        description {
+            Produces a distortion of the given input Manifold that
+            resembles turbulence.
+            The turbulence is created by distorting the Manifold in circular
+            motions.
+            Multiple layers of these motions are combined together to produce the
+            final effect.
+            The sizes of the layers are controlled with typical fractal parameters,
+            along with an overall Turbulence Scale.
+            The speed of motion of the layers is controlled with the Motion and
+            Motion Rate parameters.
+        }
+
+        parameter point M {
+            label {Input Manifold}
+            description {
+                The initial space that is to be perturbed.
+            }
+            detail mustvary "laika,Pshader"
+        }
+
+        slimattribute string Type {
+            label {Type}
+            description {
+                Selects whether a standard Fractal or fractional Brownian motion
+                controls are used.
+            }
+            subtype selector
+            range {
+                Fractal Fractal
+                fBm fBm
+            }
+            default Fractal
+
+            msghandler {
+                SetValue - RevertValue {
+                    set typeParam %obj
+                    set typeValue [$typeParam GetValue]
+                    set app [$typeParam GetAppearance]
+
+                    switch $typeValue {
+                        fBm {
+                            [$app GetProperties -name Dimension] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Gain] SetDisplayLevel ""
+                        }
+                        default {
+                            [$app GetProperties -name Dimension] SetDisplayLevel ""
+                            [$app GetProperties -name Gain] SetDisplayLevel "hidden"
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        slimattribute string Mode {
+            label {Mode}
+            description {
+                There are a couple methods of accumulating the distortions, and each produces
+                a characteristic appearance.
+                Simply choose the one that gives you the visual qualities you're looking for.
+            }
+            subtype selector
+            range {
+                "Q = M + V" MV
+                "Q = Q + R" QR
+            }
+            default MV
+        }
+
+        slimattribute float Normalize {
+            label {Normalize}
+            description {
+                Normalizes the size of the distortion per layer, causing
+                each layer's perturbations to be the same size.
+            }
+            subtype switch
+            default 0
+        }
+        slimattribute float Invert {
+            label {Invert}
+            description {
+                Causes the perturbations to rotate in the opposite direction.
+            }
+            subtype switch
+            default 0
+        }
+
+        parameter float Frequency {
+            label {Frequency}
+            description {
+                Sets the starting scale (lowest frequency) of the distortion.
+            }
+            provider variable
+            detail uniform
+            subtype slider
+            range {.1 10}
+            default 1
+        }
+        parameter float Iterations {
+            label {Layers}
+            description {
+                The number of Turbulence Layers to create.
+            }
+            provider variable
+            detail uniform
+            subtype slider
+            range {1 8 1}
+            default 3
+        }
+        parameter float Dimension {
+            label {Dimension}
+            description {
+                The frequency exponent.
+                Bigger values are "rougher", smaller values are "smoother".
+                This value is used to control the contribution of each sucessive
+                Pattern using the formula 1/f^(3-2*Dimension); where f is the
+                frequency of the Pattern being used for a given layer.
+                It's called Dimension since this value relates to the fractal dimension.
+            }
+            provider variable
+            detail uniform
+            subtype slider
+            range {0 2}
+            default 1
+        }
+        parameter float Gain {
+            display hidden
+            label {Gain}
+            description {
+                The scaling factor used to control the size of the distortion of each successive layer.
+                Bigger values are "rougher", smaller values are "smoother".
+                The size is Gain^(i-1); where i is the layer number.
+            }
+            provider variable
+            detail uniform
+            subtype slider
+            range {0 1}
+            default .5
+        }
+        parameter float TurbScale {
+            label {Turbulence Scale}
+            description {
+                Adjusts the magnitude of the distortion by scaling the distortion radius
+                of each layer by this amount.
+            }
+            provider variable
+            detail varying
+            subtype slider
+            range {0 1}
+            default .5
+        }
+        parameter float Lacunarity {
+            label {Lacunarity}
+            description {
+                Determines the size of each sucessive Turbulence layer.
+                Smaller numbers will cause the sizes to be more closely scaled together.
+                Larger values will produce larger scale differences.
+            }
+            provider variable
+            detail uniform
+            subtype slider
+            range {1 4}
+            default 2
+        }
+
+        parameter float Motion {
+            label {Motion}
+            description {
+                This should be some function of Time.
+                It directly controls how fast the largest turbulence layer is rotated.
+                A value of 1 causes one full rotation of the lowest freqency layer.
+            }
+            provider variable
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+        parameter float MotionRate {
+            label {Motion Rate}
+            description {
+                Adjusts how fast the smaller perturbations rotate relative to the
+                largest layer.
+                At 1, smaller perturbations will move according to their circumference; so
+                the motion of each layer covers the same distance per unit of time.
+                At 0, all pertubations will rotate at the same angular rate: they will all
+                rotate once per unit of Motion.
+            }
+            provider variable
+            detail uniform
+            subtype slider
+            range {0 1}
+            default .5
+        }
+
+        parameter float Variation {
+            label {Variation}
+            description {
+                Varies the resulting distortion.
+                This alters the appearance of the Turbulence without causing
+                any turbulent motion.
+            }
+            provider variable
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        slimattribute float Periodic {
+            label {Periodic}
+            description {
+                Does the Turbulence repeat or not?
+            }
+            subtype switch
+            default 0
+
+            msghandler {
+                SetValue {
+                    set Param %obj
+                    set Value [$Param GetValue]
+                    set app [$Param GetAppearance]
+
+                    switch $Value {
+                        1 {
+                            [$app GetProperties -name Period] SetDisplayLevel ""
+                            [$app GetProperties -name MotionPeriod] SetDisplayLevel ""
+                            [$app GetProperties -name VariationPeriod] SetDisplayLevel ""
+                        }
+                        default {
+                            [$app GetProperties -name Period] SetDisplayLevel "hidden"
+                            [$app GetProperties -name MotionPeriod] SetDisplayLevel "hidden"
+                            [$app GetProperties -name VariationPeriod] SetDisplayLevel "hidden"
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+        parameter float Period {
+            display hidden
+            label {Manifold Period}
+            description {
+                At what Manifold dimension should the Turbulence repeat?
+                Defines a cube in the Manifold space, where all cubes
+                of this dimension contain the same turbulence, and
+                the pattern of turbulence tiles from one cube to the next.
+                Must be an integer.
+            }
+            provider variable
+            detail uniform
+            subtype slider
+            range {1 20 1}
+            default 5
+        }
+        parameter float MotionPeriod {
+            display hidden
+            label {Motion Period}
+            description {
+                Sets the repetition interval for the Motion.
+                Must be an integer.
+            }
+            provider variable
+            detail uniform
+            subtype slider
+            range {1 20 1}
+            default 5
+        }
+        parameter float VariationPeriod {
+            display hidden
+            label {Variation Period}
+            description {
+                Sets the repetition interval for the Variation.
+                Must be an integer.
+            }
+            provider variable
+            detail uniform
+            subtype slider
+            range {1 20 1}
+            default 5
+        }
+
+        collection manifold result {
+            label {Manifold}
+            display hidden
+            access output
+            parameter point Q {access output}
+            parameter vector dQu {access output}
+            parameter vector dQv {access output}
+        }
+
+        parameter vector V {
+            label {Vector}
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                    varying float   dQ;
+                    filterregion    Qfr;
+
+                    uniform float   i, f, mag, interval;
+
+                    varying point   Qa, Qr;
+                    varying vector  Va, Vr, R;
+                    varying float   angle;
+
+                    V = vector 0;
+                    Q = [getvar M];
+                    dQu = Du(Q)*du;
+                    dQv = Dv(Q)*dv;
+                    dQ = max (length(dQu), length(dQv));
+                    f = [getvar Frequency];
+                    mag = 1;
+                    for (i=0; i < Iterations; i+=1) {
+"
+                        if {[getval Periodic]} {
+                            output "interval = round (f * [getvar Period]);"
+
+                            output "Qa = Q*interval/[getvar Period] + vector(1.37, 3.213, 2.759)*i;"
+                            set AnoiseCall "pnoise (Qa, [getvar Variation], point interval, [getvar VariationPeriod])"
+
+                            output "Qr = Q*interval/[getvar Period] + vector(1.37, 3.213, 2.759)*i + vector (34.9, 1.31, 7.9);"
+                            set RnoiseCall "pnoise (Qr, [getvar Variation], point interval, [getvar VariationPeriod])"
+                        } else {
+                            output "Qa = Qr = Q*f + vector(1.37, 3.213, 2.759)*i;"
+                            set AnoiseCall "noise (Qa, [getvar Variation])"
+                            set RnoiseCall "noise (Qr + vector (34.9, 1.31, 7.9), [getvar Variation])"
+                        }
+output "
+                        // 
+                        // Generate the rotation axis Vr and rotation vector R
+                        // from two, uncorrelated random vectors.
+                        //
+                        Va = normalize (2*vector $AnoiseCall - vector 1);
+                        Vr = normalize (2*vector $RnoiseCall - vector 1);
+
+                        R = Va - reflect(-Va, Vr);
+"
+                        # Average length of R from above is PI/2.
+                        # Cut R in half so the default radius is .5 rather than 1.
+                        if {[getval Normalize]} {
+                            output "R = normalize(R) / 2;"
+                        } else {
+                            output "R /= PI;"
+                        }
+output "
+                        // Scale the radius of rotation.
+                        R *= [getvar TurbScale] * mag;
+"
+                        #
+                        # Generate the rotation and scale its rate.
+                        #
+                        if {[getval Periodic]} {
+                            output "interval = round (MotionPeriod / pow (mag, MotionRate));"
+                            output "angle = [getvar Motion] * (interval/MotionPeriod);"
+                        } else {
+                            output "angle = [getvar Motion] / pow (mag, MotionRate);"
+                        }
+
+                        if {[getval Invert]} {
+                            output "angle = -angle;"
+                        }
+output "
+                        // 
+                        // Perturb space by rotating each point by R around Vr.
+                        // Try to ensure we don't fold space onto itself: make sure we
+                        // have a couple of samples to represent points 1 unit apart.
+                        //
+                        R = mix (R, vector 0, smoothstep (.25, 1, 2*dQ * 2*length(R)));
+                        R = vector rotate ([getvar M] + R, TWOPI*angle, [getvar M], [getvar M]+Vr);
+
+                        Q += R;
+"
+                        # Accumulate the R vectors.
+                        if {[getval Mode] == "MV"} {
+                            output "V += point R - [getvar M];"
+                        }
+output "
+                        //
+                        // Update f, mag, and dQ for the next layer.
+                        //
+                        f *= Lacunarity;
+"
+                        switch [getval Type] {
+                            Fractal {
+                                output "mag = 1/pow (f, 3-2*Dimension);"
+                            }
+                            fBm {
+                                output "mag = pow (Gain, i+1);"
+                            }
+                        }
+output "
+                        #if SLIM_SHADERTYPEID != SLIM_TYPEID_volume
+                            if (VolumeField != 0) {
+                                dQu = Du(Q)*du;
+                                dQv = Dv(Q)*dv;
+                                dQ = max (length(dQu), length(dQv));
+                            }
+                            else {
+                                Qfr->calculate3d(Q);
+                                dQ = Qfr->maxsize();
+                            }
+                        #else
+                            Qfr->calculate3d(Q);
+                            dQ = Qfr->maxsize();
+                        #endif
+                    }
+"
+                    #
+                    # We're done. Update the results depending on the Mode.
+                    #
+                    if {[getval Mode] == "MV"} {
+output "
+                        Q = [getvar M] + V;
+                        #if SLIM_SHADERTYPEID != SLIM_TYPEID_volume
+                            if (VolumeField != 0)  {
+                                dQu = Du(Q)*du;
+                                dQv = Dv(Q)*dv;
+                            }
+                            else {
+                                Qfr->calculate3d(Q);
+                                dQ = Qfr->maxsize();
+                                dQu = dQv = sqrt(dQ);
+                            }
+                        #else
+                            Qfr->calculate3d(Q);
+                            dQ = Qfr->maxsize();
+                            dQu = dQv = sqrt(dQ);
+                        #endif
+"
+                    } else {
+                        output "V = Q - [getvar M];"
+                    }
+                }
+            }
+        }
+    }
+
+ }
+}

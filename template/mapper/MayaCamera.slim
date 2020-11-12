@@ -1,0 +1,265 @@
+##
+##  Copyright(c) 2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+	templateV manifold_s MayaCamera 0 {
+		description {
+            Creates a space based on a Maya camera's attributes.
+            Can be used to project a texture into a scene based on the view
+            through a Maya camera.
+		}
+
+        parameter string CS {
+            label {Camera Coordinate System}
+            description {
+                The name of the Maya camera's coordinate system you want to
+                project through.
+            }
+            provider variable
+            detail uniform
+            default "persp"
+        }
+
+        parameter string ProjType {
+            label {Projection Type}
+            subtype selector
+            range {
+                "Orthographic" Ortho
+                "Perspective" Persp
+            }
+            default Ortho
+        }
+
+        parameter float FOV {
+            label {fov}
+            provider variable
+            detail varying
+            range {10 100}
+            default 54.43
+        }
+
+        parameter float ScreenWindowLeft {
+            label {ScreenWindow Left}
+            provider variable
+            detail uniform
+            default -1
+        }
+
+        parameter float ScreenWindowRight {
+            label {ScreenWindow Right}
+            provider variable
+            detail uniform
+            default 1
+        }
+
+        parameter float ScreenWindowTop {
+            label {ScreenWindow Top}
+            provider variable
+            detail uniform
+            default -1
+        }
+
+        parameter float ScreenWindowBottom {
+            label {ScreenWindow Bottom}
+            provider variable
+            detail uniform
+            default 1
+        }
+
+        parameter float CameraScale {
+            display hidden
+            label {Camera Scale}
+            provider variable
+            detail varying
+            range {.5 2}
+            default 1
+        }
+
+        parameter float CameraAperture {
+            display hidden
+            label {Camera Aperture}
+            description {
+                Just the first value. The second is ignored.
+            }
+            provider variable
+            detail varying
+            range {.5 2}
+            default 1
+        }
+
+        parameter float LSR {
+            display hidden
+            label {Lense Squeeze Ratio}
+            provider variable
+            detail varying
+            range {.5 2}
+            default 1
+        }
+
+        parameter float FilmOffsetX {
+            display hidden
+            label {Film Offset X}
+            provider variable
+            detail varying
+            range {-.25 .25}
+            default 0
+        }
+
+        parameter float FilmOffsetY {
+            display hidden
+            label {Film Offset Y}
+            provider variable
+            detail varying
+            range {-.25 .25}
+            default 0
+        }
+
+        parameter float PreScale {
+            display hidden
+            label {Pre Scale}
+            provider variable
+            detail varying
+            range {.5 2}
+            default 1
+        }
+
+        parameter float FilmTranslateX {
+            display hidden
+            label {Film Translate X}
+            provider variable
+            detail varying
+            range {-.25 .25}
+            default 0
+        }
+
+        parameter float FilmTranslateY {
+            display hidden
+            label {Film Translate Y}
+            provider variable
+            detail varying
+            range {-.25 .25}
+            default 0
+        }
+
+        parameter float Roll {
+            display hidden
+            label {Film Roll Value}
+            provider variable
+            detail varying
+            range {-180 180}
+            default 0
+        }
+
+        parameter float PostScale {
+            display hidden
+            label {Post Scale}
+            provider variable
+            detail varying
+            range {.5 2}
+            default 1
+        }
+
+        parameter point Pcurrent {
+            display hidden
+            display hidden
+            detail mustvary "laika,Pcurrent"
+        }
+
+        parameter manifold_s out {
+            display hidden
+            access output
+        }
+
+        RSLInclude {sl.h}
+        RSLInclude {manifold.h}
+
+		RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                    varying point   Q = transform ([getvar CS], [getvar Pcurrent]);
+#if 0
+                    uniform float   CropWindow\[4\] = {0, 1, 0, 1};
+/*                     option (\"Ri:CropWindow\", CropWindow); */
+/* printf (\"CropWindow = %f %f %f %f\\n\", CropWindow\[0\], CropWindow\[1\], CropWindow\[2\], CropWindow\[3\]); */
+
+                    uniform float   ScreenWindow\[4\] = {-1, 1, -1, 1};
+/*                     option (\"Ri:ScreenWindow\", ScreenWindow); */
+/* printf (\"ScreenWindow = %f %f %f %f\\n\", ScreenWindow\[0\], ScreenWindow\[1\], ScreenWindow\[2\], ScreenWindow\[3\]); */
+
+                    uniform float   dx = 2 / [getvar CameraAperture] * [getvar FilmOffsetX];
+                    uniform float   dy = 2 / [getvar CameraAperture] * [getvar FilmOffsetY];
+
+                    uniform float   i;
+                    for (i=0; i < 4; i+=1) {
+                        ScreenWindow\[i\] /= [getvar PostScale];
+                    }
+                    ScreenWindow\[0\] += [getvar FilmTranslateX];
+                    ScreenWindow\[1\] += [getvar FilmTranslateX];
+                    ScreenWindow\[2\] += [getvar FilmTranslateY];
+                    ScreenWindow\[3\] += [getvar FilmTranslateY];
+                    for (i=0; i < 4; i+=1) {
+                        ScreenWindow\[i\] /= [getvar PreScale];
+                    }
+                    ScreenWindow\[0\] += dx;
+                    ScreenWindow\[1\] += dx;
+                    ScreenWindow\[2\] += dy;
+                    ScreenWindow\[3\] += dy;
+                    for (i=0; i < 4; i+=1) {
+                        ScreenWindow\[i\] /= [getvar LSR];
+                        ScreenWindow\[i\] *= [getvar CameraScale];
+                    }
+
+                    uniform float   z = tan(radians([getvar FOV]));
+
+                    Q\[0\] = Q\[0\] / Q\[2\] / z;
+                    Q\[1\] = Q\[1\] / Q\[2\] / z;
+                    Q = point (
+                        linear (ScreenWindow\[0\], ScreenWindow\[1\], -Q\[0\]),
+                        linear (ScreenWindow\[2\], ScreenWindow\[3\], -Q\[1\]),
+                        Q\[2\]
+                    );
+#else
+                    if ([getvar ProjType] == \"Persp\") {
+                        uniform float   z = tan(radians([getvar FOV]/2));
+
+                        Q\[0\] /= Q\[2\] * z;
+                        Q\[1\] /= Q\[2\] * z;
+                    }
+                    Q = point (
+                        linear ([getvar ScreenWindowLeft], [getvar ScreenWindowRight], -Q\[0\]),
+                        linear ([getvar ScreenWindowTop], [getvar ScreenWindowBottom], -Q\[1\]),
+                        Q\[2\]
+                    );
+#endif
+#if 0
+                    matrix  cameraToNDC;
+                    matrix  NDCToCamera;
+
+                    cameraToNDC = matrix \"NDC\" 1;
+                    printf (\"cameraToNDC = %f\\n\", cameraToNDC);
+#endif
+                    out->Set(Q);
+"
+                }
+            }
+		}
+	}
+
+  }
+}

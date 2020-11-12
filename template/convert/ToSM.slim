@@ -1,0 +1,98 @@
+##
+##  Copyright(c) 2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+##
+##  Copyright(c) 2011 Laika. All rights reserved unless otherwise granted.
+##  This program or documentation contains proprietary, confidential information
+##  and trade secrets of Laika. Use of copyright notice does not imply publication.
+##
+##  By possessing this software, you agree to the following license terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others. You may
+##  use it for whatever purposes you wish. There are no warranties of any kind. You may
+##  make modifications, however any derivation may only be distributed to others under
+##  the same freedoms granted to you herein, it must retain this notice and agreement,
+##  and the modifications noted. We also ask that you make such modifications available
+##  to Laika, or to the RenderMan Studio community as a whole through a public forum.
+##
+
+#   
+#   Requirements for conversion templates
+#
+#   - No extra parameters other than input and output may be declared
+#   - input parameters MUST be declared with "provider connection"
+#   - input collections must ALSO be declared with "provider connection"
+#   - output parameters MUST be declared "access output"
+#
+slim 1 extensions mprater {
+    extensions laika vfx {
+
+    template shadingmodel StringToSM {
+        display hidden
+        description {
+            String to SM.
+        }
+
+        parameter string in {
+            provider connection
+            detail uniform
+        }
+
+        collection shadingmodel out {
+            parameter color out_c { access output }
+            parameter color out_o { access output }
+	    }
+
+        RSLFunction {
+            void vfxStringToSM (
+                uniform string  in;
+                output color    out_c;
+                output color    out_o;
+            ) {
+                out_c = color 1;
+                out_o = color 1;
+            }
+        }
+    }
+
+    template shadingmodel MatrixToSM {
+        display hidden
+        description {
+            Matrix to SM.
+        }
+
+        parameter matrix in {
+            provider connection
+            detail uniform
+        }
+
+        collection shadingmodel out {
+            parameter color out_c { access output }
+            parameter color out_o { access output }
+	    }
+
+        RSLFunction {
+            void vfxMatrixToSM (
+                matrix  in;
+                output color    out_c;
+                output color    out_o;
+            ) {
+                out_c = color transform (in, P);
+                out_o = color 1;
+            }
+        }
+    }
+
+  }
+}

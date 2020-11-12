@@ -1,0 +1,192 @@
+##
+##  Copyright(c) 2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+	templateV manifold_s ShadowProjection 0 {
+		description {
+		}
+
+        eval [::slimWorkGenMacro shadow closed]
+
+        parameter string File {
+            label {Shadow Map}
+            description {
+                The name of a Shadow Map File.
+                You can also refer to shadows with a tcl expression that uses
+                the passinfo or shdmap commands such as [passinfo rmanShadowPassName filename]
+                or [shdmap $OBJNAME].
+            }
+            provider variable
+            detail varying
+            subtype shadow
+            default {[shdmap $OBJNAME]}
+        }
+
+        slimattribute float Swap {
+            label {Swap}
+            description {
+                Swap u and v (s and t).
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute float XInvert {
+            label {U Flip}
+            description {
+                Flip u (s).
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute float YInvert {
+            label {V Flip}
+            description {
+                Flip v (t).
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute float Center {
+            label {Center}
+            description {
+                Is the result manipulated around (0,0) or (.5,.5)?
+            }
+            subtype selector
+            range {
+                "(0,0)" 0
+                "(.5,.5)" 1
+            }
+            default 1
+        }
+
+        parameter float XFreq {
+            label {U Frequency}
+            description {
+                Scale u (s) by this amount.
+            }
+            detail varying
+            subtype slider
+            range {0 10}
+            default 1
+        }
+
+        parameter float YFreq {
+            label {V Frequency}
+            description {
+                Scale v (t) by this amount.
+            }
+            detail varying
+            subtype slider
+            range {0 10}
+            default 1
+        }
+
+        parameter float XOffset {
+            label {U Offset}
+            description {
+                Offset the u (s) value by this amount.
+            }
+            detail varying
+            subtype slider
+            range {-1 1}
+            default 0
+        }
+
+        parameter float YOffset {
+            label {V Offset}
+            description {
+                Offset the v (t) value by this amount.
+            }
+            detail varying
+            subtype slider
+            range {-1 1}
+            default 0
+        }
+
+        parameter float Rotation {
+            label {Rotation}
+			description {
+                Rotate the result.
+			}
+            detail varying
+            subtype slider
+            range {-180 180 1}
+            default 0
+		}
+
+        parameter manifold_s out {
+            display hidden
+            access output
+        }
+
+        RSLInclude {sl.h}
+        RSLInclude {manifold.h}
+
+		RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    generate
+output "
+                    varying point   Q = point 0;
+
+                    uniform float   dummy;
+                    if ([getvar File] == \"\" || textureinfo ([getvar File], \"exists\", dummy) == 0)
+                        return;
+
+                    uniform matrix  projMatrix;
+                    projMatrix = textureinfo ([getvar File], \"projectionmatrix\", projMatrix);
+                    Q = transform (projMatrix, P);
+
+                    Q = point (linear (-1, 1, Q\[0\]), linear (-1, 1, Q\[1\]), Q\[2\]);
+"
+                    if {[getval Center]} {
+output "                Q -= vector (.5,.5,0);"
+                    }
+output "
+                    Q = rotate (Q, radians(Rotation), point(0,0,0), point(0,0,1));
+                    Q *= point (XFreq, YFreq, 1);
+                    Q -= vector (XOffset, YOffset, 0);
+"
+                    if {[getval Center]} {
+output "                Q += vector (.5,.5,0);"
+                    }
+
+                    if {[getval XInvert]} {
+output "                Q = point(-Q\[0\],Q\[1\],Q\[2\]);"
+                    }
+
+                    if {[getval YInvert]} {
+output "                Q = point(Q\[0\],-Q\[1\],Q\[2\]);"
+                    }
+
+                    if {[getval Swap]} {
+output "                Q = point(Q\[1\],Q\[0\],Q\[2\]);"
+                    }
+output "
+                    out->Set(Q);
+"
+                }
+            }
+		}
+	}
+
+  }
+}

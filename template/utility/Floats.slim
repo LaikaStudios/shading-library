@@ -1,0 +1,129 @@
+##
+##  Copyright(c) 2011-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV multiple Floats 0 {
+        description {
+            Returns various prman float values: u, v, s, t, du, dv, time, dtime, frame number,
+            and ncomps (number of color components).
+        }
+
+        parameter float Scale {
+            label {Scale}
+            description {
+                Multiply the result by this amount.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float U {
+            label {u}
+            display hidden
+            access output
+        }
+
+        parameter float V {
+            label {v}
+            display hidden
+            access output
+        }
+
+        parameter float S {
+            label {s}
+            display hidden
+            access output
+        }
+
+        parameter float T {
+            label {t}
+            display hidden
+            access output
+        }
+
+        parameter float Du {
+            label {du}
+            display hidden
+            access output
+        }
+
+        parameter float Dv {
+            label {dv}
+            display hidden
+            access output
+        }
+
+        parameter float Time {
+            label {time}
+            display hidden
+            access output
+        }
+
+        parameter float dTime {
+            label {dtime}
+            display hidden
+            access output
+        }
+
+        parameter float Frame {
+            label {Frame Number}
+            display hidden
+            access output
+        }
+
+        parameter float nComps {
+            label {ncomps}
+            display hidden
+            access output
+        }
+
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+#if SLIM_SHADERTYPEID != SLIM_TYPEID_volume
+                    U = [getvar Scale] * u;
+                    V = [getvar Scale] * v;
+                    S = [getvar Scale] * s;
+                    T = [getvar Scale] * t;
+                    Du = [getvar Scale] * du;
+                    Dv = [getvar Scale] * dv;
+#else
+                    U = 0;
+                    V = 0;
+                    S = 0;
+                    T = 0;
+                    Du = 0;
+                    Dv = 0;
+#endif
+                    option( \"Ri:FrameBegin\", Frame );
+                    Frame *= [getvar Scale];
+                    Time = [getvar Scale] * time;
+                    dTime = [getvar Scale] * dtime;
+                    nComps = [getvar Scale] * ncomps;
+"
+                }
+            }
+        }
+    }
+
+  }
+}

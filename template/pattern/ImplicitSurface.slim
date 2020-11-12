@@ -1,0 +1,477 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV multiple ImplicitSurface 3 {
+        description {
+            Creates an Implicit Surface by sampling the Field function along the view ray.
+            The geometry bounds the effect, and the Field function is sampled throughout its interior.
+            Connect Mask to Opacity; and "Imp N" to the N Surface Override of a Material's BumpDisp.
+        }
+
+        parameter ImplicitManifold_s ImpManifold {
+            label {Implict Manifold}
+            description {
+                Defines the space in which to generate the Field pattern.
+                The same Implicit Manifold template directly connected here
+                MUST also be connected to the Field generation template.
+            }
+            detail mustvary "laika,ImplicitSpaceManifold"
+        }
+
+        parameter float Field {
+            label {Field}
+            description {
+                A 0 to 1 ranged, 3D pattern. This value, combined with the Field Threshold,
+                creates the implict surface. This function should be smoothly varying, without
+                any sudden changes from 0 to 1: think soft and blurry - no hard edges.
+            }
+            provider variable
+            detail varying
+            subtype slider
+            range {0 1}
+            default .5
+        }
+
+        parameter float Threshold {
+            label {Field Threshold}
+            description {
+                Along with Field, defines the location of the Implicit Surface.
+                Field values higher than this are inside the surface.
+                Values lower than this are outside.
+            }
+            detail uniform
+            subtype slider
+            range {0 1}
+            default .5
+        }
+
+        parameter float Invert {
+            label {Invert Threshold}
+            description {
+                Inverts the sense of the Field Threshold value:
+                Field values lower than this are inside the surface,
+                values higher than it are outside.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        collection void SampleParams {
+            label {Field Sampling}
+            description {
+                These control the shader's sampling of the Field function.
+                These largely determine the speed/quality tradeoff of the result.
+            }
+            state open
+
+            parameter float DRSR {
+                label {Depth Relative Shading Rate}
+                description {
+                    Scales the ShadingRate used for sampling the Field function,
+                    significantly speeding up execution, at the expense of less detail in depth.
+                }
+                detail uniform
+                subtype slider
+                range {1 20}
+                default {10}
+            }
+
+            parameter float MaxSamples {
+                label {Max Samples}
+                description {
+                    The maximum number of Implict Surface samples to use.
+                    Set this to -1 to use the default number based on the scene ShadingRate and
+                    the Depth Relative Shading Rate.
+                }
+                detail uniform
+                subtype slider
+                range {1 128 1}
+                default {-1}
+            }
+
+            parameter float MinSamples {
+                label {Min Samples}
+                description {
+                    Always use at least this many Implict Surface samples.
+                }
+                detail uniform
+                subtype slider
+                range {1 128 1}
+                default {1}
+            }
+        }
+
+        collection void GeoSampling {
+            label {Geometry Sampling}
+            description {
+                These control the ray traced sampling of the geometric surface,
+                which is used to bound the resulting Implicit Surface object's overall size and shape in the scene.
+            }
+            state open
+
+            parameter string Subset {
+                label {Subset}
+                description {
+                    The name of the object set or sets to use for Geometry Sampling.
+                }
+                detail varying
+                default ""
+            }
+
+            parameter float Bias {
+                label {Bias}
+                description {
+                    Controls the sample ray's surface offset to remove self-intersection artifacts.
+                    Set the Bias to -1 if you want to use the default raytrace bias value.
+                }
+                detail uniform
+                subtype slider
+                range {0 .1 .001}
+                default -1
+            }
+
+            parameter string HitSides {
+                label {Hit Sides}
+                description {
+                    Selects which side(s) of the geometry will be used to determine its posterior location.
+                    Sample rays are shot from the front side into the object along the view direction.
+                }
+                detail uniform
+                subtype selector
+                range {
+                    both both
+                    front front
+                    back back
+                }
+                default back
+            }
+
+            parameter color HitThreshold {
+                display hidden
+                label {Hit Threshold}
+                description {
+                    The shaded opacity threshold that determines whether a ray
+                    is considered to have "hit" anything or not. Setting this to
+                    black turns off Hit Threshold testing.
+                }
+                detail uniform
+                default {0 0 0}
+            }
+
+            parameter color OThreshold {
+                display hidden
+                label {Opacity Threshold}
+                description {
+                    Determines the criteria for automatic continuation of rays through semi-opaque surfaces.
+                }
+                detail uniform
+                default {0 0 0}
+            }
+
+            parameter float MaxDist {
+                label {Max Dist}
+                description {
+                    Limits the distance a sample ray can travel before giving up trying to find a surface.
+                }
+                detail uniform
+                default {1e30}
+            }
+
+            parameter float GeoSamples {
+                display hidden
+                label {Samples}
+                description {
+                    The number of geometric sample rays to use.
+                    Generally does not improve the results, at the cost of increased render time,
+                    but may produce some quality improvement when the geometry has very sharp edges or points.
+                }
+                detail uniform
+                range {1 16 1}
+                default 1
+            }
+        }
+
+        parameter float Matte {
+            display hidden
+            label {Mask}
+            access output
+            default 1
+        }
+
+        parameter vector Nimp {
+            display hidden
+            label {Imp N}
+            access output
+            default {0 0 0}
+        }
+        parameter point Pimp {
+            display hidden
+            label {Imp P}
+            access output
+            default {0 0 0}
+        }
+        parameter float ImpMatte {
+            display hidden
+            label {Imp Mask}
+            access output
+            default 0
+        }
+
+        parameter vector Ngeo {
+            display hidden
+            label {Geo N}
+            access output
+            default {0 0 0}
+        }
+        parameter point Pgeo {
+            display hidden
+            label {Geo P}
+            access output
+            default {0 0 0}
+        }
+        parameter float GeoMatte {
+            display hidden
+            label {Geo Mask}
+            access output
+            default 1
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {slim.h}
+        RSLInclude {prman.h}
+
+        RSLSource GenerativeFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+
+                    generate -Threshold -Field
+output "
+                    //
+                    // Save the volume coordinate system and
+                    // get the volume probe start point: the surface of the geometry.
+                    //
+                    uniform string  impSpace;
+                    varying point   Qbeg;
+                    {
+                        impSpace = [getvar ImpManifold]->Space;
+                        Qbeg = [getvar ImpManifold]->GetQ();
+                    }
+
+                    //
+                    // Determine the step size through the volume based on
+                    // the filtersize at the surface.
+                    //
+                    varying float   dQmin, dQ, dQstep;
+                    {
+                        dQ = [getvar ImpManifold]->GetdQfr();
+                        dQmin = [getvar ImpManifold]->GetdQfrMin();
+
+                        dQstep = dQ * [getvar DRSR];
+                    }
+
+                    //
+                    // Get the end point and volume probe direction vector.
+                    //
+                    varying point   Qend;
+                    varying vector  Qdir;
+                    {
+                        varying point   Qhit, hitP, hitPref;
+                        varying float   hits;
+
+                        uniform string  primP = concat (\"primitive:\", SLIM_P_STRING);
+
+                        uniform string  prefName = [getvar ImpManifold]->PrefName;
+                        uniform string  primPref = concat (\"primitive:\", prefName);
+
+                        Qend = Qbeg;
+                        if (prmanFace() == 1) {  // Only fire rays from the front face.
+                            hits = 0;
+                            Qhit = point 0;
+                            gather (\"geometry\", SLIM_P, I, 0, GeoSamples,
+                                \"samplebase\", 1,
+                                \"subset\", [getvar Subset],
+                                \"hitsides\", [getvar HitSides],
+                                \"bias\", [getvar Bias],
+                                \"maxdist\", [getvar MaxDist],
+                                \"ohitthreshold\", [getvar HitThreshold],
+                                \"othreshold\", [getvar OThreshold],
+
+                                primP, hitP,
+                                primPref, hitPref
+                            ) {
+                                if (prefName == \"null\")
+                                    Qhit += transform (impSpace, hitP);
+                                else
+                                    Qhit += transform (\"object\", hitPref);
+
+                                hits += 1;
+                            }
+                            Qend = Qhit / hits;
+                        }
+
+                        Qdir = normalize (Qend - Qbeg);
+                    }
+
+                    //
+                    // Determine how many volume samples to use and modify dQstep to reflect that.
+                    //
+                    float   iterations;
+                    {
+                        float   len = length (Qend - Qbeg);
+
+                        iterations = ceil (len / dQstep);
+                        if ([getvar MaxSamples] < 0)
+                            iterations = max (iterations, [getvar MinSamples]);
+                        else
+                            iterations = clamp (iterations, [getvar MinSamples], [getvar MaxSamples]);
+
+                        dQstep = len / iterations;
+                    }
+
+                    //
+                    // Get the geometry/implicit surface transition based on
+                    // the Threshold and Field values at the surface.
+                    //
+                    varying float   geo;
+                    {
+"
+                        generate Threshold Field
+output "
+                        geo = step ([getvar Threshold], [getvar Field]);
+                        geo = mix (geo, 1-geo, [getvar Invert]);
+                    }
+
+                    //
+                    // Set the geometric P and N values
+                    // (the original surface, in current space).
+                    //
+                    Pgeo = SLIM_P;
+                    Ngeo = prmanShadingNormal();
+
+                    //
+                    // Iterate through the object and determine where the
+                    // implicit surface is in order to generate its P and N values.
+                    // This is only necessary when geo < 1: the implicit surface
+                    // is not obscured by the geometric surface.
+                    //
+                    // Unfortunately, we don't generate a filtered silhouette
+                    // edge of implicit surfaces, as we'd have to sub-sample the Field
+                    // and Threshold values around every Pimp, which is too much.
+                    // So let the renderer handle it with shadingrate and pixelsamples.
+                    //
+                    Pimp = Pgeo;
+                    Nimp = Ngeo;
+
+                    varying float   imp = 0;
+                    {
+                        float   i;
+                        varying float   iField;
+
+                        varying point   Q, Q0, Q1;
+                        varying float   T0, T1, F0, F1;
+
+                        uniform vector  X = vector (1,0,0);
+                        uniform vector  Y = vector (0,1,0);
+                        uniform vector  Z = vector (0,0,1);
+
+                        // If we're not looking at part of the original geometry,
+                        // see if there's an implicit surface.
+                        if (geo < 1) {
+                            Q0 = Q = Qbeg;
+                            F0 = [getvar Field];
+                            T0 = [getvar Threshold];
+
+                            // Find the implicit surface.
+                            for (i=0; i < iterations; i+=1) {
+                                Q += Qdir*dQstep;
+
+                                [getvar ImpManifold]->Set(Q);
+"
+                                generate Threshold Field
+output "
+                                Q1 = Q;
+                                F1 = [getvar Field];
+                                T1 = [getvar Threshold];
+
+                                // Does the sample interval contain the implicit surface:
+                                // does the sign of T-F change?
+                                if (abs(sign(T0-F0)+sign(T1-F1)) < 2) {
+                                    imp = 1;    // We found the implicit surface.
+
+                                    // Estimate the implicit surface location by linearly
+                                    // interpolating between the interval's end points.
+                                    Q = mix (Q0, Q1, (T0-F0)/((T0-F0)-(T1-F1)));
+                                    Pimp = transform (impSpace, \"current\", Q);
+
+                                    [getvar ImpManifold]->Set(Q);
+"
+                                    generate Field
+output "
+                                    iField = [getvar Field];
+
+                                    // Delta X Field sample.
+                                    [getvar ImpManifold]->Set(Q + X*dQmin);
+"
+                                    generate Field
+output "
+                                    Nimp\[0\] = [getvar Field] - iField;
+
+                                    // Delta Y Field sample.
+                                    [getvar ImpManifold]->Set(Q + Y*dQmin);
+"
+                                    generate Field
+output "
+                                    Nimp\[1\] = [getvar Field] - iField;
+
+                                    // Delta Z Field sample.
+                                    [getvar ImpManifold]->Set(Q + Z*dQmin);
+"
+                                    generate Field
+output "
+                                    Nimp\[2\] = [getvar Field] - iField;
+
+                                    Nimp = vtransform (impSpace, \"current\", Nimp);
+                                    Nimp = faceforward (Nimp, I, Nimp);
+
+                                    break;  // Exit the search.
+                                }
+
+                                Q0 = Q1;
+                                F0 = F1;
+                                T0 = T1;
+                            }
+                        }
+                    }
+
+                    GeoMatte = geo; // The portion of the original geometry that remains.
+                    ImpMatte = max (imp - geo, 0);  // The implicit surface.
+                    Matte = max (imp, geo);
+
+                    Nimp = normalize(Nimp);
+                    Ngeo = normalize(Ngeo);
+"
+                }
+            }
+        }
+    }
+
+  }
+}

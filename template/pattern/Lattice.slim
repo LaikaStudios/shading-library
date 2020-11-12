@@ -1,0 +1,204 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV float Lattice 0 {
+		label {Lattice}
+		description {
+            Produces an alternating field in one, two, or three dimensions.
+		}
+
+        collection manifold Manifold {
+            detail mustvary "pixar,SurfacePoint"
+            parameter point Q {detail mustvary}
+            parameter vector dQu {detail mustvary}
+            parameter vector dQv {detail mustvary}
+        }
+
+        parameter float Scale {
+            label {Frequency}
+            description {
+                Scales the frequency of the pattern.
+                Note, the pattern will alias if it's too high.
+            }
+            provider variable
+            detail varying
+            subtype slider
+            range {.1 10}
+            default 1
+        }
+
+        parameter float Cycle {
+            display hidden
+            label {Duty Cycle}
+            description {
+                Adjusts how much of the time the output is above .5
+                versus how much is below .5.
+            }
+            provider variable
+            detail varying
+            subtype slider
+            range {0 1}
+            default .5
+        }
+
+        parameter float Type {
+            label {Type}
+            description {
+                Selects whether to produce a smoothly varying field value
+                or to produce hard edges.
+            }
+            provider variable
+            detail uniform
+            subtype selector
+            range {
+                "Smooth" 0
+                "Hard" 1
+            }
+            default 0
+
+            msghandler {
+                SetValue {
+                    set typeParam %obj
+                    set typeValue [$typeParam GetValue]
+                    set app [$typeParam GetAppearance]
+
+                    switch $typeValue {
+                        0 {
+                            [$app GetProperties -name Cycle] SetDisplayLevel "hidden"
+                        }
+                        1 {
+                            [$app GetProperties -name Cycle] SetDisplayLevel ""
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        parameter float Axes {
+            label {Dimension}
+            description {
+                Selects whether the variation is along X, in X and Y, or 3D.
+            }
+            provider variable
+            detail uniform
+            subtype selector
+            range {
+                "X" 0
+                "XY" 1
+                "XYZ" 2
+            }
+            default 2
+        }
+
+        collection void FilterLimits {
+            label {Filter Limits}
+            description {
+                These set the limit value used to filter the results.
+            }
+
+            parameter float Min {
+                label {Min}
+                description {
+                    The manifold wavelength at which filtering of the lattice result begins.
+                }
+                detail varying
+                subtype slider
+                range {0 2}
+                default .25
+            }
+
+            parameter float Max {
+                label {Max}
+                description {
+                    The manifold wavelength at which filtering of the lattice is absolute.
+                    Max should be at least 4x Min.
+                    The further apart Min and Max are, the more gradual the transition from
+                    unfiltered to filtered.
+                }
+                detail varying
+                subtype slider
+                range {0 2}
+                default 1
+            }
+        }
+
+        parameter float result {
+            access output
+            detail varying
+            display hidden
+        }
+
+
+        RSLInclude {sl.h}
+
+        RSLFunction {
+            void vfxLattice (
+                varying point   Q;
+                varying vector  dQu;
+                varying vector  dQv;
+                varying float   Scale;
+                varying float   Cycle;
+                uniform float   Type;
+                uniform float   Axes;
+                varying float   Min;
+                varying float   Max;
+
+                output varying float    result;
+            ) {
+                varying point   xyz = Scale*Q;
+                varying float   x, y, z;
+                filterregion    fr;
+
+                x = linear (-1, 1, sin (xcomp(xyz)*PI));
+                y = linear (-1, 1, sin (ycomp(xyz)*PI));
+                z = linear (-1, 1, sin (zcomp(xyz)*PI));
+
+                fr->calculate1d(xcomp(xyz));
+                x = mix (x, .5, smoothstep (Min, Max, sqrt(fr->minsize()*fr->maxsize())));
+
+                fr->calculate1d(ycomp(xyz));
+                y = mix (y, .5, smoothstep (Min, Max, sqrt(fr->minsize()*fr->maxsize())));
+
+                fr->calculate1d(zcomp(xyz));
+                z = mix (z, .5, smoothstep (Min, Max, sqrt(fr->minsize()*fr->maxsize())));
+
+                if (Type == 1) {
+                    varying float   dx = Scale*(xcomp(dQu) + xcomp(dQv));
+                    varying float   dy = Scale*(ycomp(dQu) + ycomp(dQv));
+                    varying float   dz = Scale*(zcomp(dQu) + zcomp(dQv));
+
+                    x = filterstep (1-Cycle, x, x+dx);
+                    y = filterstep (1-Cycle, y, y+dy);
+                    z = filterstep (1-Cycle, z, z+dz);
+                }
+
+                result = x;
+
+                if (Axes > 0)
+                    result = mix (result, 1-result, y);
+
+                if (Axes > 1)
+                    result = mix (result, 1-result, z);
+            }
+        }
+    }
+
+  }
+}

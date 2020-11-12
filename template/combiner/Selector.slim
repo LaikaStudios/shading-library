@@ -1,0 +1,472 @@
+##
+##  Copyright(c) 2010-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    set TemplatePrototype {
+        templateV %Type %PrefixSelector 2 {
+            description {
+                Returns the value of your Choice.
+            }
+
+            parameter string SelectorUI_Selection {
+                label {Choice}
+                description {
+                    Determines which of the Add Choice values to return.
+                    You can change the Label associated with each added choice to
+                    something more descriptive than the number it assigns by default.
+                }
+                detail varying
+                subtype selector
+                range {
+                    "" ""
+                }
+                default ""
+            }
+
+            parameter %Type Default {
+                label {Default}
+                description {
+                    If Choice does not correspond to any of the available
+                    added choice Labels, this value will be returned.
+                }
+                detail varying
+                default "%Default"
+            }
+
+            collection customuiFullWidth Inputs {
+                customui laika SelectorUI
+                subtype propertycreator
+                drawmode children
+                state open
+                userdata { paramType %Type }
+            }
+
+            parameter %Type result {
+                label {Result}
+                display hidden
+                access output
+            }
+
+            RSLSource GenerativeFunction {
+                proc primvars {} {}
+                proc function {} {
+                    set inputParams [safeeval %c GetProperties -name "SelectorUI_Input*"]
+
+                    generateBody {
+                        generate SelectorUI_Selection
+output "
+                        uniform string  _Choice = [getvar SelectorUI_Selection];
+"
+                        # Generate the selection tests.
+                        foreach input $inputParams {
+                            set inputLabel [safeeval $input GetLabel]
+output "
+                            if (_Choice == \"$inputLabel\") {
+"
+                                if {[safeeval $input GetConnectedFunction] != ""} {
+                                    set in [generate [safeeval $input GetName]]
+                                } else {
+                                    set in [safeeval $input GetValue]
+                                }
+    
+                                # Create proper rsl syntax for the in value.
+                                if {"%Type" != "float"} {
+                                    regsub -all {\ } $in {,} in
+                                }
+output "
+                                result = %Type ($in);
+                                return;
+                            }
+"
+                        }
+
+                        generate Default
+output "
+                        result = [getvar Default];
+"
+                    }
+                }
+            }
+        }
+    }
+
+    #
+    # Generate the various types of template.
+    #
+    foreach  {type name defval} {
+        float  F  {0}
+        color  C  {0 0 0}
+        point  P  {0 0 0}
+        vector V  {0 0 0}
+    } {
+        regsub -all %Type $TemplatePrototype $type result
+        regsub -all %Prefix $result $name result
+        regsub -all %Default $result $defval result
+        if [catch $result msg] {
+            ::RAT::LogMsg ERROR $msg
+        }
+    }
+
+
+    templateV string SSelector 2 {
+        description {
+            Returns the value of your Choice.
+        }
+
+        parameter string SelectorUI_Selection {
+            label {Choice}
+            description {
+                Determines which of the Add Choice values to return.
+                You can change the Label associated with each added choice to
+                something more descriptive than the number it assigns by default.
+            }
+            detail varying
+            subtype selector
+            range {
+                "" ""
+            }
+            default ""
+        }
+
+        parameter string Default {
+            label {Default}
+            description {
+                If Choice does not correspond to any of the available
+                added choice Labels, this value will be returned.
+            }
+            detail varying
+            default ""
+        }
+
+        collection customuiFullWidth Inputs {
+            customui laika SelectorUI
+            subtype propertycreator
+            drawmode children
+            state open
+            userdata { paramType string }
+        }
+
+        parameter string result {
+            label {Result}
+            display hidden
+            access output
+        }
+
+        RSLSource GenerativeFunction {
+            proc primvars {} {}
+            proc function {} {
+                set inputParams [safeeval %c GetProperties -name "SelectorUI_Input*"]
+
+                generateBody {
+                    generate SelectorUI_Selection
+output "
+                    uniform string  _Choice = [getvar SelectorUI_Selection];
+"
+                    # Generate the selection tests.
+                    foreach input $inputParams {
+                        set inputLabel [safeeval $input GetLabel]
+output "
+                        if (_Choice == \"$inputLabel\") {
+"
+                            if {[safeeval $input GetConnectedFunction] != ""} {
+                                set in [generate [safeeval $input GetName]]
+output "                        result = $in;"
+                            } else {
+                                set in [safeeval $input GetValue]
+output "                        result = \"$in\";"
+                            }
+output "
+                            return;
+                        }
+"
+                    }
+
+                    generate Default
+output "
+                    result = [getvar Default];
+"
+                }
+            }
+        }
+    }
+
+
+    templateV coreV7fresnel_s FresnelSelector 0 {
+        description {
+            Returns the Fresnel function of your Choice.
+        }
+
+        parameter string SelectorUI_Selection {
+            label {Choice}
+            description {
+                Determines which of the Add Choice values to return.
+                You can change the Label associated with each added choice to
+                something more descriptive than the number it assigns by default.
+            }
+            detail varying
+            subtype selector
+            range {
+                "" ""
+            }
+            default ""
+        }
+
+        parameter coreV7fresnel_s Default {
+            label {Default}
+            description {
+                If Choice does not correspond to any of the available
+                added choice Labels, this value will be returned.
+            }
+            detail mustvary "laika,bxdfV7FresnelStd"
+        }
+
+        collection customuiFullWidth Inputs {
+            customui laika SelectorUI
+            subtype propertycreator
+            drawmode children
+            state open
+            userdata { paramType coreV7fresnel_s }
+        }
+
+        parameter coreV7fresnel_s result {
+            label {Result}
+            display hidden
+            access output
+        }
+
+        RSLSource GenerativeFunction {
+            proc primvars {} {}
+            proc function {} {
+                set inputParams [safeeval %c GetProperties -name "SelectorUI_Input*"]
+
+                generateBody {
+                    generate SelectorUI_Selection
+output "
+                    uniform string  _Choice = [getvar SelectorUI_Selection];
+"
+                    # Generate the selection tests.
+                    foreach input $inputParams {
+                        set inputLabel [safeeval $input GetLabel]
+output "
+                        if (_Choice == \"$inputLabel\") {
+"
+                            set func [safeeval $input GetConnectedFunction]
+                            if {$func != ""} {
+                                set result [safeeval $func GetProperties -access output]
+                                set FresnelRSL [safeeval $result GetNameSL 1]
+output "
+                                $FresnelRSL = result;
+"
+                                set in [generate [safeeval $input GetName]]
+                            } else {
+                                set in [safeeval $input GetValue]
+                            }
+output "
+                            result = $in;
+                            return;
+                        }
+"
+                    }
+
+                    # Handle Default value if choice doesn't match anything.
+                    set parm [safeeval %c GetProperties -name "Default"] 
+                    set func [safeeval $parm GetConnectedFunction]
+                    set result [safeeval $func GetProperties -access output]
+
+                    set DefaultRSL [safeeval $result GetNameSL 1]
+output "
+                    $DefaultRSL = result;
+"
+                    generate Default
+output "
+                    result = [getvar Default];
+"
+                }
+            }
+        }
+    }
+
+
+    templateV coreV7blend_s BlendSelector 0 {
+        description {
+            Returns the Blend function of your Choice.
+        }
+
+        parameter string SelectorUI_Selection {
+            label {Choice}
+            description {
+                Determines which of the Add Choice values to return.
+                You can change the Label associated with each added choice to
+                something more descriptive than the number it assigns by default.
+            }
+            detail varying
+            subtype selector
+            range {
+                "" ""
+            }
+            default ""
+        }
+
+        parameter coreV7blend_s Default {
+            label {Default}
+            description {
+                If Choice does not correspond to any of the available
+                added choice Labels, this value will be returned.
+            }
+            detail mustvary "laika,bxdfV7BlendMix"
+        }
+
+        collection customuiFullWidth Inputs {
+            customui laika SelectorUI
+            subtype propertycreator
+            drawmode children
+            state open
+            userdata { paramType coreV7blend_s }
+        }
+
+        parameter coreV7blend_s result {
+            label {Result}
+            display hidden
+            access output
+        }
+
+        RSLSource GenerativeFunction {
+            proc primvars {} {}
+            proc function {} {
+                set inputParams [safeeval %c GetProperties -name "SelectorUI_Input*"]
+
+                generateBody {
+                    generate SelectorUI_Selection
+output "
+                    uniform string  _Choice = [getvar SelectorUI_Selection];
+"
+                    # Generate the selection tests.
+                    foreach input $inputParams {
+                        set inputLabel [safeeval $input GetLabel]
+output "
+                        if (_Choice == \"$inputLabel\") {
+"
+                            if {[safeeval $input GetConnectedFunction] != ""} {
+                                set in [generate [safeeval $input GetName]]
+                            } else {
+                                set in [safeeval $input GetValue]
+                            }
+output "
+                            result = $in;
+                            return;
+                        }
+"
+                    }
+
+                    generate Default
+output "
+                    result = [getvar Default];
+"
+                }
+            }
+        }
+    }
+
+
+    templateV shadingcomponent SCSelector 0 {
+        description {
+            Returns the value of one of the inputs.
+        }
+
+        parameter string SelectorUI_Selection {
+            label {Choice}
+            description {
+                Determines which of the Add Choice values to return.
+                You can change the Label associated with each added choice to
+                something more descriptive than the number it assigns by default.
+            }
+            detail varying
+            subtype selector
+            range {
+                "" ""
+            }
+            default ""
+        }
+
+        collection customuiFullWidth Inputs {
+            customui laika SelectorUI
+            subtype propertycreator
+            drawmode children
+            state open
+            userdata { paramType shadingcomponent }
+        }
+
+        collection shadingcomponent result {
+            display hidden
+            access output
+            parameter color o_Color {access output}
+            eval [::aovOutputParameterMacro]
+        }
+
+        RSLInclude {pxslAOV.h}
+
+        RSLSource GenerativeFunction {
+            proc primvars {} {}
+            proc function {} {
+                set inputParams [safeeval %c GetProperties -name "SelectorUI_Input*"]
+
+                generateBody {
+                    generate SelectorUI_Selection
+output "
+                    o_Color = color (0);
+                    INIT_AOV_OUTPUT_PARAMS;
+"
+                    # For each connection...
+                    foreach input $inputParams {
+
+                        # If there's a connected function, we'll generate some sl code.
+                        if {[safeeval $input GetConnectedFunction] != ""} {
+                            set inputLabel [safeeval $input GetLabel]
+output "
+                            if ([getvar SelectorUI_Selection] == \"$inputLabel\") {
+"
+                                # Generate the list of shadingcomponent parameter names.
+                                set paramNames {}
+                                set inputCollectionParams [safeeval $input GetChildren]
+                                foreach param $inputCollectionParams {
+                                    lappend paramNames [safeeval $param GetName]
+                                }
+
+                                # Call the connected shadingcomponent function and get its sl parameters.
+                                set functionParams [eval generate $paramNames]
+
+                                # Assign the function parameter value to the corresponding result parameter.
+                                set funcColorParam [lindex $functionParams 0]
+                                output "o_Color = $funcColorParam;"
+
+                                foreach funcParam [lrange $functionParams 1 end] {
+                                    set resultParam [string range $funcParam [string last "o_" $funcParam] end]
+                                    output "$resultParam = $funcParam;"
+                                }
+output "
+                                return;
+                            }
+"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+  }
+}

@@ -1,0 +1,87 @@
+##
+##  Copyright(c) 2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+
+#   
+#   Requirements for conversion templates
+#
+#   - No extra parameters other than input and output may be declared
+#   - input parameters MUST be declared with "provider connection"
+#   - input collections must ALSO be declared with "provider connection"
+#   - output parameters MUST be declared "access output"
+#
+slim 1 extensions mprater {
+    extensions laika vfx {
+
+    template color RGBAToColor {
+        display hidden
+        description {
+            RGBA to Color.
+        }
+
+        parameter rgba_s in {
+            provider connection
+        }
+
+        parameter color out {
+            access output
+        }
+
+        RSLInclude {rgba.h}
+
+        RSLSource GenerativeFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    generate in
+output "
+                    out = [getvar in]->GetRGB();
+"
+                }
+            }
+        }
+    }
+
+    template float RGBAToFloat {
+        display hidden
+        description {
+            RGBA to Float.
+        }
+
+        parameter rgba_s in {
+            provider connection
+        }
+
+        parameter float out {
+            access output
+        }
+
+        RSLInclude {rgba.h}
+
+        RSLSource GenerativeFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    generate in
+output "
+                    out = [getvar in]->GetAlpha();
+"
+                }
+            }
+        }
+    }
+
+  }
+}

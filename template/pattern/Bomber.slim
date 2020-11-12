@@ -1,0 +1,699 @@
+##
+##  Copyright(c) 2013-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV multiple colorBomber 0 {
+        description {
+            Bombs the input Pattern Texture: generates a randomly placed set of copies of the Pattern.
+            The bombed patterns are non-intersecting (in the absence of Rotation).
+        }
+
+        parameter manifold_s M {
+            label {Manifold}
+            description {
+                Defines the space in which to generate the pattern.
+            }
+            detail mustvary "laika,UV"
+        }
+
+        parameter string Probability {
+            label {Probability Density Map}
+            description {
+                 Sets the probability that an instance will appear.
+                 1 means it will always appear. 0 means it will never appear.
+            }
+            subtype texture
+            default ""
+        }
+
+        parameter string Pattern {
+            label {Pattern Texture}
+            description {
+                The texture map that defines the instance to bomb.
+                It should be made with "txmake -mode black".
+                The alpha/matte value is used to matte the Random Number output value.
+            }
+            subtype texture
+            default ""
+        }
+
+        parameter float TextureBlur {
+            label {Texture Blur}
+            description {
+                The Pattern Texture blur percentage.
+            }
+            detail varying 
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        parameter float Underfilter {
+            label {Cell Edge Underfiltering}
+            description {
+                Filtering at the edges of the bombing cells is problematic.
+                If you notice some grid line artifacts in the results,
+                increase this value until they go away.
+                Note that pushing it all the way to 1 may cause new
+                artifacts to appear.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0.75
+        }
+
+        parameter float Frequency {
+            label {Frequency}
+            description {
+                Sets the scale of the bombing.
+            }
+            detail varying
+            subtype slider
+            range {.1 10}
+            default 1
+        }
+
+        parameter float Rotation {
+            label {Rotation}
+            description {
+                The percentage to randomly Rotate each instance.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        parameter float SizeScalesResult {
+            label {Size Scales Result}
+            description {
+                When this is 1, the instance value will be multiplied by its size.
+                This is useful when generating displacement data
+                so that smaller instances are less high.
+                Or you might not want to do this but instead use the Size output
+                to produce that behavior.
+            }
+            detail varying 
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        parameter float SizeFadesResult {
+            label {Size Fades Result}
+            description {
+                When this is 1, the instance value will be faded out based on its size.
+            }
+            detail varying 
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        parameter float RandomScalesResult {
+            label {Random Scales Result}
+            description {
+                When this is 1, the instance value will be scaled by a uniform random value.
+            }
+            detail varying 
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        parameter float RandomFadesResult {
+            label {Random Fades Result}
+            description {
+                When this is 1, the instance value will be faded out based on a uniform random value.
+            }
+            detail varying 
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        parameter color Background {
+            label {Background}
+            description {
+                Sets the background color.
+            }
+            detail varying
+            default {0 0 0}
+        }
+
+        collection void0 JitterCollection {
+            state open
+            label {Initial Instances}
+            description {
+                The pattern is generated first by creating a set of inital instances.
+                The remaining space can then be filled in with additional fill instances.
+            }
+
+            parameter float Jitter {
+                label {Jitter Position}
+                description {
+                    The amount of positional randomness used.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 1
+            }
+
+            parameter float SizeJitter {
+                label {Min Size}
+                description {
+                    The inital instances can vary in size rather than all of them being full size.
+                    This sets the minimum size the intial instances can be.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 1
+            }
+
+            parameter color Tint {
+                label {Tint}
+                description {
+                    Tints the initial instances.
+                }
+                detail varying
+                default {1 1 1}
+            }
+        }
+
+        collection void1 FillCollection {
+            state open
+            label {Fill Instances}
+            description {
+                Controls the fill instances.
+            }
+
+            parameter float FillPercent {
+                label {Percent}
+                description {
+                    Determines the percentage of fill instances that will be generated.
+                    The more fill that's generated, the more noticable the underlying
+                    grid pattern will become.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 0.5
+            }
+
+            parameter float MinFill {
+                label {Min Size}
+                description {
+                    The minimum size of the fill instances, specified as a percentage of the full size.
+                }
+                detail varyign
+                subtype slider
+                range {0 1}
+                default 0.6
+            }
+
+            parameter float MaxFill {
+                label {Max Size}
+                description {
+                    The maximum size of the fill instances, specified as a percentage of the full size.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 0.8
+            }
+
+            parameter color Tint0 {
+                label {Tint 0}
+                description {
+                    Tints half the fill instances.
+                }
+                detail varying
+                default {1 1 1}
+            }
+
+            parameter color Tint1 {
+                label {Tint 1}
+                description {
+                    Tints the other half of the fill instances.
+                }
+                detail varying
+                default {1 1 1}
+            }
+        }
+
+
+        parameter color result {
+            display hidden
+            access output
+        }
+        parameter float Size {
+            display hidden
+            access output
+        }
+        parameter float Random {
+            display hidden
+            access output
+        }
+        parameter point InstanceUV {
+            label {UV}
+            display hidden
+            access output
+        }
+        parameter point InstanceUVRandom {
+            label {UV,Random}
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                    result = color 0;
+
+                    //
+                    // Get Initial BombManifold.
+                    //
+                    varying point   Q, QM;
+                    varying float   dQ;
+                    {
+                        QM = [getvar M]->GetQ();
+
+                        Q = QM;
+                        Q *= [getvar Frequency];
+
+                        varying float   dX = length( vector( Du(Q\[0\])*__sdu, Dv(Q\[0\])*__sdv, 0 ));
+                        varying float   dY = length( vector( Du(Q\[1\])*__sdu, Dv(Q\[1\])*__sdv, 0 ));
+
+                        dQ = max( dX, dY );
+                    }
+
+                    // Divide Q into squares.
+                    varying point   Qfloor = _floor( Q );
+
+                    // Herringbone pattern.
+                    // A square cell is in one of four locations of a rectangular herringbone tile:
+                    // Loc: Top=0; Bottom=1; Left=2; Right=3.
+                    varying float   Loc;
+                    {
+                        varying float   cellx = mod( Qfloor\[0\], 4.0 );
+                        varying float   celly = mod( Qfloor\[1\], 4.0 );
+
+                        Loc = mod( cellx + celly, 4.0 );
+                    }
+
+                    // Rectangular cell space: 0 ≤ width ≤ 1; 0 ≤ length ≤ 2.
+                    varying point   UV;
+                    varying float   dUV;
+                    {
+                        UV = point( Q - Qfloor );
+
+                        if (Loc == 1.0) UV\[1\] += 1.0;
+                        if (Loc == 3.0) UV\[0\] += 1.0;
+
+                        varying float   dX = length( vector( Du(UV\[0\])*__sdu, Dv(UV\[0\])*__sdv, 0 ));
+                        varying float   dY = length( vector( Du(UV\[1\])*__sdu, Dv(UV\[1\])*__sdv, 0 ));
+
+                        dUV = max( dX, dY );
+                    }
+
+                    // The cell noise space for Bottom and Right squares
+                    // is the same as their associated Top and Left cells:
+                    //   noise is per rectangular cell.
+                    varying point   Qcn;
+                    {
+                        Qcn = Qfloor;
+
+                        if (Loc == 1.0) Qcn\[1\] -= 1.0;
+                        if (Loc == 3.0) Qcn\[0\] -= 1.0;
+                    }
+
+                    // Generate some random numbers per cell.
+                    varying point   cn = cellnoise( point( Qcn\[0\], Qcn\[1\], 0.0 ));
+                    varying point   cr = cellnoise( point( Qcn\[0\], Qcn\[1\], 1.0 ));
+
+                    varying color   id = cellnoise( point( Qcn\[0\], Qcn\[1\], 2.0 ));
+                    varying color   pdf = cellnoise( point( Qcn\[0\], Qcn\[1\], 3.0 ));
+                    varying color   pfill = cellnoise( point( Qcn\[0\], Qcn\[1\], 4.0 ));
+
+                    // Random texture scale.
+                    varying float   texSize = mix( [getvar SizeJitter], 1.0, cn\[2\] ); // 0 - 100%
+
+                    // Random width and length offsets.
+                    varying float   woffset = mix( 0.0, 1.0 - texSize, [getvar Jitter]*cn\[0\] );
+                    varying float   loffset = mix( 0.0, 2.0 - texSize, [getvar Jitter]*cn\[1\] );
+
+                    // Remap the cell space to account for texture scale/offset.
+                    varying point   ST;
+                    varying point   xy;
+                    {
+                        ST = UV;
+
+                        if (Loc < 1.5)  // Top or Bottom.
+                        {
+                            ST\[0\] = linear( woffset, woffset + texSize, ST\[0\] );
+                            ST\[1\] = linear( loffset, loffset + texSize, ST\[1\] );
+
+                            xy\[0\] = mix( woffset, woffset + texSize, 0.5 );
+                            xy\[1\] = mix( loffset, loffset + texSize, 0.5 );
+                        }
+                        else    // Left or Right.
+                        {
+                            ST\[0\] = linear( loffset, loffset + texSize, ST\[0\] );
+                            ST\[1\] = linear( woffset, woffset + texSize, ST\[1\] );
+
+                            xy\[0\] = mix( loffset, loffset + texSize, 0.5 );
+                            xy\[1\] = mix( woffset, woffset + texSize, 0.5 );
+                        }
+                    }
+
+                    // Determine pdf texture access point.
+                    if (Loc == 1.0) xy\[1\] -= 1.0;
+                    if (Loc == 3.0) xy\[0\] -= 1.0;
+
+                    xy += Qfloor;
+                    xy /= [getvar Frequency];
+
+                    // Apply Rotation.
+                    varying float   angle = [getvar Rotation] * mix( -PI, PI, cr\[0\] );
+
+                    ST -= vector(0.5);
+                    ST = _rotate( ST, angle, vector(0,0,1) );
+                    ST += vector(0.5);
+
+                    // Access the texture Pattern.
+                    varying color   tex;
+                    varying float   matte;
+                    varying float   frScale;
+                    {
+                        ST\[1\] = 1.0 - ST\[1\];
+
+                        filterregion    fr;
+                        fr->calculate2d( ST\[0\], ST\[1\] );
+
+                        frScale = dQ / dUV;
+                        frScale = pow( frScale, 1.0 / (1.0 - [getvar Underfilter]) );
+                        frScale = clamp( frScale, 0.001, 1.0 );
+
+                        fr->scale( frScale );
+                        fr->blur( [getvar TextureBlur] );
+
+                        tex = texture( [getvar Pattern], fr );
+                        matte = texture( [getvar Pattern]\[3\], fr, \"fill\", 0.0 );
+                    }
+
+                    // Scale texture value as needed.
+                    tex *= [getvar Tint];
+
+                    tex *= mix( 1.0, texSize, [getvar SizeScalesResult] );
+                    tex = mix( tex, [getvar Background], (1-texSize) * [getvar SizeFadesResult] );
+
+                    tex *= mix( 1.0, id\[0\], [getvar RandomScalesResult] );
+                    tex = mix( tex, [getvar Background], id\[0\] * [getvar RandomFadesResult] );
+
+                    // Remove instances that aren't high enough probability.
+                    varying float   pdfMask = 1.0;
+
+                    if ([getvar Probability] != \"\")
+                    {
+                        pdfMask = float texture( [getvar Probability], xy\[0\], xy\[1\], \"fill\", 1.0, \"width\", 0.0 );
+                        pdfMask = 1 - step( pdfMask, pdf\[0\] );
+                    }
+
+                    // Complete texture mask.
+                    varying float   mask = pdfMask * matte;
+
+                    // Fill in results.
+                    result = mix( [getvar Background], tex, mask );
+
+                    Size = mix( 0.0, texSize, mask );
+                    Random = id\[0\] * mask;
+                    InstanceUV = mix( QM, point( xy\[0\], xy\[1\], QM\[2\] ), mask );
+                    InstanceUVRandom = mix( QM, point( xy\[0\], xy\[1\], id\[0\] ), mask );
+
+                    /*
+                     *  Fill
+                     */
+
+                    // Determine available fill space based on primary texSize and offset.
+                    // Fill is always along the larger rectangle dimension: 0 ≤ fill ≤ 2.
+                    float   fill0, fill1;
+                    {
+                        fill0 = loffset;                    // Top or Left end.
+                        fill1 = 2.0 - (loffset + texSize);  // Bottom or Right end.
+                    }
+
+                    // Largest possible fill texture size: 0 ≤ maxFill ≤ 1.
+                    float   maxFill0, maxFill1;
+                    {
+                        maxFill0 = min( fill0, 1.0 );
+                        maxFill1 = min( fill1, 1.0 );
+                    }
+
+                    // Min and max allowable fill size to be generated.
+                    varying float   minFill = min( [getvar MinFill], [getvar MaxFill] );
+                    varying float   maxFill = [getvar MaxFill];
+
+                    //
+                    //  Fill 0: Top or Left end.
+                    //
+                    ST = UV;
+
+                    // Generate new cell noise values.
+                    cn = cellnoise( point( Qcn\[0\], Qcn\[1\], 5.0 ));
+
+                    // Actual fill texture size to generate.
+                    varying float   size0 = mix (
+                        min( maxFill0, minFill ),
+                        min( maxFill0, maxFill ),
+                        cn\[2\]
+                    );
+
+                    // Compute the texture scale/offset.
+                    varying float   offset, xoffset, yoffset;
+
+                    if (Loc < 1.5)  // Top
+                    {
+                        xoffset = mix( 0.0, 1.0 - size0, cn\[0\] );
+                        yoffset = mix( 0.0, maxFill0 - size0, cn\[1\] );
+                    }
+
+                    else    // Left
+                    {
+                        xoffset = mix( 0.0, maxFill0 - size0, cn\[1\] );
+                        yoffset = mix( 0.0, 1.0 - size0, cn\[0\] );
+                    }
+
+                    ST\[0\] = linear( xoffset, xoffset + size0, ST\[0\] );
+                    ST\[1\] = linear( yoffset, yoffset + size0, ST\[1\] );
+
+                    // Determine pdf texture access point.
+                    xy\[0\] = mix( xoffset, xoffset + size0, 0.5 );
+                    xy\[1\] = mix( yoffset, yoffset + size0, 0.5 );
+
+                    if (Loc == 1.0) xy\[1\] -= 1.0;
+                    if (Loc == 3.0) xy\[0\] -= 1.0;
+
+                    xy += Qfloor;
+                    xy /= [getvar Frequency];
+
+                    // Apply Rotation.
+                    angle = [getvar Rotation] * mix( -PI, PI, cr\[1\] );
+
+                    ST -= vector(0.5);
+                    ST = _rotate( ST, angle, vector(0,0,1) );
+                    ST += vector(0.5);
+
+                    // Access the 0 texture Pattern.
+                    varying color   tex0;
+                    varying float   id0;
+                    {
+                        ST\[1\] = 1.0 - ST\[1\];
+
+                        filterregion    fr;
+                        fr->calculate2d( ST\[0\], ST\[1\] );
+
+                        frScale = dQ / dUV;
+                        frScale = pow( frScale, 1 / (1 - [getvar Underfilter]) );
+                        frScale = clamp( frScale, 0.001, 1.0 );
+
+                        fr->scale( frScale );
+                        fr->blur( [getvar TextureBlur] );
+
+                        tex0 = texture( [getvar Pattern], fr );
+                        matte = texture( [getvar Pattern]\[3\], fr, \"fill\", 0.0 );
+
+                        // Fill instances are not all used.
+                        matte *= step( 1.0 - [getvar FillPercent], pfill\[0\] );
+                    }
+
+                    // Scale texture value as needed.
+                    tex0 *= [getvar Tint0];
+
+                    tex0 *= mix( 1.0, size0, [getvar SizeScalesResult] );
+                    tex0 = mix( tex0, [getvar Background], (1-size0) * [getvar SizeFadesResult] );
+
+                    tex0 *= mix( 1.0, id\[1\], [getvar RandomScalesResult] );
+                    tex0 = mix( tex0, [getvar Background], id\[1\] * [getvar RandomFadesResult] );
+
+                    // Remove instances that are too small or too big.
+                    varying float   sizeMask = step( minFill, size0 ) - step( maxFill, size0 );
+
+                    // Remove instances that aren't high enough probability.
+                    pdfMask = 1.0;
+
+                    if ([getvar Probability] != \"\")
+                    {
+                        pdfMask = float texture( [getvar Probability], xy\[0\], xy\[1\], \"fill\", 1.0, \"width\", 0.0 );
+                        pdfMask = 1 - step( pdfMask, pdf\[0\] );
+                    }
+
+
+                    // Complete texture mask.
+                    varying float   mask0 = pdfMask * sizeMask * matte;
+
+                    // Fill in results.
+                    result = mix( result, tex0, mask0 );
+
+                    Size = mix( Size, size0, mask0 );
+                    Random += id\[1\] * mask0;
+                    InstanceUV = mix( InstanceUV, point( xy\[0\], xy\[1\], QM\[2\] ), mask0 );
+                    InstanceUVRandom = mix( InstanceUVRandom, point( xy\[0\], xy\[1\], id\[1\] ), mask0 );
+
+
+                    //
+                    //  Fill 1: Bottom or Right end.
+                    //
+                    ST = UV;
+
+                    // Generate new cell noise values.
+                    cn = cellnoise( point( Qcn\[0\], Qcn\[1\], 6.0 ));
+
+                    // Actual fill texture size to generate.
+                    varying float   size1 = mix (
+                        min( maxFill1, minFill ),
+                        min( maxFill1, maxFill ),
+                        cn\[2\]
+                    );
+
+                    // Compute the texture scale/offset.
+                    if (Loc < 1.5)  // Bottom
+                    {
+                        xoffset = mix( 0.0, 1.0 - size1, cn\[0\] );
+                        yoffset = mix( 2.0 - size1, 2.0 - maxFill1, cn\[1\] );
+                    }
+
+                    else    // Right
+                    {
+                        xoffset = mix( 2.0 - size1, 2.0 - maxFill1, cn\[1\] );
+                        yoffset = mix( 0.0, 1.0 - size1, cn\[0\] );
+                    }
+
+                    ST\[0\] = linear( xoffset, xoffset + size1, ST\[0\] );
+                    ST\[1\] = linear( yoffset, yoffset + size1, ST\[1\] );
+
+                    // Determine pdf texture access point.
+                    xy\[0\] = mix( xoffset, xoffset + size0, 0.5 );
+                    xy\[1\] = mix( yoffset, yoffset + size0, 0.5 );
+
+                    if (Loc == 1.0) xy\[1\] -= 1.0;
+                    if (Loc == 3.0) xy\[0\] -= 1.0;
+
+                    xy += Qfloor;
+                    xy /= [getvar Frequency];
+
+                    // Apply Rotation.
+                    angle = [getvar Rotation] * mix( -PI, PI, cr\[2\] );
+
+                    ST -= vector(0.5);
+                    ST = _rotate( ST, angle, vector(0,0,1) );
+                    ST += vector(0.5);
+
+                    // Access the 1 texture Pattern.
+                    varying color   tex1;
+                    varying float   id1;
+                    {
+                        ST\[1\] = 1.0 - ST\[1\];
+
+                        filterregion    fr;
+                        fr->calculate2d( ST\[0\], ST\[1\] );
+
+                        frScale = dQ / dUV;
+                        frScale = pow( frScale, 1 / (1 - [getvar Underfilter]) );
+                        frScale = clamp( frScale, 0.001, 1.0 );
+
+                        fr->scale( frScale );
+                        fr->blur( [getvar TextureBlur] );
+
+                        tex1 = texture( [getvar Pattern], fr );
+
+                        tex1 *= mix( 1.0, size1, [getvar SizeScalesResult] );
+                        tex1 *= mix( 1.0, id\[2\], [getvar RandomScalesResult] );
+
+                        matte = texture( [getvar Pattern]\[3\], fr, \"fill\", 0.0 );
+
+                        // Fill instances are not all used.
+                        matte *= step( 1.0 - [getvar FillPercent], pfill\[1\] );
+                    }
+
+                    // Scale texture value as needed.
+                    tex1 *= [getvar Tint1];
+
+                    tex1 *= mix( 1.0, size1, [getvar SizeScalesResult] );
+                    tex1 = mix( tex1, [getvar Background], (1-size1) * [getvar SizeFadesResult] );
+
+                    tex1 *= mix( 1.0, id\[1\], [getvar RandomScalesResult] );
+                    tex1 = mix( tex1, [getvar Background], id\[2\] * [getvar RandomFadesResult] );
+
+                    // Remove instances that are too small or too big.
+                    sizeMask = step( minFill, size1 ) - step( maxFill, size1 );
+
+                    // Remove instances that aren't high enough probability.
+                    pdfMask = 1.0;
+
+                    if ([getvar Probability] != \"\")
+                    {
+                        pdfMask = float texture( [getvar Probability], xy\[0\], xy\[1\], \"fill\", 1.0, \"width\", 0.0 );
+                        pdfMask = 1 - step( pdfMask, pdf\[0\] );
+                    }
+
+
+                    // Complete texture mask.
+                    varying float   mask1 = pdfMask * sizeMask * matte;
+
+                    // Fill in results.
+                    result = mix( result, tex1, mask1 );
+
+                    Size = mix( Size, size1, mask1 );
+                    Random += id\[1\] * mask1;
+                    InstanceUV = mix( InstanceUV, point( xy\[0\], xy\[1\], QM\[2\] ), mask1 );
+                    InstanceUVRandom = mix( InstanceUVRandom, point( xy\[0\], xy\[1\], id\[2\] ), mask1 );
+"
+                }
+            }
+        }
+    }
+
+  }
+}

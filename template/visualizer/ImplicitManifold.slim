@@ -1,0 +1,36 @@
+##
+##  Copyright(c) 2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    template visualizer ImplicitManifold_s {
+        parameter ImplicitManifold_s vis {}
+
+        RSLInclude {sl.h}
+        RSLInclude {mapper/ImplicitManifold.h}
+
+        RSLMain {
+            generate
+            output "
+                varying point   Q = [getvar vis]->GetQ();
+                Ci = texture (\"ratGrid.tex\", xcomp(Q), ycomp(Q));
+                Oi = color 1;
+            "
+        }
+    }
+
+  }
+}

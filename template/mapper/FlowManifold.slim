@@ -1,0 +1,68 @@
+##
+##  Copyright(c) 2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV FlowManifold_s FlowManifold 0 {
+        description {
+            Returns the point currently being sampled by the Flow template.
+            Connect this template to both the Flow template and the Base Pattern
+            generation network. Otherwise, you'll just get a single Layer.
+        }
+
+        parameter manifold_s in {
+            label {Base Manifold}
+            description {
+                This is whatever Manifold you want to use for your Base Pattern generation.
+            }
+            detail mustvary "laika,UV"
+        }
+
+        parameter FlowManifold_s out {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {mapper/FlowManifold.h}
+
+		RSLFunction {
+		    void vfxFlowManifold (
+                output manifold_s       in;
+                output FlowManifold_s   out;
+            ) {
+                out->Set( in->GetQ(), in->GetdQu(), in->GetdQv() );
+            }
+		}
+	}
+
+    template visualizer FlowManifold_s {
+        parameter FlowManifold_s vis {}
+
+        RSLInclude {sl.h}
+        RSLInclude {mapper/FlowManifold.h}
+
+        RSLMain {
+            generate
+            output "
+                Ci = _mod( color (point [getvar vis]->GetQ()), 1 );
+                Oi = color 1;
+            "
+        }
+    }
+
+  }
+}

@@ -1,0 +1,319 @@
+##
+##  Copyright(c) 2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+ extensions laika vfx {
+
+    templateV multiple floatRampPattern 0 {
+        description {
+            Ramps a Pattern from non-existent to fully present based on an input Ramp.
+        }
+
+        parameter float InputRamp { 
+            label {Ramp}
+            description {
+                Defines the ramping of the input Pattern from non-existent to fully present.
+            }
+            detail mustvary "laika,Floats"
+        }
+        parameter float Min {
+            label {Min}
+            description {
+                Min and Max define the range of Ramp values
+                over which the Pattern will be ramped.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+        parameter float Max {
+            label {Max}
+            description {
+                Min and Max define the range of Ramp values
+                over which the Pattern will be ramped.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+        parameter float RampType {
+            label {Ramp Type}
+            description {
+                Selects the type of ramp to use between the Min and Max ramp values.
+            }
+            detail varying
+            subtype selector
+            range {
+                "Linear" 0
+                "Smoothstep" 1
+            }
+            default 1
+        }
+
+        collection customuiFullWidth HR0 {
+            customui laika HR
+            drawmode children
+        }
+
+        parameter float InputPattern {
+            label {Pattern}
+            description {
+                This pattern will be ramped from non-existent to fully present.
+            }
+            detail mustvary "laika,Lattice"
+        }
+
+        parameter float MinResult {
+            label {Min Result}
+            description {
+                The ramped Pattern values will be remapped to the Min and Max Result.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        parameter float MaxResult {
+            label {Max Result}
+            description {
+                The ramped Pattern values will be remapped to the Min and Max Result.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        parameter float Result {
+            label {Result}
+            display hidden
+            access output
+        }
+
+        parameter float InRamp {
+            label {Ramp}
+            display hidden
+            access output
+        }
+
+        parameter float Ramp {
+            label {Adjusted Ramp}
+            display hidden
+            access output
+        }
+
+        parameter float InPattern {
+            label {Pattern}
+            display hidden
+            access output
+        }
+
+        parameter float AdjustedPattern {
+            label {Adjusted Pattern}
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {color.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                    InRamp = [getvar InputRamp];
+
+                    if ([getvar RampType] == 0)
+                    {
+                        Ramp = linearstep( [getvar Min], [getvar Max], InputRamp );
+                    }
+                    else
+                    {
+                        if ([getvar Min] < [getvar Max])
+                        {
+                            Ramp = smoothstep( [getvar Min], [getvar Max], InputRamp );
+                        }
+                        else
+                        {
+                            Ramp = 1 - smoothstep( [getvar Max], [getvar Min], InputRamp );
+                        }
+                    }
+
+                    InPattern = [getvar InputPattern];
+
+                    AdjustedPattern = mix( [getvar MinResult], [getvar MaxResult], InPattern );
+
+                    Result = mix( 0, InPattern, Ramp );
+
+                    Result = mix( [getvar MinResult], [getvar MaxResult], Result );
+"
+                }
+            }
+        }
+    }
+
+    templateV multiple colorRampPattern 0 {
+        description {
+            Ramps a Pattern from non-existent to fully present based on an input Ramp.
+        }
+
+        parameter color InputRamp { 
+            label {Ramp}
+            description {
+                Defines the ramping of the input Pattern from non-existent to fully present.
+            }
+            detail mustvary "laika,Floats"
+        }
+        parameter color Min {
+            label {Min}
+            description {
+                Min and Max define the range of Ramp values
+                over which the Pattern will be ramped.
+            }
+            detail varying
+            default {0 0 0}
+        }
+        parameter color Max {
+            label {Max}
+            description {
+                Min and Max define the range of Ramp values
+                over which the Pattern will be ramped.
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter float RampType {
+            label {Ramp Type}
+            description {
+                Selects the type of ramp to use between the Min and Max ramp values.
+            }
+            detail varying
+            subtype selector
+            range {
+                "Linear" 0
+                "Smoothstep" 1
+            }
+            default 1
+        }
+
+        collection customuiFullWidth HR0 {
+            customui laika HR
+            drawmode children
+        }
+
+        parameter color InputPattern {
+            label {Pattern}
+            description {
+                This pattern will be ramped from non-existent to fully present.
+            }
+            detail mustvary "laika,Lattice"
+        }
+
+        parameter color MinResult {
+            label {Min Result}
+            description {
+                The ramped Pattern values will be remapped to the Min and Max Result.
+            }
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter color MaxResult {
+            label {Max Result}
+            description {
+                The ramped Pattern values will be remapped to the Min and Max Result.
+            }
+            detail varying
+            default {1 1 1}
+        }
+
+        parameter color Result {
+            label {Result}
+            display hidden
+            access output
+        }
+
+        parameter color InRamp {
+            label {Ramp}
+            display hidden
+            access output
+        }
+
+        parameter color Ramp {
+            label {Adjusted Ramp}
+            display hidden
+            access output
+        }
+
+        parameter color InPattern {
+            label {Pattern}
+            display hidden
+            access output
+        }
+
+        parameter color AdjustedPattern {
+            label {Adjusted Pattern}
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {color.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+# The colors must be handled carefully - need to invert hue correctly under all circumstances.
+output "
+                    InRamp = [getvar InputRamp];
+
+                    varying color   CMin = colorSRGBInvertHue( [getvar Min] );
+                    varying color   CMax = colorSRGBInvertHue( [getvar Max] );
+
+                    if ([getvar RampType] == 0)
+                    {
+                        Ramp = linearstep( CMin, CMax, InputRamp );
+                    }
+                    else
+                    {
+                        Ramp = _mix(
+                            _smoothstep( [getvar Min], [getvar Max], InputRamp ),
+                            color 1 - _smoothstep( [getvar Max], [getvar Min], InputRamp ),
+                            _step( [getvar Max],[getvar Min] )
+                        );
+                    }
+
+                    InPattern = [getvar InputPattern];
+
+                    AdjustedPattern = mix( [getvar MinResult], [getvar MaxResult], InPattern );
+
+                    Result = mix( color 0, InPattern, Ramp );
+
+                    Result = mix( [getvar MinResult], [getvar MaxResult], Result );
+"
+                }
+            }
+        }
+    }
+
+  }
+}

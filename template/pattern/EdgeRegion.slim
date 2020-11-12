@@ -1,0 +1,70 @@
+##
+##  Copyright(c) 2010 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV float EdgeRegion 0 {
+		description {
+            Provides a measure of where the silhouette of the surface is.
+            Rather than being based on N and I, this uses the aspect ratio
+            of the min and max filterregion sizes of the given point.
+            So the silhouette will be based on the dicing camera rather than the view camera.
+		}
+
+        parameter point Q {
+            label {Manifold}
+            description {
+                Defines the surface data used to calculate the filterregion.
+            }
+            detail mustvary "laika,Pcurrent"
+        }
+
+        parameter float Invert {
+            label {Invert}
+            description {
+                Invert the result.
+            }
+            provider variable
+            detail uniform
+            subtype switch
+            default 1
+        }
+
+        parameter float result {
+            access output
+            detail varying
+            display hidden
+        }
+
+        RSLFunction {
+            void vfxEdgeRegion (
+                varying point   Q;
+                uniform float   Invert;
+
+                output float    result;
+            ) {
+                filterregion    fr;
+
+                fr->calculate3d(Q);
+
+                result = fr->minsize() / fr->maxsize();
+                result = mix (result, 1-result, Invert);
+            }
+        }
+    }
+
+  }
+}

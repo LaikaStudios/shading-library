@@ -1,0 +1,145 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV manifold_s Pref 1 {
+        description {
+            Returns the value of the Primitive Variable in the rib,
+            or if it doesn't exist, object space P.
+        }
+
+        slimattribute string PrimVar {
+            label {Primitive Variable}
+            description {
+                The name of the primitive variable that contains the desired point data.
+                (the RenderMan:Primitive Variables menu creates a primvar named __Pref).
+            }
+            default {Pref}
+        }
+
+        parameter manifold_s result {
+            display hidden
+            access output
+        }
+
+        RSLInclude {slim.h}
+        RSLInclude {manifold.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {
+                if {[getval PrimVar] != ""} {
+                    declare {} varying point [getval PrimVar] "point (-1e10, -1e10, -1e10)"
+                }
+            }
+            proc function {} {
+output "
+                void [getFunctionName] (
+                    output manifold_s   result;
+                ) {
+                    varying point   Pc = SLIM_P;
+"
+                    if {[getval PrimVar] != ""} {
+output "
+                        // If PrimVar data exists.
+                        if ([getval PrimVar] != point (-1e10))
+                            Pc = [getval PrimVar];
+"
+                    }
+output "
+                    result->Set (transform (\"object\", Pc), \"object\");
+                }
+"
+            }
+        }
+    }
+
+
+    templateV vector Nref 1 {
+        description {
+            Returns the current space value of the Primitive Variable in the rib,
+            or if it doesn't exist, current space N. These are both suitable for shading.
+            If you want a normal in a Pref space, use CalculateNormal connected to the Pref.
+        }
+
+        slimattribute string Type {
+            label {Type}
+            description {
+                Is the Primitive Variable a normal? Or is it a point
+                that will be used to calculate the resulting normal?
+            }
+            subtype selector
+            range {
+                "normal" normal
+                "point"  point
+            }
+            default normal
+        }
+
+        slimattribute string PrimVar {
+            label {Primitive Variable}
+            description {
+                The name of the primvar that contains the desired normal data.
+            }
+            default {Nref}
+        }
+
+        parameter vector result {
+            display hidden
+            access output
+        }
+
+        RSLSource DynamicFunction {
+            proc primvars {} {
+                if {[getval PrimVar] != ""} {
+                    declare {} varying [getval Type] [getval PrimVar] "[getval Type] (-1e10, -1e10, -1e10)"
+                }
+            }
+            proc function {} {
+output "
+                void [getFunctionName] (
+                    output varying vector   result; 
+                ) {
+                    extern normal   N;
+
+                    result = vector N;
+"
+                    if {[getval PrimVar] != ""} {
+                        switch [getval Type] {
+                            normal {
+output "
+                                if ([getval PrimVar] != [getval Type] (-1e10))
+                                    result = [getval PrimVar];
+"
+                            }
+                            point {
+output "
+                                if ([getval PrimVar] != [getval Type] (-1e10))
+                                    result = calculatenormal ([getval PrimVar]);
+"
+                            }
+                        }
+                    }
+output "
+                    result = normalize (result);
+                }
+"
+            }
+        }
+    }
+
+  }
+}

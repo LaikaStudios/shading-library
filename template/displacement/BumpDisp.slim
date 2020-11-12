@@ -1,0 +1,1401 @@
+##
+##  Copyright(c) 2010-2015 Laika and mitchpraterLLC. All rights reserved unless
+##  otherwise granted. This program or documentation contains proprietary,
+##  confidential information and trade secrets of Laika and mitchpraterLLC.
+##  Use of copyright notice does not imply publication.
+##
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+
+#
+#   These are all more or less copies of the same functionality; just different template connection types.
+#
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV bumpdisp_s bumpdispBumpDisp 2 {
+        description {
+            Adds Bump and Displacement to a Material shader.
+            Combines bumping and displacement with independent control of each.
+            Float inputs move the surface along the surface normal.
+            Vector inputs move the surface in their own direction.
+        }
+
+        collection void SurfaceOverride {
+            state closed
+            label {Surface Overrides}
+            description {
+                Override the Material's surface point and normal.
+            }
+
+            parameter vector Nsurf {
+                label {N}
+                description {
+                    An alternate surface normal to use.
+                    When connected to a function, overrides the value normally used by the Material.
+                    For example, the ImplicitSurface "Imp N" output.
+                }
+                detail varying
+                default {0 0 0}
+            }
+
+            parameter point Psurf {
+                label {P}
+                description {
+                    An alternate surface point to use.
+                    When connected to a function, overrides the value normally used by the Material.
+                    Note: displacement bounds will need to be large enough to encompass these points.
+                    You might just want to connect the N value and leave this alone.
+                }
+                detail varying
+                default {0 0 0}
+            }
+        }
+
+        parameter string Space {
+            label {Space}
+            description {
+                The coordinate system the bump/disp Amount is specfied in.
+            }
+            detail varying
+            subtype selector
+            range {
+                world  world
+                shader shader
+                object object
+            }
+            default world
+        }
+
+        parameter float Amount {
+            label {Amount}
+            description {
+                The magnitude of the bump/displacement.
+            }
+            detail varying
+            subtype slider
+            range {0 .1 .001}
+            default .01
+        }
+
+        parameter float BumpPercent {
+            label {Bump Percent}
+            description {
+                The percentage of the Amount that is applied to bumping.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float DispPercent {
+            label {Displace Percent}
+            description {
+                The percentage of the Amount that is applied to displacement.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float CoveredHeight {
+            label {Covered Height}
+            description {
+                Sets the surface level to use when this BumpDisp is obliterated by
+                a completely thick, overlying Material.
+                This only comes into effect when Material layers are combined using Thickness.
+            }
+            detail varying
+            subtype slider
+            range {-.1 .1}
+            default .01
+        }
+
+        parameter float InferCoveredHeight {
+            label {Infer Covered Height}
+            description {
+                Ignore the Covered Height parameter and infer its value from
+                the Amount and Displace Percent parameters.
+            }
+            detail uniform
+            subtype switch
+            default 1
+        }
+
+        parameter float UseShadingNormals {
+            label {Use Supplied Normals}
+            description {
+                If surface normal data is supplied with the geometry (which is
+                typical of polygonal data to visually smooth the surface faceting),
+                turn this on so that it can be incorporated into the calculations.
+                Otherwise, LEAVE IT OFF.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        collection customuiFullWidth BumpDisp {
+            customui pixar ListUI3
+            label {+Float Inputs}
+            userdata {
+                -buttonlabel {Add Float}
+                -buttondescription {Adds a float connection that affects how much the surface will be bump/displaced along the surface normal.}
+                -elementdesc {
+                    {-label Type -type float -subtype selector -range {Bump 0 Displace 2 Both 1 Off 3} -default 1} 
+                    {-label Mode -type string -subtype combineOp -default plusminus}     
+                    {-label Amount -type float -default 1 -subtype vslider -range {0 1}} 
+                    {-label Value -type float -detail {mustvary laika,floatFractal}}
+                }
+                -inputLabel BumpDisp
+                -inputPrefix BD
+            }
+            subtype propertycreator
+            drawmode children
+            state open
+        }
+
+        collection customuiFullWidth VectorDisp {
+            customui pixar ListUI3
+            label {+Vector Inputs}
+            userdata {
+                -buttonlabel {Add Vector}
+                -buttondescription {Adds a vector connection that affects how much the surface will be bump/displaced along that vector.}
+                -elementdesc {
+                    {-label Type -type float -subtype selector -range {Bump 0 Displace 2 Both 1 Off 3} -default 1} 
+                    {-label Mode -type string -subtype combineOp -default plus}     
+                    {-label Amount -type float -default 1 -subtype vslider -range {0 1}} 
+                    {-label Value -type vector -detail {mustvary laika,vectorFractal}}
+                }
+                -inputLabel VectorDisp
+                -inputPrefix VD
+            }
+            subtype propertycreator
+            drawmode children
+            state open
+        }
+
+        collection customuiFullWidth NormalMap {
+            customui pixar ListUI3
+            label {+Normal Inputs}
+            userdata {
+                -buttonlabel {Add NormalMap}
+                -buttondescription {Adds a normal map connection that affects how much the surface will be moved.}
+                -elementdesc {
+                    {-label Type -type float -subtype selector -range {On 1 Off 0} -default 1} 
+                    {-label Amount -type float -default 1 -subtype vslider -range {0 10}} 
+                    {-label Value -type vector -detail {mustvary laika,normalmapTexture}}
+                }
+                -inputLabel NormalMap
+                -inputPrefix NM
+            }
+            subtype propertycreator
+            drawmode children
+            state open
+        }
+
+        parameter bumpdisp_s result {
+            display hidden
+            access output
+        }
+
+        RSLInclude {sl.h}
+        RSLInclude {bumpdisp.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    set N_param [getproperties -name Nsurf -access input]
+                    set P_param [getproperties -name Psurf -access input]
+
+                    if {[connected $N_param]} {
+                        output "[getvar result]->Nin = [getvar Nsurf];"
+                    }
+
+                    if {[connected $P_param]} {
+                        output "[getvar result]->Pin = [getvar Psurf];"
+                    }
+
+                    set BD_connections [getproperties -name BD_* -access input]
+                    set VD_connections [getproperties -name VD_* -access input]
+                    set NM_connections [getproperties -name NM_* -access input]
+
+                    if {$BD_connections == {} && $VD_connections == {} && $NM_connections == {}} {
+output "
+                    [getvar result]->Pout = [getvar result]->Pcovered = [getvar result]->Pin;
+                    [getvar result]->Nout = [getvar result]->Ncovered = [getvar result]->Nin;
+"
+                    } else {
+output "
+                    varying vector  Ncovered, Nbump, Vbd, Vstart;
+                    varying point   Pcovered, Pbump, Pdisp, Pstart;
+                    varying float   bumpamount, dispamount;
+                    uniform float   bmp, disp;
+
+                    //
+                    // Get the initial P and N from the bumpdisp_s struct.
+                    //
+                    Pstart = [getvar result]->Pin;
+                    Vstart = [getvar result]->Nin;
+
+                    Vbd = Vstart / length (vtransform ([getvar Space], Vstart));
+
+                    //
+                    // Determine the bump and disp magnitudes.
+                    //
+                    varying float   bumpMag, dispMag;
+
+                    bumpMag = [getvar Amount] * [getvar BumpPercent];
+                    dispMag = [getvar Amount] * [getvar DispPercent];
+
+                    //
+                    // Generate the covered surface.
+                    //
+                    if ([getvar InferCoveredHeight]) {
+                        Pcovered = Pstart + dispMag*Vbd;
+                    }
+                    else {
+                        Pcovered = Pstart + [getvar CoveredHeight]*Vbd;
+                    }
+
+                    Ncovered = Vstart;
+                    if ([getvar UseShadingNormals] == 1 || [connected $N_param] == 1)
+                    {
+                        Ncovered = normalize( Ncovered + Vstart - normalize(Ng) );
+                    }
+
+                    [getvar result]->Pcovered = Pcovered;
+                    [getvar result]->Ncovered = Ncovered;
+
+                    //
+                    // Accumulate the bump/disp amounts.
+                    //
+                    bumpamount = dispamount = 0;
+"
+                    foreach {typ op en var} $BD_connections {
+output "
+                        if ([getvar $typ] != 3) {
+                            bmp = ([getvar $typ] < 2) ? [getvar $en] : 0;
+                            disp = ([getvar $typ] > 0) ? [getvar $en] : 0;
+
+                            if ([getvar $op] == \"plus\") {
+                                bumpamount += mix (0, [getvar $var], bmp);
+                                dispamount += mix (0, [getvar $var], disp);
+                            }
+                            else if ([getvar $op] == \"minus\") {
+                                bumpamount -= mix (0, [getvar $var], bmp);
+                                dispamount -= mix (0, [getvar $var], disp);
+                            }
+                            else if ([getvar $op] == \"plusminus\") {
+                                bumpamount += mix (0, mix (-1, 1, [getvar $var]), bmp);
+                                dispamount += mix (0, mix (-1, 1, [getvar $var]), disp);
+                            }
+                            else if ([getvar $op] == \"times\") {
+                                bumpamount *= mix (1, [getvar $var], bmp);
+                                dispamount *= mix (1, [getvar $var], disp);
+                            }
+                        }
+"
+                    }
+output "
+                    //
+                    // Apply the bump/disp amounts.
+                    //
+                    Pbump = Pstart + bumpMag * bumpamount * Vbd;
+                    Pdisp = Pstart + dispMag * dispamount * Vbd;
+
+
+                    //
+                    // Add vector bump/disp inputs to it.
+                    //
+"
+                    foreach {typ op en var} $VD_connections {
+output "
+                        if ([getvar $typ] != 3) {
+                            bmp = ([getvar $typ] < 2) ? [getvar $en] : 0;
+                            disp = ([getvar $typ] > 0) ? [getvar $en] : 0;
+
+                            bumpamount = bmp * bumpMag;
+                            dispamount = disp * dispMag;
+
+                            Vbd = [getvar $var];
+                            Vbd /= length (vtransform ([getvar Space], normalize(Vbd)));
+
+                            if ([getvar $op] == \"plus\") {
+                                Pbump += bumpamount * Vbd;
+                                Pdisp += dispamount * Vbd;
+                            }
+                            else if ([getvar $op] == \"minus\") {
+                                Pbump -= bumpamount * Vbd;
+                                Pdisp -= dispamount * Vbd;
+                            }
+                            else if ([getvar $op] == \"plusminus\") {
+                                Pbump += bumpamount * _mix (-1, 1, Vbd);
+                                Pdisp += dispamount * _mix (-1, 1, Vbd);
+                            }
+                            else if ([getvar $op] == \"times\") {
+                                Pbump *= bumpamount * Vbd;
+                                Pdisp *= dispamount * Vbd;
+                            }
+                        }
+"
+                    }
+output "
+                    //
+                    // Generate the Float and Vector BumpDisp result.
+                    //
+                    Nbump = vector calculatenormal(Pbump);
+                    if ([getvar UseShadingNormals] == 1 || [connected $N_param] == 1)
+                    {
+                        Nbump = normalize(Nbump) + Vstart - normalize(Ng);
+                    }
+
+                    Nbump = normalize(Nbump);
+
+                    //
+                    //  Apply NormalMaps.
+                    //
+"
+                    foreach {on en var} $NM_connections {
+output "
+                        if ([getvar $on]) {
+                            Nbump += [getvar $en] * ([getvar $var] - Vstart);
+                        }
+"
+                    }
+
+                    if {$NM_connections != {}} {
+output "                Nbump = normalize(Nbump);"
+                    }
+output "
+                    [getvar result]->Pout = Pdisp;
+                    [getvar result]->Nout = Nbump;
+"
+                    }
+                }
+            }
+        }
+    }
+
+    template visualizer bumpdisp_s {
+        parameter bumpdisp_s vis {}
+
+        RSLInclude <sl.h>
+        RSLInclude <bumpdisp.h>
+        RSLMain {
+            set visParam  [safeeval %c GetProperties -name vis]
+            set visFunc   [safeeval $visParam GetConnectedFunction]
+            set visResult [safeeval $visFunc GetProperties -access output -type bumpdisp_s]
+            set visRSL    [safeeval $visResult GetNameSL 1]
+output "
+            $visRSL->Pin = P;
+            $visRSL->Nin = normalize(N);
+"
+            generate vis
+output "
+            P = $visRSL->Pout;
+            N = $visRSL->Nout;
+
+            Ci = N.normalize(-I);
+            Oi = color 1;
+"
+        }
+    }
+
+
+    templateV multiple multipleBumpDisp 1 {
+        description {
+            Combines bumping and displacement with independent control of each.
+            Float inputs move the surface along the Direction parameter.
+            Vector inputs move the surface in their own direction.
+            Both should be current space vectors.
+        }
+
+        parameter point Pin {
+            label {P}
+            description {
+                The surface point.
+                Must be in current space.
+            }
+            detail mustvary "laika,Pcurrent"
+        }
+
+        parameter vector Nin {
+            label {N}
+            description {
+                The surface normal.
+                Must be in current space, and should be normalized.
+            }
+            detail mustvary "pixar,SurfaceNormal"
+        }
+
+        parameter string Space {
+            label {Space}
+            description {
+                The coordinate system the Amount is specfied in.
+            }
+            detail varying
+            subtype selector
+            range {
+                world  world
+                shader shader
+                object object
+            }
+            default world
+        }
+
+        parameter float Amount {
+            label {Amount}
+            description {
+                The magnitude of the bump/displacement.
+            }
+            detail varying
+            subtype slider
+            range {0 .1 .001}
+            default .01
+        }
+
+        parameter float BumpPercent {
+            label {Bump Percent}
+            description {
+                The percentage of the Amount that is applied to bumping.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float DispPercent {
+            label {Displace Percent}
+            description {
+                The percentage of the Amount that is applied to displacement.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float UseShadingNormals {
+            label {Use Supplied Normals}
+            description {
+                If surface normal data is supplied with the geometry (which is
+                typical of polygonal data to visually smooth the surface faceting),
+                turn this on so that it can be incorporated into the calculations.
+                Otherwise, leave it off.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        collection customuiFullWidth BumpDisp {
+            customui pixar ListUI3
+            label {+Float Inputs}
+            userdata {
+                -buttonlabel {Add Float}
+                -buttondescription {Adds a float connection that affects how much the surface will be bump/displaced along the surface normal.}
+                -elementdesc {
+                    {-label Type -type float -subtype selector -range {Bump 0 Displace 2 Both 1 Off 3} -default 1} 
+                    {-label Mode -type string -subtype combineOp -default plusminus}     
+                    {-label Amount -type float -default 1 -subtype vslider -range {0 1}} 
+                    {-label Value -type float -detail {mustvary laika,floatFractal}}
+                }
+                -inputLabel BumpDisp
+                -inputPrefix BD
+            }
+            subtype propertycreator
+            drawmode children
+            state open
+        }
+
+        collection customuiFullWidth VectorDisp {
+            customui pixar ListUI3
+            label {+Vector Inputs}
+            userdata {
+                -buttonlabel {Add Vector}
+                -buttondescription {Adds a vector connection that affects how much the surface will be bump/displaced along that vector.}
+                -elementdesc {
+                    {-label Type -type float -subtype selector -range {Bump 0 Displace 2 Both 1 Off 3} -default 1} 
+                    {-label Mode -type string -subtype combineOp -default plus}     
+                    {-label Amount -type float -default 1 -subtype vslider -range {0 1}} 
+                    {-label Value -type vector -detail {mustvary laika,vectorFractal}}
+                }
+                -inputLabel VectorDisp
+                -inputPrefix VD
+            }
+            subtype propertycreator
+            drawmode children
+            state open
+        }
+
+        parameter point Pout {
+            label {P}
+            display hidden
+            access output
+        }
+
+        parameter vector Nout {
+            label {N}
+            display hidden
+            access output
+        }
+
+        collection manifold Mout {
+            label {manifold}
+            display hidden
+            access output
+            parameter point MQ { access output }
+            parameter vector MdQu { access output }
+            parameter vector MdQv { access output }
+        }
+
+        collection manifoldn MNout {
+            label {manifoldn}
+            display hidden
+            access output
+            parameter point MNQ { access output }
+            parameter normal MNQN { access output }
+            parameter vector MNdQu { access output }
+            parameter vector MNdQv { access output }
+        }
+
+        parameter bumpdisp_s result {
+            label {bumpdisp_s}
+            display hidden
+            access output
+        }
+
+        RSLInclude {bumpdisp.h}
+        RSLInclude {sl.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    set BD_connections [getproperties -name BD_* -access input]
+                    set VD_connections [getproperties -name VD_* -access input]
+
+                    if {$BD_connections == {} && $VD_connections == {}} {
+output "
+                    [getvar Pout] = [getvar Pin];
+                    [getvar Nout] = [getvar Nin];
+
+                    [getvar MQ] = [getvar MNQ] = [getvar Pin];
+                    [getvar MdQu] = [getvar MNdQu] = Du([getvar Pin])*du;
+                    [getvar MdQv] = [getvar MNdQv] = Dv([getvar Pin])*dv;
+                    [getvar MNQN] = normal [getvar Nin];
+
+                    [getvar result]->Pin =  [getvar Pin];
+                    [getvar result]->Nin =  [getvar Nin];
+                    [getvar result]->Pout = [getvar Pin];
+                    [getvar result]->Nout = [getvar Nin];
+"
+                    } else {
+output "
+                    varying vector  Nbump, Vbd, Vstart;
+                    varying point   Pbump, Pdisp, Pstart;
+                    varying float   bumpamount, dispamount;
+                    uniform float   bmp, disp;
+
+                    //
+                    // Get the initial P and N.
+                    //
+                    Pstart = [getvar result]->Pin = [getvar Pin];
+                    Vstart = [getvar result]->Nin = [getvar Nin];
+
+                    //
+                    // Determine the bump and disp magnitudes.
+                    //
+                    varying float   bumpMag, dispMag;
+
+                    bumpMag = [getvar Amount] * [getvar BumpPercent];
+                    dispMag = [getvar Amount] * [getvar DispPercent];
+
+                    //
+                    // Accumulate the bump/disp amounts.
+                    //
+                    bumpamount = dispamount = 0;
+"
+                    foreach {typ op en var} $BD_connections {
+output "
+                        if ([getvar $typ] != 3) {
+                            bmp = ([getvar $typ] < 2) ? [getvar $en] : 0;
+                            disp = ([getvar $typ] > 0) ? [getvar $en] : 0;
+
+                            if ([getvar $op] == \"plus\") {
+                                bumpamount += mix (0, [getvar $var], bmp);
+                                dispamount += mix (0, [getvar $var], disp);
+                            }
+                            else if ([getvar $op] == \"minus\") {
+                                bumpamount -= mix (0, [getvar $var], bmp);
+                                dispamount -= mix (0, [getvar $var], disp);
+                            }
+                            else if ([getvar $op] == \"plusminus\") {
+                                bumpamount += mix (0, mix (-1, 1, [getvar $var]), bmp);
+                                dispamount += mix (0, mix (-1, 1, [getvar $var]), disp);
+                            }
+                            else if ([getvar $op] == \"times\") {
+                                bumpamount *= mix (1, [getvar $var], bmp);
+                                dispamount *= mix (1, [getvar $var], disp);
+                            }
+                        }
+"
+                    }
+output "
+                    //
+                    // Apply the bump/disp amounts.
+                    //
+                    Vbd = Vstart / length (vtransform ([getvar Space], Vstart));
+                    Pbump = Pstart + bumpMag * bumpamount * Vbd;
+                    Pdisp = Pstart + dispMag * dispamount * Vbd;
+
+
+                    //
+                    // Add vector bump/disp inputs to it.
+                    //
+"
+                    foreach {typ op en var} $VD_connections {
+output "
+                        if ([getvar $typ] != 3) {
+                            bmp = ([getvar $typ] < 2) ? [getvar $en] : 0;
+                            disp = ([getvar $typ] > 0) ? [getvar $en] : 0;
+
+                            bumpamount = bmp * bumpMag;
+                            dispamount = disp * dispMag;
+
+                            Vbd = [getvar $var];
+                            Vbd /= length (vtransform ([getvar Space], normalize(Vbd)));
+
+                            if ([getvar $op] == \"plus\") {
+                                Pbump += bumpamount * Vbd;
+                                Pdisp += dispamount * Vbd;
+                            }
+                            else if ([getvar $op] == \"minus\") {
+                                Pbump -= bumpamount * Vbd;
+                                Pdisp -= dispamount * Vbd;
+                            }
+                            else if ([getvar $op] == \"plusminus\") {
+                                Pbump += bumpamount * _mix (-1, 1, Vbd);
+                                Pdisp += dispamount * _mix (-1, 1, Vbd);
+                            }
+                            else if ([getvar $op] == \"times\") {
+                                Pbump *= bumpamount * Vbd;
+                                Pdisp *= dispamount * Vbd;
+                            }
+                        }
+"
+                    }
+output "
+                    //
+                    // Generate the result.
+                    //
+                    Nbump = calculatenormal(Pbump);
+                    if ([getvar UseShadingNormals] != 0) {
+                        Nbump = normalize(Nbump) + Vstart - normalize(Ng);
+                    }
+
+                    Nbump = normalize(Nbump);
+
+                    [getvar Pout] = Pdisp;
+                    [getvar Nout] = Nbump;
+
+                    [getvar MQ] = [getvar MNQ] = Pdisp;
+                    [getvar MdQu] = [getvar MNdQu] = Du(Pdisp)*du;
+                    [getvar MdQv] = [getvar MNdQv] = Dv(Pdisp)*dv;
+                    [getvar MNQN] = normal Nbump;
+
+                    [getvar result]->Pout = Pdisp;
+                    [getvar result]->Nout = Nbump;
+"
+                    }
+                }
+            }
+        }
+    }
+
+
+    templateV displacement displaceBumpDisp 1 {
+        description {
+            Combines bumping and displacement with independent control of each.
+            Float inputs move the surface along the Direction parameter.
+            Vector inputs move the surface in their own direction.
+            Both should be current space vectors.
+        }
+
+        parameter point Pin {
+            label {P}
+            description {
+                The point to be bumped/displaced.
+                Must be in current space.
+            }
+            detail mustvary "laika,Pcurrent"
+        }
+
+        parameter vector Nin {
+            label {Direction}
+            description {
+                The direction in which to move P.
+                Must be in current space, and should be normalized.
+            }
+            detail mustvary "pixar,SurfaceNormal"
+        }
+
+        parameter string Space {
+            label {Space}
+            description {
+                The coordinate system the Amount is specfied in.
+            }
+            detail varying
+            subtype selector
+            range {
+                world  world
+                shader shader
+                object object
+            }
+            default world
+        }
+
+        parameter float Amount {
+            label {Amount}
+            description {
+                The magnitude of the bump/displacement.
+            }
+            detail varying
+            subtype slider
+            range {0 .1 .001}
+            default .01
+        }
+
+        parameter float BumpPercent {
+            label {Bump Percent}
+            description {
+                The percentage of the Amount that is applied to bumping.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float DispPercent {
+            label {Displace Percent}
+            description {
+                The percentage of the Amount that is applied to displacement.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float UseShadingNormals {
+            label {Use Supplied Normals}
+            description {
+                If surface normal data is supplied with the geometry (which is
+                typical of polygonal data to visually smooth the surface faceting),
+                turn this on so that it can be incorporated into the calculations.
+                Otherwise, leave it off.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        collection customuiFullWidth BumpDisp {
+            customui pixar ListUI3
+            label {+Float Inputs}
+            userdata {
+                -buttonlabel {Add Float}
+                -buttondescription {Adds a float connection that affects how much the surface will be bump/displaced along the surface normal.}
+                -elementdesc {
+                    {-label Type -type float -subtype selector -range {Bump 0 Displace 2 Both 1 Off 3} -default 1} 
+                    {-label Mode -type string -subtype combineOp -default plusminus}     
+                    {-label Amount -type float -default 1 -subtype vslider -range {0 1}} 
+                    {-label Value -type float -detail {mustvary laika,floatFractal}}
+                }
+                -inputLabel BumpDisp
+                -inputPrefix BD
+            }
+            subtype propertycreator
+            drawmode children
+            state open
+        }
+
+        collection customuiFullWidth VectorDisp {
+            customui pixar ListUI3
+            label {+Vector Inputs}
+            userdata {
+                -buttonlabel {Add Vector}
+                -buttondescription {Adds a vector connection that affects how much the surface will be bump/displaced along that vector.}
+                -elementdesc {
+                    {-label Type -type float -subtype selector -range {Bump 0 Displace 2 Both 1 Off 3} -default 1} 
+                    {-label Mode -type string -subtype combineOp -default plus}     
+                    {-label Amount -type float -default 1 -subtype vslider -range {0 1}} 
+                    {-label Value -type vector -detail {mustvary laika,vectorFractal}}
+                }
+                -inputLabel VectorDisp
+                -inputPrefix VD
+            }
+            subtype propertycreator
+            drawmode children
+            state open
+        }
+
+        RSLInclude {sl.h}
+
+        RSLMain {
+                set BD_connections [getproperties -name BD_* -access input]
+                set VD_connections [getproperties -name VD_* -access input]
+
+                if {$BD_connections == {} && $VD_connections == {}} {
+                    generate Pin Nin
+output "
+                    P = [getvar Pin];
+                    N = [getvar Nin];
+"
+                } else {
+                    generate
+output "
+                    varying vector  Nbump, Vbd, Vstart;
+                    varying point   Pbump, Pdisp, Pstart;
+                    varying float   bumpamount, dispamount;
+                    uniform float   bmp, disp;
+
+                    //
+                    // Get the initial P and N.
+                    //
+                    Pstart = [getvar Pin];
+                    Vstart = [getvar Nin];
+
+                    //
+                    // Determine the bump and disp magnitudes.
+                    //
+                    varying float   bumpMag, dispMag;
+
+                    bumpMag = [getvar Amount] * [getvar BumpPercent];
+                    dispMag = [getvar Amount] * [getvar DispPercent];
+
+                    //
+                    // Accumulate the bump/disp amounts.
+                    //
+                    bumpamount = dispamount = 0;
+"
+                    foreach {typ op en var} $BD_connections {
+output "
+                        if ([getvar $typ] != 3) {
+                            bmp = ([getvar $typ] < 2) ? [getvar $en] : 0;
+                            disp = ([getvar $typ] > 0) ? [getvar $en] : 0;
+
+                            if ([getvar $op] == \"plus\") {
+                                bumpamount += mix (0, [getvar $var], bmp);
+                                dispamount += mix (0, [getvar $var], disp);
+                            }
+                            else if ([getvar $op] == \"minus\") {
+                                bumpamount -= mix (0, [getvar $var], bmp);
+                                dispamount -= mix (0, [getvar $var], disp);
+                            }
+                            else if ([getvar $op] == \"plusminus\") {
+                                bumpamount += mix (0, mix (-1, 1, [getvar $var]), bmp);
+                                dispamount += mix (0, mix (-1, 1, [getvar $var]), disp);
+                            }
+                            else if ([getvar $op] == \"times\") {
+                                bumpamount *= mix (1, [getvar $var], bmp);
+                                dispamount *= mix (1, [getvar $var], disp);
+                            }
+                        }
+"
+                    }
+output "
+                    //
+                    // Apply the bump/disp amounts.
+                    //
+                    Vbd = Vstart / length (vtransform ([getvar Space], Vstart));
+                    Pbump = Pstart + bumpMag * bumpamount * Vbd;
+                    Pdisp = Pstart + dispMag * dispamount * Vbd;
+
+
+                    //
+                    // Add vector bump/disp inputs to it.
+                    //
+"
+                    foreach {typ op en var} $VD_connections {
+output "
+                        if ([getvar $typ] != 3) {
+                            bmp = ([getvar $typ] < 2) ? [getvar $en] : 0;
+                            disp = ([getvar $typ] > 0) ? [getvar $en] : 0;
+
+                            bumpamount = bmp * bumpMag;
+                            dispamount = disp * dispMag;
+
+                            Vbd = [getvar $var];
+                            Vbd /= length (vtransform ([getvar Space], normalize(Vbd)));
+
+                            if ([getvar $op] == \"plus\") {
+                                Pbump += bumpamount * Vbd;
+                                Pdisp += dispamount * Vbd;
+                            }
+                            else if ([getvar $op] == \"minus\") {
+                                Pbump -= bumpamount * Vbd;
+                                Pdisp -= dispamount * Vbd;
+                            }
+                            else if ([getvar $op] == \"plusminus\") {
+                                Pbump += bumpamount * _mix (-1, 1, Vbd);
+                                Pdisp += dispamount * _mix (-1, 1, Vbd);
+                            }
+                            else if ([getvar $op] == \"times\") {
+                                Pbump *= bumpamount * Vbd;
+                                Pdisp *= dispamount * Vbd;
+                            }
+                        }
+"
+                    }
+output "
+                    //
+                    // Generate the result.
+                    //
+                    Nbump = calculatenormal(Pbump);
+                    if ([getvar UseShadingNormals] != 0) {
+                        Nbump = normalize(Nbump) + Vstart - normalize(Ng);
+                    }
+
+                    Nbump = normalize(Nbump);
+
+                    P = Pdisp;
+                    N = Nbump;
+"
+                }
+        }
+    }
+
+
+    templateV coshader coshaderBumpDisp 1 {
+        description {
+            Applied over all Material layers, and can itself be layered.
+            Combines bumping and displacement with independent control of each.
+            Float inputs move the surface along the Direction parameter.
+            Vector inputs move the surface in their own direction.
+            Both should be current space vectors.
+        }
+
+        eval [::__categoryParam "ikaDispV0"]
+
+        parameter float Enable {
+            label {Enable}
+            description {
+                Controls where this will have an effect.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        parameter point Pin {
+            label {P}
+            description {
+                The point to be bumped/displaced.
+                Must be in current space.
+                If not connected, use the current displaced point value.
+            }
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter vector Nin {
+            label {N}
+            description {
+                The direction in which to move P.
+                Must be in current space, and should be normalized.
+                If not connected, use the current bumped normal value.
+            }
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter string Space {
+            label {Space}
+            description {
+                The coordinate system the bump/disp Amount is specfied in.
+            }
+            detail varying
+            subtype selector
+            range {
+                world  world
+                shader shader
+                object object
+            }
+            default world
+        }
+
+        parameter float Amount {
+            label {Amount}
+            description {
+                The magnitude of the bump/displacement.
+            }
+            detail varying
+            subtype slider
+            range {0 .1 .001}
+            default .01
+        }
+
+        parameter float BumpPercent {
+            label {Bump Percent}
+            description {
+                The percentage of the Amount that is applied to bumping.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float DispPercent {
+            label {Displace Percent}
+            description {
+                The percentage of the Amount that is applied to displacement.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float CoveredHeight {
+            label {Covered Height}
+            description {
+                Sets the surface level to use when this BumpDisp is obliterated by
+                a completely thick, overlying BumpDisp coshader.
+            }
+            detail varying
+            subtype slider
+            range {-.1 .1}
+            default .01
+        }
+
+        parameter float InferCoveredHeight {
+            label {Infer Covered Height}
+            description {
+                Ignore the Covered Height parameter and infer its value from
+                the Amount and Displace Percent parameters.
+            }
+            detail uniform
+            subtype switch
+            default 1
+        }
+
+        parameter float Thickness {
+            label {Thickness}
+            description {
+                Deterines how much of an underlying shader's bumped/displaced surface will
+                effect this one's.
+                Blends between applying this surface onto the underlying shader's BumpDisp
+                surface, or to its Covered Height surface.
+                When 0, this surface will be applied to the BumpDisp surface of
+                the underlying shader.
+                When 1, it will be applied to the Covered Height of the underlying shader.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        parameter float Replace {
+            label {Replace}
+            description {
+                Blends between the result produced by the Thickness control,
+                and simply applying this surface to the original geometric surface.
+                When 0, Thickness will determine how surfaces are combined.
+                When 1, ignore Thickness, and simply apply this BumpDisp to the original geometric surface.
+                Between 0 and 1, use a blend of the those two behaviors.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        parameter float UseShadingNormals {
+            label {Use Supplied Normals}
+            description {
+                If surface normal data is supplied with the geometry (which is
+                typical of polygonal data to visually smooth the surface faceting),
+                turn this on so that it can be incorporated into the calculations.
+                Otherwise, LEAVE IT OFF.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        collection customuiFullWidth BumpDisp {
+            customui pixar ListUI3
+            label {+Float Inputs}
+            userdata {
+                -buttonlabel {Add Float}
+                -buttondescription {Adds a float connection that affects how much the surface will be bump/displaced along the surface normal.}
+                -elementdesc {
+                    {-label Type -type float -subtype selector -range {Bump 0 Displace 2 Both 1 Off 3} -default 1} 
+                    {-label Mode -type string -subtype combineOp -default plusminus}     
+                    {-label Amount -type float -default 1 -subtype vslider -range {0 1}} 
+                    {-label Value -type float -detail {mustvary laika,floatFractal}}
+                }
+                -inputLabel BumpDisp
+                -inputPrefix BD
+            }
+            subtype propertycreator
+            drawmode children
+            state open
+        }
+
+        collection customuiFullWidth VectorDisp {
+            customui pixar ListUI3
+            label {+Vector Inputs}
+            userdata {
+                -buttonlabel {Add Vector}
+                -buttondescription {Adds a vector connection that affects how much the surface will be bump/displaced along that vector.}
+                -elementdesc {
+                    {-label Type -type float -subtype selector -range {Bump 0 Displace 2 Both 1 Off 3} -default 1} 
+                    {-label Mode -type string -subtype combineOp -default plus}     
+                    {-label Amount -type float -default 1 -subtype vslider -range {0 1}} 
+                    {-label Value -type vector -detail {mustvary laika,vectorFractal}}
+                }
+                -inputLabel VectorDisp
+                -inputPrefix VD
+            }
+            subtype propertycreator
+            drawmode children
+            state open
+        }
+
+        collection customuiFullWidth NormalMap {
+            customui pixar ListUI3
+            label {+Normal Inputs}
+            userdata {
+                -buttonlabel {Add NormalMap}
+                -buttondescription {Adds a normal map connection that affects how much the surface will be moved.}
+                -elementdesc {
+                    {-label Type -type float -subtype selector -range {On 1 Off 0} -default 1} 
+                    {-label Amount -type float -default 1 -subtype vslider -range {0 10}} 
+                    {-label Value -type vector -detail {mustvary laika,normalmapTexture}}
+                }
+                -inputLabel NormalMap
+                -inputPrefix NM
+            }
+            subtype propertycreator
+            drawmode children
+            state open
+        }
+
+        RSLInclude {sl.h}
+        RSLInclude {coreV7/surface.h}
+
+        RSLClass {
+            generateMethod "public void bumpdisp(
+                output surface_s        _surfaceData;
+                output varying point    _P;
+                output varying vector   _N;
+                output varying point    _Pcovered;
+                output varying vector   _Ncovered;
+            )" {
+
+                set BD_connections [getproperties -name BD_* -access input]
+                set VD_connections [getproperties -name VD_* -access input]
+                set NM_connections [getproperties -name NM_* -access input]
+
+                if {$BD_connections != {} || $VD_connections != {} || $NM_connections != {}} {
+
+                    generate Enable
+output "
+                    if (gridever( abs([getvar Enable]) > 0 ))
+                    {
+                        varying point   Pin = _P;
+                        varying vector  Nin = _N;
+"
+                        set Pparm [safeeval %c GetProperties -name Pin]
+                        set Pfunc [safeeval $Pparm GetConnectedFunction]
+                        set Nparm [safeeval %c GetProperties -name Nin]
+                        set Nfunc [safeeval $Nparm GetConnectedFunction]
+
+                        if {$Pfunc != {}} {
+                            generate Pin
+output "                    Pin = [getvar Pin];"
+                        }
+
+                        if {$Nfunc != {}} {
+                            generate Nin
+output "                    Nin = [getvar Nin];"
+                        }
+
+                        generate -Pin -Nin -Enable
+output "
+                        varying vector  Ncovered, Nbump, Vbd, Vstart, Ndelta;
+                        varying point   Pcovered, Pbump, Pdisp, Pstart;
+                        varying float   bumpamount, dispamount;
+                        uniform float   bmp, disp;
+
+                        //
+                        // Set the starting P and V.
+                        //
+                        Pstart = mix( Pin, _Pcovered, [getvar Thickness] );
+                        Vstart = slerp( Nin, _Ncovered, [getvar Thickness] );
+
+                        Pstart = mix( Pstart, _surfaceData->GetP(), [getvar Replace] );
+                        Vstart = slerp( Vstart, _surfaceData->GetNg(), [getvar Replace] );
+
+                        Vbd = Vstart / length( vtransform( [getvar Space], Vstart ));
+
+                        //
+                        // Determine the bump and disp magnitudes.
+                        //
+                        varying float   bumpMag, dispMag;
+
+                        bumpMag = [getvar Amount] * [getvar BumpPercent];
+                        dispMag = [getvar Amount] * [getvar DispPercent];
+
+                        //
+                        // Generate the covered surface.
+                        //
+                        if ([getvar InferCoveredHeight]) {
+                            Pcovered = Pstart + dispMag*Vbd;
+                        }
+                        else {
+                            Pcovered = Pstart + [getvar CoveredHeight]*Vbd;
+                        }
+
+                        Ncovered = Vstart;
+                        if ([getvar UseShadingNormals] != 0)
+                        {
+                            Ndelta = Vstart - normalize(_surfaceData->GetNg());
+                            Ncovered = normalize( normalize(Ncovered) + Ndelta );
+                        }
+
+                        _Pcovered = mix( _Pcovered, Pcovered, [getvar Enable] );
+                        _Ncovered = mix( _Ncovered, Ncovered, [getvar Enable] );
+
+                        //
+                        // Accumulate the bump/disp amounts.
+                        //
+                        bumpamount = dispamount = 0;
+"
+                        foreach {typ op en var} $BD_connections {
+output "
+                            if ([getvar $typ] != 3) {
+                                bmp = ([getvar $typ] < 2) ? [getvar $en] : 0;
+                                disp = ([getvar $typ] > 0) ? [getvar $en] : 0;
+
+                                if ([getvar $op] == \"plus\") {
+                                    bumpamount += mix (0, [getvar $var], bmp);
+                                    dispamount += mix (0, [getvar $var], disp);
+                                }
+                                else if ([getvar $op] == \"minus\") {
+                                    bumpamount -= mix (0, [getvar $var], bmp);
+                                    dispamount -= mix (0, [getvar $var], disp);
+                                }
+                                else if ([getvar $op] == \"plusminus\") {
+                                    bumpamount += mix (0, mix (-1, 1, [getvar $var]), bmp);
+                                    dispamount += mix (0, mix (-1, 1, [getvar $var]), disp);
+                                }
+                                else if ([getvar $op] == \"times\") {
+                                    bumpamount *= mix (1, [getvar $var], bmp);
+                                    dispamount *= mix (1, [getvar $var], disp);
+                                }
+                            }
+"
+                        }
+output "
+                        //
+                        // Apply the bump/disp amounts.
+                        //
+                        Pbump = Pstart + bumpMag * bumpamount * Vbd;
+                        Pdisp = Pstart + dispMag * dispamount * Vbd;
+
+
+                        //
+                        // Add vector bump/disp inputs to it.
+                        //
+"
+                        foreach {typ op en var} $VD_connections {
+output "
+                            if ([getvar $typ] != 3) {
+                                bmp = ([getvar $typ] < 2) ? [getvar $en] : 0;
+                                disp = ([getvar $typ] > 0) ? [getvar $en] : 0;
+
+                                bumpamount = bmp * bumpMag;
+                                dispamount = disp * dispMag;
+
+                                Vbd = [getvar $var];
+                                Vbd /= length (vtransform ([getvar Space], normalize(Vbd)));
+
+                                if ([getvar $op] == \"plus\") {
+                                    Pbump += bumpamount * Vbd;
+                                    Pdisp += dispamount * Vbd;
+                                }
+                                else if ([getvar $op] == \"minus\") {
+                                    Pbump -= bumpamount * Vbd;
+                                    Pdisp -= dispamount * Vbd;
+                                }
+                                else if ([getvar $op] == \"plusminus\") {
+                                    Pbump += bumpamount * _mix (-1, 1, Vbd);
+                                    Pdisp += dispamount * _mix (-1, 1, Vbd);
+                                }
+                                else if ([getvar $op] == \"times\") {
+                                    Pbump *= bumpamount * Vbd;
+                                    Pdisp *= dispamount * Vbd;
+                                }
+                            }
+"
+                        }
+output "
+                        //
+                        // Generate the result.
+                        //
+                        Nbump = calculatenormal(Pbump);
+                        if ([getvar UseShadingNormals] != 0)
+                        {
+                            Nbump = normalize(Nbump) + Ndelta;
+                        }
+                        Nbump = normalize(Nbump);
+
+                        //
+                        //  Apply NormalMaps.
+                        //
+"
+                        foreach {on en var} $NM_connections {
+output "
+                            if ([getvar $on]) {
+                                Nbump += [getvar $en] * ([getvar $var] - Vstart);
+                            }
+"
+                        }
+
+                        if {$NM_connections != {}} {
+output "                    Nbump = normalize(Nbump);"
+                        }
+output "
+                        //
+                        //  Done.
+                        //
+                        _P = mix( _P, Pdisp, [getvar Enable] );
+                        _N = mix( _N, Nbump, [getvar Enable] );
+                    }
+"
+                }
+            }
+        }
+    }
+
+  }
+}

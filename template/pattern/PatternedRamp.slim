@@ -1,0 +1,421 @@
+##
+##  Copyright(c) 2010-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+ extensions laika vfx {
+
+    templateV multiple floatPatternedRamp 0 {
+        description {
+            Uses a Transition Pattern to break up a simple Ramp.
+        }
+
+        parameter float InputRamp { 
+            label {Ramp}
+            description {
+                Provides the initial Ramp, which the following Transition Pattern
+                and other controls will vary.
+            }
+            detail mustvary "laika,Floats"
+        }
+        parameter float Min {
+            label {Min}
+            description {
+                Min and Max define the range of Input Ramp values
+                over which the Transition Pattern will be applied.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+        parameter float Max {
+            label {Max}
+            description {
+                Min and Max define the range of Input Ramp values
+                over which the Transition Pattern will be applied.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        collection customuiFullWidth HR0 {
+            customui laika HR
+            drawmode children
+        }
+
+        parameter float InputPattern {
+            label {Transition Pattern}
+            description {
+                This pattern will be used to create the Min to Max
+                transition of the input Ramp value.
+                This should have a smooth variation from 0 to 1 rather than an on/off value.
+            }
+            detail mustvary "laika,Lattice"
+        }
+
+        collection customuiFullWidth HR1 {
+            customui laika HR
+            drawmode children
+        }
+
+        parameter float Blur {
+            label {Blur}
+            description {
+                Use this to soften the transition from Min to Max.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        parameter float Clamp {
+            label {Clamp}
+            description {
+                Blur uses a filterstep() function, which produces values outside the 0 to 1 range.
+                Turning this on clamps the transition Blur result between 0 and 1,
+                and therefore the output between the Min and Max.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        parameter float MinResult {
+            label {Min Result}
+            description {
+                Once the Min to Max Transition is defined, use this value as the minimum result.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        parameter float MaxResult {
+            label {Max Result}
+            description {
+                Once the Min to Max Transition is defined, use this value as the maximum result.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        parameter float Result {
+            label {Result}
+            display hidden
+            access output
+        }
+
+        parameter float InRamp {
+            label {Ramp}
+            display hidden
+            access output
+        }
+
+        parameter float Ramp {
+            label {Adjusted Ramp}
+            display hidden
+            access output
+        }
+
+        parameter float TransitionPattern {
+            label {Transition Pattern}
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {color.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                    InRamp = [getvar InputRamp];
+
+                    Ramp = linear( [getvar Min], [getvar Max], InputRamp );
+
+                    TransitionPattern = [getvar InputPattern];
+
+                    varying float   slope = abs( [getvar Min] - [getvar Max] );
+                    varying float   blur = 0.5 * ([getvar Blur] / slope);
+
+                    Result = _filterstep( float(1) - TransitionPattern, Ramp, blur );
+
+                    Result = mix( Result, _clamp( Result, 0, 1 ), [getvar Clamp] );
+
+                    Result = mix( [getvar MinResult], [getvar MaxResult], Result );
+"
+                }
+            }
+        }
+    }
+
+    templateV multiple floatPatternedInOutRamp 0 {
+        description {
+            Uses a Transition Pattern to break up an in-out Ramp.
+        }
+
+        parameter float InputPattern {
+            label {Transition Pattern}
+            description {
+                This pattern will be used to create the Min to Max
+                transition of the input Ramp value.
+                This should have a smooth variation from 0 to 1 rather than an on/off value.
+                Fractals work really well for this.
+            }
+            detail mustvary "laika,floatFractal"
+        }
+
+        parameter float InputRamp { 
+            label {Ramp}
+            description {
+                Provides the initial Ramp, which the following Transition Pattern
+                and other controls will vary.
+                This value is typically monotonic, but doesn't have to be.
+            }
+            detail mustvary "laika,Floats"
+        }
+
+        parameter float Min {
+            label {Ramp Min}
+            description {
+                Min and Max define the range of input Ramp values
+                over which the Transition Pattern will be applied.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        parameter float Max {
+            label {Ramp Max}
+            description {
+                Min and Max define the range of input Ramp values
+                over which the Transition Pattern will be applied.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        collection customuiFullWidth HR1 {
+            customui laika HR
+            drawmode children
+        }
+
+        parameter float Roundness {
+            label {Roundness}
+            description {
+                Controls how flat or round the transition is between Min and Max.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default .5
+        }
+
+        parameter float Center {
+            label {Center}
+            description {
+                Defines where the resulting peak is between Min (0) and Max (1).
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default .5
+        }
+
+        parameter float CenterCutoff {
+            label {Center Cutoff Level}
+            description {
+                Defines the lowest Transition Pattern value that will be present in the Result.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        parameter float EdgeCutoff {
+            label {Edge Cutoff Level}
+            description {
+                Defines the highest Transition Pattern value that will be present in the Result.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        parameter float Blur {
+            label {Blur}
+            description {
+                Use this to soften the transition from Min to Max.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        parameter float Clamp {
+            label {Clamp}
+            description {
+                Blur uses a filterstep() function, which produces values outside the 0 to 1 range.
+                Turning this on clamps the transition Blur result between 0 and 1,
+                and therefore the output between the Min and Max.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        collection customuiFullWidth HR2 {
+            customui laika HR
+            drawmode children
+        }
+
+        parameter float MinResult {
+            label {Output Min}
+            description {
+                Once the Min to Max Transition is defined, use this value as the minimum result.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        parameter float MaxResult {
+            label {Output Max}
+            description {
+                Once the Min to Max Transition is defined, use this value as the maximum result.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+
+        parameter float Result {
+            label {Result}
+            display hidden
+            access output
+        }
+
+        parameter float ResultA {
+            label {Result * Pattern}
+            display hidden
+            access output
+        }
+
+        parameter float TransitionPattern {
+            label {Transition Pattern}
+            display hidden
+            access output
+        }
+
+        parameter float Ramp {
+            label {Ramp Min Max}
+            display hidden
+            access output
+        }
+
+        parameter float Limit {
+            label {Cutoff Level}
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {color.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                    // Remap Min,Max to 0,1.
+                    Ramp = linear( [getvar Min], [getvar Max], [getvar InputRamp] );
+
+                    varying float   _Roundness = min( [getvar Roundness], .999 );
+                    varying float   dx;
+
+                    dx = _Roundness * [getvar Center];
+                    varying float   a = [getvar Center] - dx;
+                    varying float   b = [getvar Center] - 0.5*dx;
+
+                    dx = _Roundness * (1 - [getvar Center]);
+                    varying float   c = [getvar Center] + 0.5*dx;
+                    varying float   d = [getvar Center] + dx;
+
+                    varying float   k;
+                    k = spline( \"solvebezier\", Ramp,
+                        0, a, b, [getvar Center], c, d, 1
+                    );
+
+                    Limit = 1 - spline( \"bezier\", k,
+                        1-[getvar EdgeCutoff],
+                        1-[getvar CenterCutoff],
+                        1-[getvar CenterCutoff],
+                        1-[getvar CenterCutoff],
+                        1-[getvar CenterCutoff],
+                        1-[getvar CenterCutoff],
+                        1-[getvar EdgeCutoff]
+                    );
+
+                    varying float   left  = mix( [getvar EdgeCutoff], [getvar CenterCutoff], linear( 0, a, Ramp ));
+                    varying float   right = mix( [getvar CenterCutoff], [getvar EdgeCutoff], linear( d, 1, Ramp ));
+
+                    Limit = mix( left, Limit, step( 0, Ramp ));
+                    Limit = mix( Limit, right, step( 1, Ramp ));
+
+                    TransitionPattern = [getvar InputPattern];
+
+                    varying float   scale = abs( [getvar Min] - [getvar Max] );
+                    varying float   blur = 0.5 * ([getvar Blur] / scale);
+
+                // XXX Need to swap Limit and TransitionPattern so filtering is based on dLimit
+                // rather than dTransitionPattern.
+                    Result = _filterstep( Limit, TransitionPattern, blur );
+                    ResultA = TransitionPattern * Result;
+
+                    Result = mix( Result, _clamp( Result, 0, 1 ), [getvar Clamp] );
+                    Result = mix( [getvar MinResult], [getvar MaxResult], Result );
+
+                    ResultA = mix( ResultA, _clamp( ResultA, 0, 1 ), [getvar Clamp] );
+                    ResultA = mix( [getvar MinResult], [getvar MaxResult], ResultA );
+"
+                }
+            }
+        }
+    }
+
+  }
+}

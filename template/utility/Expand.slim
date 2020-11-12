@@ -1,0 +1,96 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    set TemplatePrototype {
+        templateV %Type %TypeExpand 0 {
+            description {
+                Expands (or contracts) the range of Input values around the Center value
+                by the given amount.
+            }
+
+            parameter %Type Input {
+                description {
+                    The value to expand or contract.
+                }
+                defaultinput 1
+                provider variable
+                detail varying
+                default %Default
+            }
+
+            parameter %Type Center {
+                description {
+                    The center point around which to expand or contract the Input values.
+                }
+                provider variable
+                detail varying
+                default %Center
+            }
+
+            parameter float Expand {
+                label {Expansion}
+                description {
+                    The amount to expand the Input by: scale the range of Input values
+                    around the Center value by this amount.
+                }
+                provider variable
+                detail varying
+                subtype slider
+                range {-2 2}
+                default 1
+            }
+
+            parameter %Type result {
+                display hidden
+                access output
+            }
+
+            RSLFunction  {
+                void vfx%TypeExpand (
+                    varying %Type   Input;
+                    varying %Type   Center;
+                    varying float   Expand;
+
+                    output %Type    result;
+                ) {
+                    result = Expand*(Input - Center) + Center;
+                }
+            }
+        }
+    }
+
+    #
+    # Generate the various types of template.
+    #
+    foreach  {type name default center} {
+        float  Float  0       .5
+        color  Color  {{0 0 0}} {{.5 .5 .5}}
+        point  Point  {{0 0 0}} {{.5 .5 .5}}
+        vector Vector {{0 0 0}} {{.5 .5 .5}}
+    } {
+        regsub -all %Type $TemplatePrototype $type result
+        regsub -all %Name $result $name result
+        regsub -all %Default $result $default result
+        regsub -all %Center $result $center result
+        if [catch $result msg] {
+            ::RAT::LogMsg ERROR $msg
+        }
+    }
+
+  }
+}

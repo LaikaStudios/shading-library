@@ -1,0 +1,182 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+#
+#   The transform() function.
+#
+    set TemplatePrototype {
+        templateV %Type %TypeXform 0 {
+            description {
+                Transform the Input from one space to another using the %Transform() function.
+            }
+
+            parameter %Type Input {
+                label {Input}
+                description {
+                    The %Type value to transform.
+                }
+                detail varying
+                default %Default
+            }
+
+            parameter string FromSpace {
+                label {From Space}
+                description {
+                    The space the input %Type is in.
+                }
+                detail varying
+                default "current"
+            }
+
+            parameter string ToSpace {
+                label {To Space}
+                description {
+                    The space to transform the %Type into.
+                }
+                detail varying
+                default "shader"
+            }
+
+            parameter float Normalize {
+                display "%DisplayNormalize"
+                label {Normalize}
+                description {
+                    Normalize the result.
+                }
+                detail uniform
+                subtype switch
+                default 0
+            }
+
+            parameter %Type Output {
+                display hidden
+                access output
+            }
+
+            RSLFunction {
+                void vfx%TypeXform (
+                    varying %Type   Input;
+                    uniform string  FromSpace;
+                    uniform string  ToSpace;
+                    uniform float   Normalize;
+
+                    output %Type    Output;
+                ) {
+                    Output = %Transform (FromSpace, ToSpace, Input);
+#pragma nolint 2
+                    if (Normalize)
+                        Output = normalize (Output);
+                }
+            }
+        }
+    }
+
+    #
+    # Generate the various types of template.
+    #
+    foreach  {type def transform name disp} {
+        point  {{0 0 0}} transform  Point hidden
+        vector {{0 0 0}} vtransform Vector {}
+        normal {{0 0 0}} ntransform Normal {}
+    } {
+        regsub -all %Name $TemplatePrototype $name result
+        regsub -all %Type $result $type result
+        regsub -all %Default $result $def result
+        regsub -all %Transform $result $transform result
+        regsub -all %DisplayNormalize $result $disp result
+        if [catch $result msg] {
+            ::RAT::LogMsg ERROR $msg
+        }
+    }
+
+
+#
+#   Scale.
+#
+    set TemplatePrototype {
+        templateV %Type %TypeScale 0 {
+            description {
+                Scale the %Type: multiply its X, Y, and Z component values.
+            }
+
+            parameter %Type Input {
+                label {Input}
+                description {
+                    The %Type value to Scale.
+                }
+                detail varying
+                default %Default
+            }
+
+            parameter float FScale {
+                label {Overall Scale}
+                description {
+                    A uniform scale value applied equally to all the components.
+                }
+                detail varying
+                subtype slider
+                range {-10 10}
+                default 1
+            }
+
+            parameter %Type Scale {
+                label {Scale}
+                description {
+                    Individual (non-uniform) component scales.
+                }
+                detail varying
+                default {1 1 1}
+            }
+
+            parameter %Type Output {
+                display hidden
+                access output
+            }
+
+            RSLSource DynamicFunction {
+                proc primvars {} {}
+                proc function {} {
+                    generateBody {
+                        set provider [getpropertyinfo Scale provider]
+                        if {$provider == "variable" || $provider == "expression"} {
+                            output "Output = [getvar Input] * %Transform (\"shader\", [getvar Scale]) * [getvar FScale];"
+                        } else {
+                            output "Output = [getvar Input] * [getvar Scale] * [getvar FScale];"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #
+    # Generate the various types of template.
+    #
+    foreach  {type def transform} {
+        vector {{0 0 0}} vtransform
+    } {
+        regsub -all %Type $TemplatePrototype $type result
+        regsub -all %Default $result $def result
+        regsub -all %Transform $result $transform result
+        if [catch $result msg] {
+            ::RAT::LogMsg ERROR $msg
+        }
+    }
+
+  }
+}

@@ -1,0 +1,942 @@
+##
+##  Copyright(c) 2011-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV coreV7fresnel_s bxdfV7FresnelStd 1 {
+        description {
+            Returns the results from the fresnel() function.
+        }
+
+        parameter float RI {
+            label {Refractive Index}
+            description {
+                This is actually the ratio of the refractive index of the material
+                over the refractive index of medium the camera is in.
+                If the camera is in air, with a refractive index of 1, this value is just
+                the refractive index of the material.
+                <
+            }
+            detail varying
+            subtype slider
+            range {1 3}
+            default 1.333
+        }
+        parameter coshader RI_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float TrueKt {
+            label {True Kt}
+            description {
+                Is the resulting Kt value the correct Fresnel result or simply 1-Kr?
+                0 : 1-Kr. 1 : Kt.
+                <
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+        parameter coshader TrueKt_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float SurfaceType {
+            label {Surface Type}
+            description {
+                Selects whether the surface should be treated as a Sheet or as a Volume
+                for the purpose of computing the Fresnel results: should the inside of
+                the surface be treated just like the outside (Sheet) or not (Volume).
+                This only matters when you can see the backside of the geometry.
+            }
+            detail varying
+            subtype selector
+            range {
+                "Sheet" 0
+                "Volume" 1
+            }
+            default 0
+        }
+
+        parameter coreV7fresnel_s result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {coreV7/fresnel.h}
+        RSLInclude {coreV7/override.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+
+                    set overrideParam "RI"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "TrueKt"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+output "
+                    varying float   _SurfaceType = [getvar SurfaceType];
+
+                    varying float   eta;
+                    varying vector  In, Nf;
+                    varying float   Kr, KT;
+                    varying vector  R, T;
+
+                    // Set correct eta value depending on inside/outside viewpoint.
+                    eta = mix( _RI, 1/_RI, mix( 1, [getvar result]->Outside(), _SurfaceType ));
+
+                    // Left camera.
+                    [getvar result]->GetLeft( In,Nf );
+
+                    fresnel( In, Nf, eta, Kr, KT, R, T );
+
+                    [getvar result]->SetLeft( Kr, mix( 1-Kr, KT, _TrueKt ), R, T );
+
+                    // Right camera.
+                    if ([getvar result]->ComputeRight() == 1)
+                    {
+                        [getvar result]->GetRight( In,Nf );
+
+                        fresnel( In, Nf, eta, Kr, KT, R, T );
+
+                        [getvar result]->SetRight( Kr, mix( 1-Kr, KT, _TrueKt ), R, T );
+                    }
+"
+                }
+            }
+        }
+    }
+
+
+    templateV coreV7fresnel_s bxdfV7FresnelSchlick 0 {
+        description {
+            Returns the Schlick approximation to Fresnel.
+            This is useful for metals, as the Fresnel can incorporate the metal's reflected color.
+        }
+
+        parameter color SpectralDistribution {
+            label {Spectral Distribution}
+            description {
+                The color of the specular response when looking perpendicular to the surface.
+                Corresponds to the minimum Kr value.
+                <
+            }
+            detail varying
+            default {.25 .25 .25}
+        }
+        parameter coshader SpectralDistribution_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter color RimColor {
+            label {Rim Color}
+            description {
+                The color of the specular response when looking at the edge of the surface.
+                Corresponds to the maximum Kr value.
+                <
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter coshader RimColor_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float Exponent {
+            label {Exponent}
+            description {
+                The Schlick exponent. By definition, this is 5.
+                But you can adjust it to your liking to shape the response.
+                <
+            }
+            detail varying
+            subtype slider
+            range {2 8}
+            default 5
+        }
+        parameter coshader Exponent_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float SurfaceType {
+            label {Surface Type}
+            description {
+                Selects whether the surface should be treated as a Sheet or as a Volume
+                for the purpose of computing the Fresnel results: should the inside of
+                the surface be treated just like the outside (Sheet) or not (Volume).
+                This only matters when you can see the backside of the geometry.
+            }
+            detail varying
+            subtype selector
+            range {
+                "Sheet" 0
+                "Volume" 1
+            }
+            default 0
+        }
+
+        parameter coreV7fresnel_s result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {color.h}
+        RSLInclude {coreV7/fresnel.h}
+        RSLInclude {coreV7/override.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+
+                    set overrideParam "SpectralDistribution"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying color _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "RimColor"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying color _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "Exponent"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+output "
+                    varying float   _SurfaceType = [getvar SurfaceType];
+
+                    varying color   SD = _SpectralDistribution;
+                    varying float   avgSD = colorRGBToAvg( SD );
+
+                    varying vector  In, Nf;
+                    varying float   inout, IdotN, eta;
+                    varying color   Kr;
+                    varying vector  R, T;
+
+                    inout = mix( 1, [getvar result]->Outside(), _SurfaceType );
+
+                    // Left camera.
+                    [getvar result]->GetLeft( In,Nf );
+
+                    R = reflect( In, Nf );
+                    IdotN = In.Nf;
+
+                    Kr = mix( SD, _RimColor, _pow( 1.0 + IdotN, _Exponent ));
+                    Kr = mix( 1-Kr, Kr, inout );
+
+                    T = In;
+
+                    [getvar result]->SetLeft( Kr, 1-Kr, R, T );
+
+                    // Right camera.
+                    if ([getvar result]->ComputeRight() == 1)
+                    {
+                        [getvar result]->GetRight( In,Nf );
+
+                        R = reflect( In, Nf );
+                        IdotN = In.Nf;
+
+                        Kr = mix( SD, _RimColor, _pow( 1.0 + IdotN, _Exponent ));
+                        Kr = mix( 1-Kr, Kr, inout );
+
+/*                         eta = colorRGBToAvg(SD) * _pow( 1.0 - IdotN, 2.0 ); */
+/*                         T = mix( normalize( In + eta*Nf ), normalize( In - eta*Nf ), inout ); */
+                        T = In;
+
+                        [getvar result]->SetRight( Kr, 1-Kr, R, T );
+                    }
+"
+                }
+            }
+        }
+    }
+
+
+    templateV coreV7fresnel_s bxdfV7FresnelMinMax 1 {
+        description {
+            Controls the response using simple Min and Max intensity controls
+            rather than a refractive index.
+        }
+
+        parameter float MinKr {
+            label {Min Kr}
+            description {
+                The minimum reflected intensity that will be returned.
+                This is the specular intensity when looking perpendicularly at the surface.
+                <
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default .25
+        }
+        parameter coshader MinKr_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float MaxKr {
+            label {Max Kr}
+            description {
+                The maximum reflected intensity that will be returned.
+                This is the specular intensity when looking parallel to the surface.
+                <
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+        parameter coshader MaxKr_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float RI {
+            label {Refractive Index}
+            description {
+                Changes the shape of the response curve.
+                NOTE: Since the minimum reflected intensity is fixed at Min Kr, higher
+                values will produce more rapid falloff as the surfaces face the camera
+                (which is visually opposite the usual effect when changing the
+                Fresnel refractive index).
+                <
+            }
+            detail varying
+            subtype slider
+            range {1 3}
+            default 1.333
+        }
+        parameter coshader RI_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float TrueKt {
+            label {True Kt}
+            description {
+                Is the resulting Kt value the correct Fresnel result or simply 1-Kr?
+                0 : 1-Kr. 1 : Kt.
+                <
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+        parameter coshader TrueKt_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float SurfaceType {
+            label {Surface Type}
+            description {
+                Selects whether the surface should be treated as a Sheet or as a Volume
+                for the purpose of computing the Fresnel results: should the inside of
+                the surface be treated just like the outside (Sheet) or not (Volume).
+                This only matters when you can see the backside of the geometry.
+            }
+            detail varying
+            subtype selector
+            range {
+                "Sheet" 0
+                "Volume" 1
+            }
+            default 0
+        }
+
+        parameter coreV7fresnel_s result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {coreV7/fresnel.h}
+        RSLInclude {coreV7/override.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+
+                    set overrideParam "MinKr"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "MaxKr"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "RI"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "TrueKt"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+output "
+                    varying float   _SurfaceType = [getvar SurfaceType];
+
+                    // Get KrMin and KTMax.
+                    uniform float   KrMin, KTMax;
+                    fresnel( vector(-1,0,0), vector(1,0,0), _RI, KrMin, KTMax );    // 1/RI is the same.
+
+                    varying float   eta;
+                    varying vector  In, Nf;
+                    varying float   Kr, KT;
+                    varying vector  R, T;
+
+                    // Set correct eta value depending on inside/outside viewpoint.
+                    eta = mix( _RI, 1/_RI, mix( 1, [getvar result]->Outside(), _SurfaceType ));
+
+                    // Left camera.
+                    [getvar result]->GetLeft( In,Nf );
+
+                    fresnel( In, Nf, eta, Kr, KT, R, T );
+
+                    Kr = mix( _MinKr, _MaxKr, linear( KrMin, 1, Kr ));
+
+                    [getvar result]->SetLeft( Kr, mix( 1-Kr, KT, _TrueKt ), R, T );
+
+                    // Right camera.
+                    if ([getvar result]->ComputeRight() == 1)
+                    {
+                        [getvar result]->GetRight( In,Nf );
+
+                        fresnel( In, Nf, eta, Kr, KT, R, T );
+
+                        Kr = mix( _MinKr, _MaxKr, linear( KrMin, 1, Kr ));
+
+                        [getvar result]->SetRight( Kr, mix( 1-Kr, KT, _TrueKt ), R, T );
+                    }
+"
+                }
+            }
+        }
+    }
+
+
+    templateV coreV7fresnel_s bxdfV7TranslucenceFresnel 0 {
+        description {
+            Produces a fake Fresnel that's more suitable for scattering
+            translucent materials than simple refractive transparent ones.
+        }
+
+        parameter float Thickness {
+            label {Thickness}
+            description {
+                Produces a type of fake refraction of the response direction.
+                For thin objects, this would usually be 0.
+                For thicker objects, you can increase this and see if you like the results,
+                or connect the DotProduct template to vary it.
+                <
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+        parameter coshader Thickness_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter color Darkest {
+            label {Darkest}
+            description {
+                Determines the level of the darkest attenuation (at the edge of objects).
+                <
+            }
+            detail varying
+            default {.25 .25 .25}
+        }
+        parameter coshader Darkest_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter color Lightest {
+            label {Lightest}
+            description {
+                Determines the level of the lightest attenuation (at the center of objects).
+                <
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter coshader Lightest_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float Exponent {
+            label {Exponent}
+            description {
+                Raise the transition from light to dark to this power in order
+                to shape the falloff.
+                <
+            }
+            detail varying
+            subtype slider
+            range {.25 4}
+            default 1
+        }
+        parameter coshader Exponent_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float SurfaceType {
+            label {Surface Type}
+            description {
+                Selects whether the surface should be treated as a Sheet or as a Volume
+                for the purpose of computing the Fresnel results: should the inside of
+                the surface be treated just like the outside (Sheet) or not (Volume).
+                This only matters when you can see the backside of the geometry.
+            }
+            detail varying
+            subtype selector
+            range {
+                "Sheet" 0
+                "Volume" 1
+            }
+            default 0
+        }
+
+        parameter coreV7fresnel_s result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {slim.h}
+        RSLInclude {math.h}
+        RSLInclude {coreV7/fresnel.h}
+        RSLInclude {coreV7/override.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+
+                    set overrideParam "Thickness"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "Darkest"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying color _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "Lightest"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying color _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "Exponent"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+output "
+                    varying float   _SurfaceType = [getvar SurfaceType];
+
+                    filterregion    fr;
+                    varying float   inout, IdotN, eta;
+                    varying vector  In, Nf;
+                    varying color   Kr;
+                    varying vector  R, T;
+
+                    inout = mix( 1, [getvar result]->Outside(), _SurfaceType );
+
+                    fr->calculate3d(SLIM_P);
+                    Kr = fr->minsize() / fr->maxsize();
+                    Kr = mix( _Darkest, _Lightest, _pow( Kr, _Exponent ));
+
+                    Kr = mix( color 1 - Kr, Kr, inout );
+
+                    // Left camera.
+                    [getvar result]->GetLeft( In,Nf );
+
+                    R = reflect( In, Nf );
+                    T = mix( -normalize( _Thickness*In + Nf ), normalize( _Thickness*In - Nf ), inout );
+
+                    [getvar result]->SetLeft( Kr, color 1 - Kr, R, T );
+
+                    // Right camera.
+                    if ([getvar result]->ComputeRight() == 1)
+                    {
+                        [getvar result]->GetRight( In,Nf );
+
+                        R = reflect( In, Nf );
+                        T = mix( -normalize( _Thickness*In + Nf ), normalize( _Thickness*In - Nf ), inout );
+
+                        [getvar result]->SetRight( Kr, color 1 - Kr, R, T );
+                    }
+"
+                }
+            }
+        }
+    }
+
+
+    templateV coreV7fresnel_s bxdfV7FresnelShininess 1 {
+        description {
+            Uses an exponential Shininess control to set the refractive index used,
+            allowing for a very wide range of responses from dialectrics to metals.
+        }
+
+        parameter float Shininess {
+            label {Shininess}
+            description {
+                Determines the refractive index of the material using RI = 2^((4*Shininess)^1.5).
+                This works out to be a pretty good Upper to Middle/Lower mix control.
+                <
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default .25
+        }
+        parameter coshader Shininess_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float TrueKt {
+            label {True Kt}
+            description {
+                Is the resulting Kt value the correct Fresnel result or simply 1-Kr?
+                0 : 1-Kr. 1 : Kt.
+                <
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+        parameter coshader TrueKt_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float SurfaceType {
+            label {Surface Type}
+            description {
+                Selects whether the surface should be treated as a Sheet or as a Volume
+                for the purpose of computing the Fresnel results: should the inside of
+                the surface be treated just like the outside (Sheet) or not (Volume).
+                This only matters when you can see the backside of the geometry.
+            }
+            detail varying
+            subtype selector
+            range {
+                "Sheet" 0
+                "Volume" 1
+            }
+            default 0
+        }
+
+        parameter coreV7fresnel_s result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {coreV7/fresnel.h}
+        RSLInclude {coreV7/override.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+
+                    set overrideParam "Shininess"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "TrueKt"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+output "
+                    varying float   _SurfaceType = [getvar SurfaceType];
+
+                    varying float   _RI = _pow( 2.0, _pow( 4.0*_Shininess, 1.5 ));
+
+                    varying float   eta;
+                    varying vector  In, Nf;
+                    varying float   Kr, KT;
+                    varying vector  R, T;
+
+                    // Set correct eta value depending on inside/outside viewpoint.
+                    eta = mix( _RI, 1/_RI, mix( 1, [getvar result]->Outside(), _SurfaceType ));
+
+                    // Left camera.
+                    [getvar result]->GetLeft( In,Nf );
+
+                    fresnel( In, Nf, eta, Kr, KT, R, T );
+
+                    [getvar result]->SetLeft( Kr, mix( 1-Kr, KT, _TrueKt ), R, T );
+
+                    // Right camera.
+                    if ([getvar result]->ComputeRight() == 1)
+                    {
+                        [getvar result]->GetRight( In,Nf );
+
+                        fresnel( In, Nf, eta, Kr, KT, R, T );
+
+                        [getvar result]->SetRight( Kr, mix( 1-Kr, KT, _TrueKt ), R, T );
+                    }
+"
+                }
+            }
+        }
+    }
+
+
+    templateV coreV7fresnel_s bxdfV7FresnelMix 0 {
+        description {
+            Not view dependent.
+            A simple mix between Upper and Middle/Lower responses.
+        }
+
+        parameter float Mix {
+            label {Upper Percent}
+            description {
+                0 = all Middle/Lower.
+                1 = all Upper.
+                <
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default .5
+        }
+        parameter coshader Mix_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter coreV7fresnel_s result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {coreV7/fresnel.h}
+        RSLInclude {coreV7/override.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+
+                    set overrideParam "Mix"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+output "
+                    varying vector  In, Nf;
+                    varying float   Kr;
+                    varying vector  R, T;
+
+                    Kr = _Mix;
+
+                    // Left camera.
+                    [getvar result]->GetLeft( In,Nf );
+
+                    R = reflect( In, Nf );
+                    T = In;
+
+                    [getvar result]->SetLeft( Kr, 1-Kr, R, T );
+
+                    // Right camera.
+                    if ([getvar result]->ComputeRight() == 1)
+                    {
+                        [getvar result]->GetRight( In,Nf );
+
+                        R = reflect( In, Nf );
+                        T = In;
+
+                        [getvar result]->SetRight( Kr, 1-Kr, R, T );
+                    }
+"
+                }
+            }
+        }
+    }
+
+
+    templateV coreV7fresnel_s bxdfV7FresnelKrKt 0 {
+        description {
+            Not view dependent.
+            Directly sets the Kr and Kt values.
+        }
+
+        parameter float Kr {
+            label {Kr}
+            description {
+                Directly sets the Kr intensity.
+                <
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default .5
+        }
+        parameter coshader Kr_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float Kt {
+            label {Kt}
+            description {
+                Directly sets the Kt intensity.
+                <
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default .5
+        }
+        parameter coshader Kt_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter coreV7fresnel_s result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {coreV7/fresnel.h}
+        RSLInclude {coreV7/override.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+
+                    set overrideParam "Kr"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "Kt"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+output "
+                    varying vector  In, Nf;
+                    varying vector  R, T;
+
+                    // Left camera.
+                    [getvar result]->GetLeft( In,Nf );
+
+                    R = reflect( In,Nf );
+                    T = In;
+
+                    [getvar result]->SetLeft( _Kr, _Kt, R, T );
+
+                    // Right camera.
+                    if ([getvar result]->ComputeRight() == 1)
+                    {
+                        [getvar result]->GetRight( In,Nf );
+
+                        R = reflect( In,Nf );
+                        T = In;
+
+                        [getvar result]->SetRight( _Kr, _Kt, R, T );
+                    }
+"
+                }
+            }
+        }
+    }
+
+
+    template visualizer coreV7fresnel_s {
+        parameter coreV7fresnel_s vis {}
+
+        RSLMain {
+            set visParm   [safeeval %c GetProperties -name vis]
+            set visFunc   [safeeval $visParm GetConnectedFunction]
+            set visResult [safeeval $visFunc GetProperties -access output]
+            set visRSL    [safeeval $visResult GetNameSL 1]
+
+output "
+            #include <color.h>
+            #include <coreV7/camera.h>
+            #include <coreV7/surface.h>
+
+            camera_s    cameraData;
+            surface_s   surfaceData;
+
+            cameraData->Init();
+            surfaceData->Init();
+
+            $visRSL->Init( cameraData, surfaceData );
+"
+            generate vis
+output "
+            Ci = color(
+                colorRGBToLuma( [getvar vis]->GetLeftKr() ),
+                colorRGBToLuma( [getvar vis]->GetLeftKt() ),
+                0
+            );
+            Oi = color 1;
+"
+        }
+    }
+
+  }
+}

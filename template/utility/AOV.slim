@@ -1,0 +1,49 @@
+##
+##  Copyright(c) 2013 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV coshader csAOV 2 {
+        description {
+            Creates any number of AOV's, each with a given Name and Type
+            when accessed by a Material shader,
+        }
+
+        eval [::__categoryParam "ikaAOVCoshader"]
+
+        collection customuiFullWidth AOVs {
+            customui laika AddParam
+            subtype propertycreator
+            drawmode children
+            state open
+            userdata {
+                AddString   "Add AOV"
+                AddDescription "Add an Arbitrary Output Variable."
+                ParamType   AOV
+                ParamPrefix AOV
+                ParamDetail {mustvary "laika,csAOVparam" inline}
+            }
+        }
+
+        RSLClass {
+            generateMethod "public void begin()" {
+                generate
+            }
+        }
+    }
+
+  }
+}

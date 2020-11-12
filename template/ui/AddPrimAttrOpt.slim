@@ -1,0 +1,352 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+#
+#   Based on Pixar's layerui2.slim
+#
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+	customui AddPrimAttrOpt {
+		classification addschildren
+
+		TclTkSource {
+			variable size;
+            variable icon;
+			variable parent;		# an array accessed by canvas id containing the collection parameter.  
+			variable canvasList;	# used so undo/redo works between window destroys
+            variable lastType float
+
+            #
+            # Gets the auto extension given a parameter or collection
+            # name that was created with an auto extension: the last _
+            # and everything after it.
+            #
+            proc getAutoExt {prop} {
+                set propName [$prop GetName]
+                set extIndex [string last "_" $propName]
+                return [string range $propName $extIndex end]
+            }
+
+            #
+            #   Create the Tk components that aren't parameters or collections;
+            #   specifically, the Add button and other necessary UI components.
+            #
+            #   createLayer will be called by the Add button to create a layer collection,
+            #   along with whatever parameters are needed,
+            #
+            #   and rebuildCanvas will display the collection parameters using Tk.
+            #
+			proc BuildUI {container recommendedWidth args} {
+				variable size
+                variable icon
+				variable parent
+				variable canvasList
+                variable lastType
+
+				if ![info exists icon] {
+					set icon(delete) [::RAT::GetImage layer-close.gif]
+					set icon(deleteGlow) [::RAT::GetImage layer-close-glo.gif]
+                }
+
+				if ![info exists size] {
+					set size(LayerRowHeight) 24
+					set size(AddButtonHeight) 36
+					set size(LayerRowHalfHeight) 12
+					set size(InterRowSpaceHeight) 0
+					set size(LabelWidth) 20
+					set size(DeleteIconX) 10
+					set size(LayerLabelX) 34
+					set size(LayerFrameX) 2.5c
+				}
+
+				#
+				# recommendedWidth is the width of the entire window.
+				# The customui is presented in a canvas.
+				# The canvas is divided into rows of windows, a row per layer.
+				# The first row is the button row and is always present.
+				# Layer rows are added/subtracted dynamically via this GUI.
+				# A Layer row is comprised of a collection of icons and standard tk widgets as follows:
+				#   layer delete icon
+				#   editable layer label
+				#
+				set size(recommendedWidth) $recommendedWidth
+				set size(frameWidth) $recommendedWidth
+
+				set canvas $container
+				set id [string range $canvas [expr [string last . $canvas] + 1] end]
+
+				#
+				# Look for parent collection.
+				#
+				set i [lsearch $args -parent] 
+				if {$i == -1} return; #error
+
+				set parent($id) [lindex $args [incr i]]
+
+				canvas $canvas -width $size(recommendedWidth)
+				set canvasList($id) $canvas
+
+				# Button frame in which the add and type items will exist.
+				frame $canvas.bf
+
+                # Type selector
+                set typemenu $canvas.bf.type
+                ::RAT::OptionMenu $typemenu
+                    $typemenu Add command float -label float
+                    $typemenu Add command color -label color
+                    $typemenu Add command point -label point
+                    $typemenu Add command vector -label vector
+                    $typemenu Add command normal -label normal
+                    $typemenu Add command matrix -label matrix
+                    $typemenu Add command string -label string
+                    $typemenu InitValue $lastType
+
+                # Tk Add button to create a new set of layer collection/parameters
+				button $canvas.bf.add -text "    Add    " \
+					-command [::RAT::PackageCode [namespace code "createLayer $canvas $id $typemenu"]]
+
+                # Pack the two into the frame
+                pack $canvas.bf.add $canvas.bf.type -side left -padx 4
+
+                # Create the canvas window (frame) in which the above items will be drawn
+				$canvas create window 0 0 -window $canvas.bf -anchor nw
+
+                # Display the layer data
+				if [catch "rebuildCanvas $canvas $id" msg] {
+					::RAT::LogMsg ERROR $msg
+				}
+
+                # Tk buttons for removing a layer
+				$canvas bind delete <Enter> \
+					"$canvas itemconfigure current -image $icon(deleteGlow)"
+				$canvas bind delete <Leave> \
+					"$canvas itemconfigure current -image $icon(delete)"
+				$canvas bind delete <1> \
+					[::RAT::PackageCode [namespace code "deleteCmd $canvas $id"]]
+
+				return [$canvas cget -height]
+			}
+
+            #
+            # Slim MsgHandler for changing the label.
+            # dummy args put in for backward palette compatibility with version prior to 15 Aug 2011.
+            #
+            proc changeLabel {obj args} {
+                set app [$obj GetAppearance]
+                set name [$obj GetName]
+                set label [$obj GetValue]
+                set autoExt [getAutoExt $obj]
+
+                set preIndex [expr [string first "_Label_" $name] - 1]
+                set prefix [string range $name 0 $preIndex]
+
+                set outputParam [$app GetProperties -name ${prefix}_Output$autoExt]
+                $outputParam SetLabel $label
+
+                $app UpdateEditor
+            }
+
+			#
+			#	createLayer creates these parameters when the Add button is pushed:
+			#
+            #   paramPrefix_Output#auto
+            #
+			#   paramPrefix_Collection#auto
+            #       paramPrefix_Label#auto
+            #
+            # paramPrefix is userdata set in the template.
+			# #auto is some kind of magic that will be expanded to _uniqueNumber.
+			#
+			proc createLayer {canvas id typemenu {redraw 1}} {
+				variable parent
+                variable lastType
+
+				set c $parent($id)
+                set app [$c GetAppearance]
+                set lastType [$typemenu cget -value]
+
+                # create the primvar collection and get the autoExtension
+                set prefix [$c GetUserData paramPrefix]
+				set primvarCollection [$c NewCollection void ${prefix}_Collection#auto]
+                set autoExt [getAutoExt $primvarCollection]
+
+                # create the multiple output parameter (which can't be in a collection)
+                set primvarOutput [$app NewParameter $lastType ${prefix}_Output$autoExt]
+                    $primvarOutput SetLabel _$lastType$autoExt
+                    $primvarOutput SetDisplayLevel hidden
+                    $primvarOutput SetAccess output
+
+                # create the primvar collection parameter(s)
+                set primvarLabel [$primvarCollection NewSlimAttribute string ${prefix}_Label$autoExt]
+                    $primvarLabel SetDefaultValue "_$lastType$autoExt"
+                    $primvarLabel SetMsgHandler SetValue "
+                        ::Slim::CustomUI::laika::AddPrimAttrOpt::changeLabel %obj
+                    "
+
+                # create the primvar collection parameter default(s)
+                set primvarDefault [$primvarCollection NewSlimAttribute $lastType ${prefix}_Default$autoExt]
+                    switch $lastType {
+                        float {
+                            $primvarDefault SetRange {0 1}
+                            $primvarDefault SetDefaultValue 0
+                        }
+                        color - point - vector - normal {
+                            $primvarDefault SetDefaultValue {0 0 0}
+                        }
+                        string {
+                            $primvarDefault SetDefaultValue ""
+                        }
+                    }
+
+                    $primvarDefault SetDisplayLevel ""
+
+				# place the new collection at the end of the list
+				set children [lreplace [$c GetChildren] end end]
+				set children [linsert $children end $primvarCollection]
+				$c SetChildren $children
+				if $redraw {
+					::RAT::RedrawAppearanceUI $canvas
+				}
+
+				$app DirtyMaster
+			}
+
+            #
+            #   Use Tk to display the collection and parameter data created by createLayer.
+            #
+			proc rebuildCanvas {canvas id} {
+				variable size
+                variable icon
+				variable parent
+
+                # Get appearance handle.
+                set app [$parent($id) GetAppearance]
+
+                # Get the paramPrefix
+                set prefix [$parent($id) GetUserData paramPrefix]
+
+                # Set initial row height.
+				set y [expr 3 + $size(LayerRowHeight)]
+
+                # Get the layer collections.
+				set colls [$parent($id) GetChildren]
+
+                # For each layer collection... 
+				set ncolls [llength $colls]
+				for {set i 0} {$i < $ncolls} {incr i} {
+					set layerCollection [lindex $colls $i]
+                    set autoExt [getAutoExt $layerCollection]
+
+                    # set the layer label to the parameter type.
+                    set outParam [$app GetProperties -name "${prefix}_Output$autoExt"]
+                    set outParamType [$outParam GetType]
+					set label $outParamType
+
+					set y [expr $y + $size(InterRowSpaceHeight) + 1]
+					set w $canvas.row$i
+					catch "destroy $w"
+					set ymid [expr $y + $size(LayerRowHalfHeight)]
+
+					$canvas create image $size(DeleteIconX) $ymid \
+						-image $icon(delete) -anchor w -tags "delete delete$i widget"
+
+					$canvas create text $size(LayerLabelX) $ymid \
+						-anchor w -tags "label label$i widget" \
+						-text $label
+
+					frame $w -width $size(frameWidth) -height $size(LayerRowHeight)
+
+					set wlabel $w.label
+
+					set layerParameters [$layerCollection GetChildren]
+					set labelParam [lindex $layerParameters 0]
+					$labelParam BuildDefaultWidget $canvas $wlabel \
+						$size(LabelWidth) $size(LayerRowHeight)
+
+					pack $wlabel -side left
+
+					#don't allow user default of matrix
+					if {$outParamType != "matrix"} {
+
+						set wdefault $w.default
+
+						set defaultParam [lindex $layerParameters 1]
+						$defaultParam BuildDefaultWidget $canvas $wdefault \
+							$size(LabelWidth) $size(LayerRowHeight)
+
+						pack $wdefault -side left
+					}
+
+					$canvas create window $size(LayerFrameX) $y -window $w \
+						-anchor nw -tags "layer$i widget"
+
+					set y [expr $y + $size(LayerRowHeight) + 1]
+				}
+
+				$canvas configure -height $y
+			}
+
+			#
+			# deleteCmd:
+			#	Called via canvas binding, so look at current canvas object
+			#   to determine the object to act upon.
+			#
+			proc deleteCmd {canvas id} {
+				variable parent
+				set tags [$canvas gettags current];		# Assume tags are "delete delete$i widget"
+				set row [string range [lindex $tags 1] 6 end]
+				set docmd [::RAT::PackageCode [namespace code "removeLayer $canvas $id $row"]]
+
+				set parameters [$parent($id) GetChildren]
+				set elementP [lindex $parameters $row]
+				set c [$elementP GetChildren]
+
+                set cmdkey [::RAT::GetCmdStackKeyFromWindow $canvas]
+				::RAT::JournalCmd -doit "$docmd" -undoit "" -title "Remove Layer" -cmdkey $cmdkey
+			}
+
+            #
+            # Remove the primvar parameter collection and params.
+            #
+			proc removeLayer {canvas id index} {
+				variable parent
+				set coll $parent($id)
+
+                # Get the paramPrefix
+                set prefix [$parent($id) GetUserData paramPrefix]
+
+                # remove the parameter collection and get the auto extension
+				set parms [$coll GetChildren]
+				set p [lindex $parms $index]
+                set autoExt [getAutoExt $p]
+				$coll RemoveChild $p
+
+                # remove the output parameter
+                set app [$coll GetAppearance]
+                set outParamName "${prefix}_Output$autoExt"
+                set outParam [$app GetProperties -name $outParamName]
+                set outParamParent [$outParam GetParent]
+                $outParamParent RemoveChild $outParam 1
+
+				# mark shader as dirty
+				$app DirtyMaster
+				::RAT::RedrawAppearanceUI $canvas
+			}
+		}
+	}
+
+  }
+}

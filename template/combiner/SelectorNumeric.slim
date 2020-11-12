@@ -1,0 +1,190 @@
+##
+##  Copyright(c) 2015 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    set TemplatePrototype {
+        templateV %Type %TypeSelectorNumeric 0 {
+            description {
+                Returns one of the possible choices based on a numeric value
+                (such as an object ID PrimVar).
+            }
+
+            parameter float Selector {
+                label {Choice}
+                description {
+                    Based on its integer value, determines which one of the
+                    possible choices to return (0 = first choice, 1 = second, etc).
+                    This can have any range of values, as it will be modulo
+                    the number of choices, so one of them will always
+                    be picked. Should typically be a uniform integer,
+                    such as an object ID PrimVar.
+                }
+                detail varying
+                default 0
+            }
+
+            collection customuiFullWidth AddedChoices {
+                customui laika AddParam
+                subtype propertycreator
+                drawmode children
+                state open
+                userdata {
+                    AddString "Add Choice"
+                    AddDescription "Adds a new choice."
+                    ParamType %Type
+                    ParamPrefix Choice
+                    ParamLabel "Choice"
+                    ParamDescription "One of the possible results."
+                    ParamProvider constant
+                    ParamDetail varying
+                    ParamDefault "%Default"
+                }
+            }
+
+            parameter %Type result {
+                label {Result}
+                display hidden
+                access output
+            }
+
+            RSLSource GenerativeFunction {
+                proc primvars {} {}
+                proc function {} {
+                    generateBody {
+                        generate -Choice_*
+
+                        set choiceParams [getproperties -name Choice_* -access input]
+                        set choiceParamsNum [llength $choiceParams]
+output "
+                        uniform float  _Selector = gridmin( round( [getvar Selector] ));
+                        _Selector = mod( _Selector, $choiceParamsNum );
+"
+                        # Generate the selection tests.
+                        set i 0
+                        foreach param $choiceParams {
+                            generate $param
+output "
+                            if (_Selector == $i) {
+                                result = %Type( [getvar $param] );
+                                return;
+                            }
+"
+                            incr i
+                        }
+output "
+                        result = %Type( 0 );
+"
+                    }
+                }
+            }
+        }
+    }
+
+    #
+    # Generate the various types of template.
+    #
+    foreach  {type defval} {
+        float  {0}
+        color  {0 0 0}
+        point  {0 0 0}
+        vector {0 0 0}
+    } {
+        regsub -all %Type $TemplatePrototype $type result
+        regsub -all %Default $result $defval result
+        if [catch $result msg] {
+            ::RAT::LogMsg ERROR $msg
+        }
+    }
+
+
+    templateV string stringSelectorNumeric 0 {
+        description {
+            Returns one of the possible choices based a numeric value
+            (such as an object ID PrimVar).
+        }
+
+        parameter float Selector {
+            label {Choice}
+            description {
+                Determines which one of the possible choices to return.
+                This can have any range of values, as it will be modulo
+                the number of choices, so one of them will always
+                be picked. Should typically be a uniform integer,
+                such as an object ID PrimVar.
+            }
+            detail varying
+            default 0
+        }
+
+        collection customuiFullWidth AddedChoices {
+            customui laika AddParam
+            subtype propertycreator
+            drawmode children
+            state open
+            userdata {
+                AddString "Add Choice"
+                AddDescription "Adds a new choice."
+                ParamType string
+                ParamPrefix Choice
+                ParamLabel "Choice"
+                ParamDescription "One of the possible results."
+                ParamProvider constant
+                ParamDetail varying
+                ParamDefault ""
+            }
+        }
+
+        parameter string result {
+            label {Result}
+            display hidden
+            access output
+        }
+
+        RSLSource GenerativeFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    generate -Choice_*
+
+                    set choiceParams [getproperties -name Choice_* -access input]
+                    set choiceParamsNum [llength $choiceParams]
+output "
+                    uniform float  _Selector = gridmin( round( [getvar Selector] ));
+                    _Selector = mod( _Selector, $choiceParamsNum );
+"
+                    # Generate the selection tests.
+                    set i 0
+                    foreach param $choiceParams {
+                        generate $param
+output "
+                        if (_Selector == $i) {
+                            result = [getvar $param];
+                            return;
+                        }
+"
+                        incr i
+                    }
+output "
+                    result = \"\";
+"
+                }
+            }
+        }
+    }
+
+  }
+}

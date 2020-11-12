@@ -1,0 +1,134 @@
+##
+##  Copyright(c) 2013-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV materialeffector meV7DeathRay 0 {
+        description {
+            Use a coordinate system to project an opacity texture into the scene
+            in order to remove geometry by altering its opacity.
+        }
+
+        eval [::__categoryParam "ika_meV7Opacity"]
+
+        parameter float Invert {
+            label {Invert}
+            description {
+                Causes the category pattern matching to determine which shaders will NOT match.
+                All others will match.
+            }
+            subtype switch
+            default 0
+        }
+
+        parameter float Enable {
+            label {Enable}
+            description {
+                Determines how much effect this will have on the results.
+            }
+            detail varying
+            range {0 1}
+            default 1
+        }
+
+        parameter string OpacityMap {
+            label {Opacity Map}
+            description {
+                The value from this texture will scale the Oi value of the geometry.
+            }
+            detail varying
+            subtype texture
+            default ""
+        }
+
+        parameter float OpacityInvert {
+            label {Opacity Invert}
+            description {
+                Invert the values in the Opacity map before applying them.
+            }
+            detail varying
+            subtype switch
+            default 0
+        }
+
+        parameter string OpacitySpace {
+            label {Opacity Space}
+            description {
+                Transform the Opacity Map to this space before accessing it.
+                The texture will be mapped to the 0-1 range, X and Y coordinates
+                and projected orthographically into the scene.
+            }
+            detail varying
+            default "NDC"
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {slim.h}
+
+        RSLClass {
+output "
+            private uniform string  userCategory\[\];
+            private uniform float   _Invert;
+            private varying float   _Enable;
+            private uniform string  _OpacityMap;
+            private uniform float   _OpacityInvert;
+            private uniform string  _OpacitySpace;
+"
+
+            #
+            #  Intialize globals.
+            #
+            generateMethod "public void begin()" {
+                generate
+output "
+                userCategory = split( [getvar __categoryUser], \",\" );
+
+                _Invert = [getvar Invert];
+                _Enable = [getvar Enable];
+                _OpacityMap = [getvar OpacityMap];
+                _OpacityInvert = [getvar OpacityInvert];
+                _OpacitySpace = [getvar OpacitySpace];
+"
+            }
+
+            generateMethod "public varying color opacityEffect( string materialCategory; color _Oi )" {
+output "
+                varying color   Output = color 1;
+
+                // Determine which Materials to effect.
+                uniform float   categoryMatch = _match( userCategory, materialCategory, _Invert );
+
+                // If there's a match, alter the Output.
+                if (categoryMatch == 1 && gridever(_Enable != 0) == 1)
+                {
+                    varying point   Po = transform( _OpacitySpace, SLIM_P );
+
+                    Output = color texture( _OpacityMap, xcomp(Po), ycomp(Po) );
+
+                    Output = mix( Output, color 1 - Output, _OpacityInvert );
+
+                    Output = mix( color 1, Output, _Enable );
+                }
+
+                return Output;
+"
+            }
+        }
+    }
+
+  }
+}

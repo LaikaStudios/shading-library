@@ -1,0 +1,231 @@
+##
+##  Copyright(c) 2010-2011 Laika. All rights reserved unless otherwise granted.
+##  This program or documentation contains proprietary, confidential information
+##  and trade secrets of Laika. Use of copyright notice does not imply publication.
+##
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, or to the RenderMan community as a whole
+##  through a public forum.
+##
+slim 1 extensions pstuart {
+    extensions laika vfx {
+
+        # pstuart NOTE: Copied the ::slimSLBoxParameters and
+        # ::slimSLBoxRSLSource from slbox.slim in RMSTREE into this file.
+        # This was necessary to allow for reloading string slbox templates
+        # without first manually loading slbox.slim.
+
+        # these procs allow us to easily create
+        # SLBoxes for each type
+
+        # declare the parameters (except for the result)
+        # - the userdata fields communicate to the customui
+        # - the msghandlers help the customui update
+        #   when values are changed from elsewhere (e.g. via undo)
+        proc ::slimSLBoxParameters defaultCode {
+            set val {
+                collection void addparam {
+                    label Parameters
+                    customui pixar AddParam
+                    description {
+                        Parameters for your SLBox.
+                        Select the type, then use the + button
+                        to add the parameter.
+                    }
+                    userdata {
+                        addparamuiCollection Parameters
+                    }
+                }
+                collection void Parameters {
+                    state open
+                    drawmode children
+                    subtype propertycreator
+                }
+                collection customuiFullWidth includeWrapper {
+                    drawmode children
+                    customui pixar BigString
+                    state open
+                    userdata {
+                        bigstringuiParameter Includes
+                        bigstringuiHeight 90
+                    }
+                    slimattribute string Includes {
+                        subtype bigstring
+                        display hidden
+                        description {
+                            Enter list of files to include (e.g. "pxslRemap.h")
+                        }
+                        default ""
+                        msghandler {
+                            SetValue {
+                                ::Slim::CustomUI::pixar::BigString::UpdateBigStringUI %obj
+                            }
+                        }
+                    }
+                }
+                collection customuiFullWidth primvarWrapper {
+                    drawmode children
+                    customui pixar BigString
+                    state open
+                    userdata {
+                        bigstringuiParameter Primvars
+                        bigstringuiHeight 90
+                    }
+                    slimattribute string Primvars {
+                        subtype bigstring
+                        display hidden
+                        description {
+                            Enter SL code for primvars (e.g. "float myFloat = 1;")
+                        }
+                        default ""
+                        msghandler {
+                            SetValue {
+                                ::Slim::CustomUI::pixar::BigString::UpdateBigStringUI %obj
+                            }
+                        }
+                    }
+                }
+                collection customuiFullWidth codeWrapper {
+                    drawmode children
+                    customui pixar BigString
+                    state open
+                    userdata {
+                        bigstringuiParameter SLCode
+                        bigstringuiHeight 160
+                    }
+                    slimattribute string SLCode {
+                        label "SL Code"
+                        subtype bigstring
+                        description "Enter your code here"
+                        default %defaultCode
+                        msghandler {
+                            SetValue {
+                                ::Slim::CustomUI::pixar::BigString::UpdateBigStringUI %obj
+                            }
+                        }
+                    }
+                }
+            }
+            regsub %defaultCode $val $defaultCode val
+            return $val
+        }
+
+
+        # common rsl source for all types
+        proc ::slimSLBoxRSLSource {} {
+            return {
+                RSLSource DynamicFunction {
+                    proc primvars {} {
+                        output [getval Primvars]
+                    }
+                    proc function {} {
+                        # handle includes using 'include'
+                        foreach include [getval Includes] {
+                            include $include
+                        }
+                        # body of the function
+                        generateBody {
+                            #label could be an invalid variable name
+                            #check, and throw an error if it is
+                            proc validateLabel {label} {
+                                set origLabel $label
+                                regsub {^([0-9])} $label {_\1} label
+                                regsub -all {[^A-Za-z0-9_]} $label {} label
+                                if {$label ne $origLabel} {
+                                    safeeval ::RAT::LogMsg ERROR \
+                                        "label \"$origLabel\" is an invalid\
+                                        variable name. It contains invalid\
+                                        characters or starts with a number."
+                                }
+                            }
+                            # let users refer to parameters by label
+                            # we do this by declaring a new parameter
+                            # with the same value
+                            output "/* slbox declares ------------*/"
+                            foreach param [getproperties -name "v*"] {
+                                # get RSL-clean version of the label
+                                set label [getpropertyinfo $param label]
+                                validateLabel $label
+
+                                # handle collections, which will
+                                # have components that won't pick up
+                                # changes to the label
+
+                                # collection components are named "cv#_"
+                                set componentPrefix "c${param}_"
+                                set children [getproperties -name "c${param}_*"]
+                                if {$children != {}} {
+                                    foreach child $children {
+                                        set type [getpropertyinfo $child type]
+                                        # replace cv#_ with the label
+                                        # of the collection
+                                        regsub "^$componentPrefix" $child \
+                                                "${label}_" newName
+                                        output "$type $newName = $child;"
+                                    }
+                                } elseif {$param != $label} {
+                                    # this is just a parameter
+                                    # we only need to output this if the
+                                    # label differs from the name
+                                    set type [getpropertyinfo $param type]
+                                    if {[getpropertyinfo $param provider] ne "connection"} {
+                                        set detail "uniform"
+                                    } else {
+                                        set detail "varying"
+                                    }
+                                     
+                                    output "$detail $type $label = $param;"
+                                }
+                            }
+
+                            output "/* slbox dynamic outputs */"
+                            set reassign {}
+                            foreach param [getproperties -name "o*"] {
+                                set label [getpropertyinfo $param label]
+                                validateLabel $label
+                                set type [getpropertyinfo $param type]
+                                set value [getpropertyinfo $param value] 
+                                if {[llength $value] == 3} {
+                                    set value "$type ([join $value ","])"
+                                }
+                                if {$param ne $label} {
+                                    output "$type $label = $value;"
+                                    lappend reassign "$param = $label;"
+                                } else {
+                                    output "$param = $value;"
+                                }
+                             
+                            }
+                            # output code
+                            output
+                            output "/* slbox code -----------------*/"
+                            foreach line [split [getval SLCode] "\n"] {
+                                output $line
+                            }
+                            output "/*reassign outputs*/"
+                            foreach line $reassign {
+                                output $line
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        templateV string S_SLBox 0 {
+            label "SLBox"
+            description "Roll your own SL code"
+            eval [::slimSLBoxParameters [list "/* string */\nresult = \"\";"]]
+            parameter string result {
+                access output
+                display hidden
+            }
+            eval [::slimSLBoxRSLSource]
+        }
+    }
+}

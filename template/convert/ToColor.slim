@@ -1,0 +1,184 @@
+##
+##  Copyright(c) 2010 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+
+#   
+#   Requirements for conversion templates
+#
+#   - No extra parameters other than input and output may be declared
+#   - input parameters MUST be declared with "provider connection"
+#   - input collections must ALSO be declared with "provider connection"
+#   - output parameters MUST be declared "access output"
+#
+slim 1 extensions mprater {
+    extensions laika vfx {
+
+    template color PointToColor {
+        display hidden
+        description {
+            Point to Color.
+        }
+
+        parameter point in {
+            provider connection
+        }
+
+        parameter color out {
+            access output
+        }
+
+        RSLFunction {
+            void vfxPointToColor (
+                point  in;
+                output color    out;
+            ) {
+                out = color (xcomp(in), ycomp(in), zcomp(in));
+            }
+        }
+    }
+
+    template color VectorToColor {
+        display hidden
+        description {
+            Vector to Color.
+        }
+
+        parameter vector in {
+            provider connection
+        }
+
+        parameter color out {
+            access output
+        }
+
+        RSLFunction {
+            void vfxVectorToColor (
+                vector  in;
+                output color    out;
+            ) {
+                out = color (xcomp(in), ycomp(in), zcomp(in));
+            }
+        }
+    }
+
+    template color NormalToColor {
+        display hidden
+        description {
+            Normal to Color.
+        }
+
+        parameter normal in {
+            provider connection
+        }
+
+        parameter color out {
+            access output
+        }
+
+        RSLFunction {
+            void vfxNormalToColor (
+                normal  in;
+                output color    out;
+            ) {
+                out = color (xcomp(in), ycomp(in), zcomp(in));
+            }
+        }
+    }
+
+    template color ManifoldToColor {
+        display hidden
+        description {
+            Manifold to Color.
+        }
+
+        collection manifold in {
+            provider connection
+            parameter point Q { provider connection }
+            parameter vector dQu { provider connection }
+            parameter vector dQv { provider connection }
+        }
+
+        parameter color out {
+            access output
+        }
+
+        RSLFunction {
+            void vfxManifoldToColor (
+                point   Q;
+                vector  dQu;
+                vector  dQv;
+                output color    out;
+            ) {
+                out = color Q;
+            }
+        }
+    }
+
+    template color Manifold_sToColor {
+        display hidden
+        description {
+            Manifold_s to Color.
+        }
+
+        parameter manifold_s in {
+            provider connection
+        }
+
+        parameter color out {
+            access output
+        }
+
+        RSLInclude {manifold.h}
+
+        RSLFunction {
+            void vfxManifold_sToColor (
+				output manifold_s   in;
+                output color        out;
+            ) {
+				varying point Q = in->GetQ();
+                out = color (xcomp(Q), ycomp(Q), zcomp(Q));
+            }
+        }
+    }
+
+    template color SMToColor {
+        display hidden
+        description {
+            Shadingmodel to Color.
+        }
+
+        collection shadingmodel in {
+            provider connection
+            parameter color CI { provider connection }
+            parameter color OI { provider connection }
+        }
+
+        parameter color out {
+            access output
+        }
+
+        RSLFunction {
+            void vfxSMToColor (
+                color   CI;
+                color   OI;
+                output color    out;
+            ) {
+                out = CI*OI;
+            }
+        }
+    }
+
+  }
+}

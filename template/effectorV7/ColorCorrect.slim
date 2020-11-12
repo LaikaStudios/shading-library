@@ -1,0 +1,399 @@
+##
+##  Copyright(c) 2013-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV materialeffector meV7ColorCorrect 0 {
+        description {
+            Alters the Material's response colors prior to being lit using the various controls.
+            Corrections are applied in the order they're shown.
+        }
+
+        eval [::__categoryParam "ika_meV7Color"]
+
+        parameter float Invert {
+            label {Invert}
+            description {
+                Causes the category pattern matching to determine which shaders will NOT match.
+                All others will match.
+            }
+            subtype switch
+            default 0
+        }
+
+        parameter float Enable {
+            label {Enable}
+            description {
+                Determines how much effect the color corrections have on the results.
+            }
+            detail varying
+            range {0 1}
+            default 1
+        }
+
+        parameter color InputAvg {
+            label {Input Average}
+            description {
+                This should be the average of the Material's response colors.
+                Used for the Contrast adjustment.
+            }
+            detail varying
+            default {.5 .5 .5}
+        }
+
+        slimattribute string InputConversion {
+            label {Input Conversion}
+            description {
+                Selects what conversion to perform on the input
+                value before processing.
+            }
+            subtype selector
+            range {
+                None None
+                "Linear -> sRGB" LinearTosRGB
+                "sRGB -> Linear" sRGBToLinear
+            }
+            default None
+        }
+
+        parameter float Contrast {
+            label {Contrast}
+            description {
+                Adjusts the mix between the Material response color and the Input Average color.
+                When Contrast=0, the Input Average color is produced.
+                When Contrast=1, the Material color is produced.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float HueOffset {
+            label {Hue}
+            description {
+                Shift the Hue by this amount.
+                Hue is cyclical, so shifting by an integer amount causes no change.
+                To invert the Hue, shift it by ±.5.
+            }
+            detail varying
+            subtype slider
+            range {-.5 .5 .01}
+            default 0
+        }
+
+        parameter float SatScale {
+            label {Saturation}
+            description {
+                Scale the Saturation by this amount.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float LumScale {
+            label {Luminance}
+            description {
+                Scale the Luminance by this amount.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter color Tint {
+            label {Tint}
+            description {
+                Multiply the color by Tint.
+            }
+            detail varying
+            default {1 1 1}
+        }
+
+        parameter float colorSense {
+            label {Color Balance}
+            description {
+                Selects whether the White and Black Points define the input or output colors:
+                does color 1 in the Input become the White Point color,
+                or does the White Point color in the Input become color 1?
+            }
+            detail uniform
+            subtype selector
+            range {
+                "color 1 -> White Point" 0
+                "White Point -> color 1" 1
+            }
+            default 0
+        }
+
+        parameter color whitePoint {
+            label {White Point}
+            description {
+                Sets the White Point for color balance correction.
+            }
+            detail varying
+            default {1 1 1}
+        }
+
+        parameter color blackPoint {
+            label {Black Point}
+            description {
+                Sets the Black Point for color balance correction.
+            }
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter float exponent {
+            label {Exponent}
+            description {
+                Raise the color to this power.
+            }
+            detail varying
+            subtype slider
+            range {.25 4}
+            default 1
+        }
+
+        collection void ToneMapControls {
+            label {Tone Mapping}
+            description {
+                These provide Tone Mapping functionality.
+                Tone Mapping is generally used for converting HDR data
+                to low dynamic range values.
+            }
+            state closed
+
+            parameter float levelCurve {
+                label {Transfer Curve}
+                description {
+                    Selects the remapping curve.
+                    The functions all limit the output range between (0,0,0) and (1,1,1),
+                    except Linear.
+                }
+                detail uniform
+                subtype selector
+                range {
+                    "Linear" 0
+                    "Clamp"  5
+                    "Linearstep 7.5%" 3
+                    "Linearstep 15%"  4
+                    "Smoothstep"   1
+                    "Rationalstep" 2
+                }
+                default 0
+            }
+
+            parameter color whiteLevel {
+                label {White Level}
+                description {
+                    Sets the White Level for remapping.
+                    When the Input color is this value, (1,1,1) will be output.
+                }
+                detail varying
+                default {1 1 1}
+            }
+
+            parameter color blackLevel {
+                label {Black Level}
+                description {
+                    Sets the Black Level for remapping.
+                    When the Input color is this value, (0,0,0) will be output.
+                }
+                detail varying
+                default {0 0 0}
+            }
+        }
+
+        slimattribute string OutputConversion {
+            label {Output Conversion}
+            description {
+                Selects what conversion to perform on the final result.
+            }
+            subtype selector
+            range {
+                None None
+                "Linear -> sRGB" LinearTosRGB
+                "sRGB -> Linear" sRGBToLinear
+            }
+            default None
+        }
+
+        RSLInclude {sl.h}
+        RSLInclude {math.h}
+        RSLInclude {color.h}
+
+        RSLClass {
+output "
+            private uniform string  userCategory\[\];
+            private uniform float   _Invert;
+            private varying float   _Enable;
+            private varying color   _InputAvg;
+            private varying float   _Contrast;
+            private varying float   _Hue;
+            private varying float   _Saturation;
+            private varying float   _Luminance;
+            private varying color   _Tint;
+            private uniform float   _ColorBalance;
+            private varying color   _WhitePoint;
+            private varying color   _BlackPoint;
+            private varying float   _Exponent;
+            private uniform float   _TransferCurve;
+            private varying color   _WhiteLevel;
+            private varying color   _BlackLevel;
+"
+
+            #
+            #  Intialize globals.
+            #
+            generateMethod "public void begin()" {
+                generate
+output "
+                userCategory = split( [getvar __categoryUser], \",\" );
+
+                _Invert = [getvar Invert];
+                _Enable = [getvar Enable];
+                _InputAvg = [getvar InputAvg];
+                _Contrast = [getvar Contrast];
+                _Hue = [getvar HueOffset];
+                _Saturation = [getvar SatScale];
+                _Luminance = [getvar LumScale];
+                _Tint = [getvar Tint];
+                _ColorBalance = [getvar colorSense];
+                _WhitePoint = [getvar whitePoint];
+                _BlackPoint = [getvar blackPoint];
+                _Exponent = [getvar exponent];
+                _TransferCurve = [getvar levelCurve];
+                _WhiteLevel = [getvar whiteLevel];
+                _BlackLevel = [getvar blackLevel];
+"
+            }
+
+            generateMethod "public varying color colorEffect( string materialCategory; color Cbxdf )" {
+output "
+                varying color   Output = Cbxdf;
+
+                // Determine which Materials to effect.
+                uniform float   categoryMatch = _match( userCategory, materialCategory, _Invert );
+
+                // If there's a match, alter the Output.
+                if (categoryMatch == 1 && gridever(_Enable != 0) == 1) {
+"
+                    switch [getval InputConversion] {
+                        LinearTosRGB {
+output "                    Output = colorSRGBEncode(Cbxdf);"
+                        }
+                        sRGBToLinear {
+output "                    Output = colorSRGBDecode(Cbxdf);"
+                        }
+                    }
+output "
+                    // Contrast
+                    Output = mix( _InputAvg, Output, _Contrast );
+
+                    //
+                    // Do HSY space manipulations.
+                    //
+                    varying color   hsy, hsyavg;
+
+                    hsy = ctransform (\"rgb\", \"HSY\", Output);
+
+                    hsy += color (_Hue, 0, 0);
+                    hsy *= color (1, _Saturation, _Luminance);
+                    hsyavg += color (_Hue, 0, 0);
+                    hsyavg *= color (1, _Saturation, _Luminance);
+
+                    // Fix up hue to circumvent prman HSY space bug.
+                    hsy = color (mod(hsy\[0\],1), hsy\[1\], hsy\[2\]);
+                    hsyavg = color (mod(hsyavg\[0\],1), hsyavg\[1\], hsyavg\[2\]);
+
+                    Output = ctransform (\"HSY\", \"rgb\", hsy);
+
+                    // Tint
+                    Output *= _Tint;
+
+                    // Color Balance
+                    if (_ColorBalance) {
+                        Output = linear (_BlackPoint, _WhitePoint, Output);
+                    }
+                    else {
+                        Output = mix (_BlackPoint, _WhitePoint, Output);
+                    }
+
+                    // Gamma correction
+                    Output = _pow (Output, _Exponent);
+
+                    //
+                    // Tone Mapping
+                    //
+                    if (_TransferCurve == 0) {
+                        Output = linear (_BlackLevel, _WhiteLevel, Output);
+                    }
+                    else if (_TransferCurve == 1) {
+                        Output = _smoothstep (_BlackLevel, _WhiteLevel, Output);
+                    }
+                    else if (_TransferCurve == 2) {
+                        Output = linear (_BlackLevel, _WhiteLevel, Output);
+                        Output = color (
+                            mathRationalSpline (.5, Output\[0\]),
+                            mathRationalSpline (.5, Output\[1\]),
+                            mathRationalSpline (.5, Output\[2\])
+                        );
+                    }
+                    else if (_TransferCurve == 3) {
+                        Output = linear (_BlackLevel, _WhiteLevel, Output);
+                        Output = color (
+                            mathLinearSpline (.075, .075, Output\[0\]),
+                            mathLinearSpline (.075, .075, Output\[1\]),
+                            mathLinearSpline (.075, .075, Output\[2\])
+                        );
+                    }
+                    else if (_TransferCurve == 4) {
+                        Output = linear (_BlackLevel, _WhiteLevel, Output);
+                        Output = color (
+                            mathLinearSpline (.15, .15, Output\[0\]),
+                            mathLinearSpline (.15, .15, Output\[1\]),
+                            mathLinearSpline (.15, .15, Output\[2\])
+                        );
+                    }
+                    else if (_TransferCurve == 5) {
+                        Output = linear( _BlackLevel, _WhiteLevel, Output );
+                        Output = _clamp( Output, 0, 1 );
+                    }
+"
+                    switch [getval OutputConversion] {
+                        LinearTosRGB {
+output "                    Output = colorSRGBEncode (Output);"
+                        }
+                        sRGBToLinear {
+output "                    Output = colorSRGBDecode (Output);"
+                        }
+                    }
+output "
+                    Output = mix (Cbxdf, Output, _Enable);
+                }
+
+                return Output;
+"
+            }
+        }
+    }
+
+  }
+}

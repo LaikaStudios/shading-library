@@ -1,0 +1,314 @@
+##
+##  Copyright(c) 2010-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+#
+#   Blend mode equations derived from these sources:
+#       http://www.pegtop.net/delphi/articles/blendmodes
+#       http://www.nathanm.com/photoshop-blending-math
+#       http://docs.gimp.org/en/gimp-concepts-layer-modes.html
+#       http://www.khronos.org/registry/vg/extensions/KHR/advanced_blending.txt
+#       http://en.wikipedia.org/wiki/Blend_modes
+#
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    set TemplatePrototype {
+    templateV %Type %TypeBlend 0 {
+        description {
+            Combine the Base Layer with the Blend Layer using the selected Blend Mode.
+        }
+
+        parameter string BlendMode {
+            label {Blend Mode}
+            description {
+                Select the Blend Mode to apply.
+            }
+            subtype selector
+            range {
+                "Normal" Normal
+                "Lighten" Lighten
+                "Darken" Darken
+                "Multiply" Multiply
+                "Divide" GimpDivide
+                "Screen" Screen
+                "Average" Average
+                "Add" Add
+                "Subtract" Subtract
+                "Difference" Difference
+                "Negation" Negation
+                "Exclusion" Exclusion
+                "Overlay" Overlay
+                "Soft Light" SoftLight
+                "Hard Light" HardLight
+                "Color Dodge" ColorDodge
+                "Linear Dodge" LinearDodge
+                "Color Burn" ColorBurn
+                "Linear Burn" LinearBurn
+                "Linear Light" LinearLight
+                "Vivid Light" VividLight
+                "Pin Light" PinLight
+                "Reflect" Reflect
+                "Glow" Glow
+                "Pheonix" Pheonix
+                "Saturate" Saturate
+                "Desaturate" Desaturate
+                "Illuminate" Illuminate
+                "Over" Over
+                "In" In
+                "Out" Out
+                "Gimp Overlay" GimpOverlay
+                "Gimp Soft Light" GimpSoftLight
+                "Gimp Dodge" GimpDodge
+                "Gimp Burn" GimpBurn
+            }
+            default Normal
+        }
+
+         parameter float BlendAmount {
+            label {Blend Amount}
+            description {
+                At 0, you'll get the Base Layer. At 1 you'll get the blended result.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        parameter %Type Blend {
+            label {Blend Layer}
+            description {
+                The Blend Layer.
+            }
+            detail varying
+            default "%Default"
+        }
+
+        parameter %Type Base {
+            label {Base Layer}
+            description {
+                The Base Layer.
+            }
+            detail varying
+            default "%Default"
+        }
+
+        parameter string Limit {
+            label {Limit}
+            description {
+                Limits the resulting range between 0 and 1 using the selected function.
+            }
+            detail varying
+            subtype selector
+            range {
+                None None
+                Clamp Clamp
+                Smoothstep Smoothstep
+            }
+            default Clamp
+        }
+
+        parameter %Type result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {color.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                    varying %Type screen( varying %Type a, b )
+                    {
+                        return %Type 1 - (%Type 1 - a)*(%Type 1 - b);
+                    }
+
+                    if ([getvar BlendMode] == \"Normal\" || [getvar BlendMode] == \"Over\")
+                        result = Blend;
+
+                    else if ([getvar BlendMode] == \"Lighten\")
+                        result = _max( Base, Blend );
+
+                    else if ([getvar BlendMode] == \"Darken\")
+                        result = _min( Base, Blend );
+
+                    else if ([getvar BlendMode] == \"Multiply\")
+                        result = Base*Blend;
+#pragma nolint 2
+                    else if ([getvar BlendMode] == \"GimpDivide\")
+                        result = (256/255*Base) / %Type(Blend + %Type(1/255));
+
+                    else if ([getvar BlendMode] == \"Screen\")
+                        result = screen( Base, Blend );
+#pragma nolint 2
+                    else if ([getvar BlendMode] == \"Average\")
+                        result = %Type(Base + Blend) / 2;
+#pragma nolint 2
+                    else if ([getvar BlendMode] == \"Add\" || [getvar BlendMode] == \"LinearDodge\")
+                        result = %Type(Base + Blend);
+#pragma nolint 2
+                    else if ([getvar BlendMode] == \"Subtract\")
+                        result = %Type(Base - Blend);
+#pragma nolint 2
+                    else if ([getvar BlendMode] == \"LinearBurn\")
+                        result = %Type( Base + Blend - %Type 1 );
+
+                    else if ([getvar BlendMode] == \"Difference\")
+                        result = _abs( %Type(Base - Blend) );
+
+                    else if ([getvar BlendMode] == \"Negation\")
+                        result = %Type 1 - _abs(%Type 1 - Base - Blend);
+#pragma nolint 2
+                    else if ([getvar BlendMode] == \"Exclusion\")
+                        result = %Type( Base + Blend - 2*Base*Blend );
+
+                    else if ([getvar BlendMode] == \"Overlay\")
+                    {
+                        result = _mix(
+                            2*Base*Blend,
+                            %Type 1 - 2*(%Type 1 - Base)*(%Type 1 - Blend),
+                            _step( %Type .5, Base )
+                        );
+                    }
+
+                    else if ([getvar BlendMode] == \"SoftLight\")
+                    {
+                        result = _mix(
+#pragma nolint 2
+                            2*Base*Blend + Base*Base*(%Type 1 - 2*Blend),
+                            _sqrt(Base)*(2*Blend - %Type 1) + 2*Base*(%Type 1 - Blend),
+                            _step( %Type .5, Blend )
+                        );
+                    }
+
+                    else if ([getvar BlendMode] == \"HardLight\")
+                    {
+                        result = _mix(
+                            2*Base*Blend,
+                            %Type 1 - 2*(%Type 1 - Base)*(%Type 1 - Blend),
+                            _step( %Type .5, Blend )
+                        );
+                    }
+
+                    else if ([getvar BlendMode] == \"ColorDodge\")
+                        result = (Blend == %Type 1) ? Blend : Base / %Type (%Type 1 - Blend);
+
+                    else if ([getvar BlendMode] == \"ColorBurn\")
+                        result = (Blend == %Type 0) ? Blend : %Type 1 - (%Type 1 - Base) / Blend;
+
+                    else if ([getvar BlendMode] == \"LinearLight\")
+                    {
+                        result = _mix(
+#pragma nolint 2
+                            %Type( Base + 2*Blend - %Type 1 ),
+                            %Type( Base + 2*(Blend - %Type .5) ),
+                            _step( %Type .5, Blend )
+                        );
+                    }
+
+                    else if ([getvar BlendMode] == \"VividLight\")
+                    {
+                        result = _mix(
+                            %Type 1 - (%Type 1 - Base) / 2*Blend,
+                            Base / (%Type 1 - 2*(Blend - %Type .5)),
+                            _step( %Type .5, Blend )
+                        );
+                    }
+
+                    else if ([getvar BlendMode] == \"PinLight\")
+                    {
+                        result = _mix(
+                            _min( Base, 2*Blend ),
+                            _max( Base, %Type( 2*(Blend - %Type .5)) ),
+                            _step( %Type .5, Blend )
+                        );
+                    }
+
+                    else if ([getvar BlendMode] == \"HardMix\")
+                        result = %Type(1,0,0);
+
+                    else if ([getvar BlendMode] == \"Reflect\")
+                        result = (Blend == %Type 1) ? Blend : Base*Base / %Type (%Type 1 - Blend);
+
+                    else if ([getvar BlendMode] == \"Glow\")
+                        result = (Base == %Type 1) ? Base : Blend*Blend / %Type (%Type 1 - Base);
+
+                    else if ([getvar BlendMode] == \"Pheonix\")
+                        result = _min( Base, Blend ) - _max( Base, Blend ) + %Type 1;
+
+                    else if ([getvar BlendMode] == \"Saturate\")
+                        result = Base*(%Type 1 + Blend);
+
+                    else if ([getvar BlendMode] == \"Desaturate\")
+                        result = %Type( Base - Base*Blend );
+
+                    else if ([getvar BlendMode] == \"Illuminate\")
+                        result = 2*Base*Blend;
+
+                    else if ([getvar BlendMode] == \"In\")
+                        result = %Type(2 - 1/[getvar BlendAmount]) * Base;
+
+                    else if ([getvar BlendMode] == \"Out\")
+                        result = %Type 0;
+
+                    else if ([getvar BlendMode] == \"GimpOverlay\")
+                        result = Base * (Base + 2*Blend*(%Type 1 - Base));
+
+                    else if ([getvar BlendMode] == \"GimpSoftLight\")
+                        result = (%Type 1 - Base)*Blend*Base + Base*screen( Base,Blend );
+
+                    else if ([getvar BlendMode] == \"GimpDodge\")
+                        result = (256/255*Base) / (%Type 1 - Blend + %Type(1/255));
+
+                    else if ([getvar BlendMode] == \"GimpBurn\")
+                        result = %Type 1 - (256/255*(%Type 1 - Base) / (Blend + %Type(1/255)));
+
+                    result = _mix( Base, result, [getvar BlendAmount] );
+
+                    if ([getvar Limit] == \"Clamp\")
+                        result = _clamp( result, 0, 1 );
+
+                    else if ([getvar Limit] == \"Smoothstep\")
+                        result = _smoothstep( 0, 1, result );
+"
+                }
+            }
+        }
+    }
+    }
+
+    #
+    # Generate each template type.
+    #
+    foreach {type default} {
+        float  0
+        color  {0 0 0}
+        point  {0 0 0}
+        vector {0 0 0}
+        normal {0 0 0}
+    } {
+        regsub -all %Type $TemplatePrototype $type result
+        regsub -all %Default $result $default result
+        if [catch $result msg] {
+            ::RAT::LogMsg ERROR $msg
+        }
+    }
+
+  }
+}

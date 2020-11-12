@@ -1,0 +1,573 @@
+##
+##  Copyright(c) 2012 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    customui ButtonInterface {
+        TclTkSource {
+            proc BuildUI {canvas currentWidth args} {
+                # appearance info
+                set i [lsearch $args -parent]
+                if {$i == -1} return;
+
+                incr i
+                set parent [lindex $args $i]
+                set apph [$parent GetAppearance]
+
+                set warpNum [[$apph GetProperties -name "WarpThreads"] GetValue]
+                set weftNum [[$apph GetProperties -name "WeftThreads"] GetValue]
+
+                # Enough for 10 weft threads.
+                set canvasHeight 200
+
+                # canvas and frame
+                canvas $canvas -width $currentWidth -height $canvasHeight
+
+                set buttonFrame $canvas.buttonFrame
+                frame $buttonFrame -width $currentWidth -height $canvasHeight
+
+                for {set j 0} {$j < ${weftNum}} {incr j} {
+                    for {set i 0} {$i < ${warpNum}} {incr i} {
+                        set buttonCheck $buttonFrame.check_${i}_${j}
+                        ::RAT::Checkbutton $buttonCheck \
+                            -command  [::RAT::PackageCode [namespace code "toggle $apph grid_${i}_${j}"]]
+
+                        set gParam [$apph GetProperties -name "grid_${i}_${j}"]
+                        set gValue [$gParam GetValue]
+
+                        $buttonCheck InitValue $gValue
+
+                        grid $buttonCheck -column $i -row $j
+                    }
+                }
+
+                pack $buttonFrame -anchor center
+
+                return [$canvas cget -height]
+            }
+
+            proc toggle {_apph paramName} {
+                set param [$_apph GetProperties -access input -name $paramName]
+
+                if {[$param GetValue] == 0} {
+                    $param SetValue 1
+                } else {
+                    $param SetValue 0
+                }
+            }
+        }
+    }
+
+    templateV multiple Cloth 0 {
+        description {
+            Generates cloth weave patterns, producing data for the warp and weft threads,
+            as well as the overall weave.
+            Note: There is no filtering. The results should be saved in texture files,
+            where the texture filtering will provide the necessary anti-aliasing for its use.
+        }
+
+        collection void GridValues {
+            display hidden
+            parameter float grid_0_0 {default 0}
+            parameter float grid_0_1 {default 0}
+            parameter float grid_0_2 {default 0}
+            parameter float grid_0_3 {default 0}
+            parameter float grid_0_4 {default 0}
+            parameter float grid_0_5 {default 0}
+            parameter float grid_0_6 {default 0}
+            parameter float grid_0_7 {default 0}
+            parameter float grid_0_8 {default 0}
+            parameter float grid_0_9 {default 0}
+            parameter float grid_1_0 {default 0}
+            parameter float grid_1_1 {default 0}
+            parameter float grid_1_2 {default 0}
+            parameter float grid_1_3 {default 0}
+            parameter float grid_1_4 {default 0}
+            parameter float grid_1_5 {default 0}
+            parameter float grid_1_6 {default 0}
+            parameter float grid_1_7 {default 0}
+            parameter float grid_1_8 {default 0}
+            parameter float grid_1_9 {default 0}
+            parameter float grid_2_0 {default 0}
+            parameter float grid_2_1 {default 0}
+            parameter float grid_2_2 {default 0}
+            parameter float grid_2_3 {default 0}
+            parameter float grid_2_4 {default 0}
+            parameter float grid_2_5 {default 0}
+            parameter float grid_2_6 {default 0}
+            parameter float grid_2_7 {default 0}
+            parameter float grid_2_8 {default 0}
+            parameter float grid_2_9 {default 0}
+            parameter float grid_3_0 {default 0}
+            parameter float grid_3_1 {default 0}
+            parameter float grid_3_2 {default 0}
+            parameter float grid_3_3 {default 0}
+            parameter float grid_3_4 {default 0}
+            parameter float grid_3_5 {default 0}
+            parameter float grid_3_6 {default 0}
+            parameter float grid_3_7 {default 0}
+            parameter float grid_3_8 {default 0}
+            parameter float grid_3_9 {default 0}
+            parameter float grid_4_0 {default 0}
+            parameter float grid_4_1 {default 0}
+            parameter float grid_4_2 {default 0}
+            parameter float grid_4_3 {default 0}
+            parameter float grid_4_4 {default 0}
+            parameter float grid_4_5 {default 0}
+            parameter float grid_4_6 {default 0}
+            parameter float grid_4_7 {default 0}
+            parameter float grid_4_8 {default 0}
+            parameter float grid_4_9 {default 0}
+            parameter float grid_5_0 {default 0}
+            parameter float grid_5_1 {default 0}
+            parameter float grid_5_2 {default 0}
+            parameter float grid_5_3 {default 0}
+            parameter float grid_5_4 {default 0}
+            parameter float grid_5_5 {default 0}
+            parameter float grid_5_6 {default 0}
+            parameter float grid_5_7 {default 0}
+            parameter float grid_5_8 {default 0}
+            parameter float grid_5_9 {default 0}
+            parameter float grid_6_0 {default 0}
+            parameter float grid_6_1 {default 0}
+            parameter float grid_6_2 {default 0}
+            parameter float grid_6_3 {default 0}
+            parameter float grid_6_4 {default 0}
+            parameter float grid_6_5 {default 0}
+            parameter float grid_6_6 {default 0}
+            parameter float grid_6_7 {default 0}
+            parameter float grid_6_8 {default 0}
+            parameter float grid_6_9 {default 0}
+            parameter float grid_7_0 {default 0}
+            parameter float grid_7_1 {default 0}
+            parameter float grid_7_2 {default 0}
+            parameter float grid_7_3 {default 0}
+            parameter float grid_7_4 {default 0}
+            parameter float grid_7_5 {default 0}
+            parameter float grid_7_6 {default 0}
+            parameter float grid_7_7 {default 0}
+            parameter float grid_7_8 {default 0}
+            parameter float grid_7_9 {default 0}
+            parameter float grid_8_0 {default 0}
+            parameter float grid_8_1 {default 0}
+            parameter float grid_8_2 {default 0}
+            parameter float grid_8_3 {default 0}
+            parameter float grid_8_4 {default 0}
+            parameter float grid_8_5 {default 0}
+            parameter float grid_8_6 {default 0}
+            parameter float grid_8_7 {default 0}
+            parameter float grid_8_8 {default 0}
+            parameter float grid_8_9 {default 0}
+            parameter float grid_9_0 {default 0}
+            parameter float grid_9_1 {default 0}
+            parameter float grid_9_2 {default 0}
+            parameter float grid_9_3 {default 0}
+            parameter float grid_9_4 {default 0}
+            parameter float grid_9_5 {default 0}
+            parameter float grid_9_6 {default 0}
+            parameter float grid_9_7 {default 0}
+            parameter float grid_9_8 {default 0}
+            parameter float grid_9_9 {default 0}
+        }
+
+        collection customuiFullWidth buttons {
+            drawmode children
+            customui laika ButtonInterface
+            subtype propertycreator
+            state open
+        }
+
+        slimattribute float RightSide {
+            label {Right Side}
+            description {
+                Show the front ("right") or back ("wrong") side of the cloth.
+            }
+            subtype switch
+            default 1
+        }
+
+        slimattribute float WarpThreads {
+            label {Warp Threads}
+            description {
+                The number of warp threads in the pattern.
+            }
+            subtype slider
+            range {2 10 1}
+            default 2
+
+            msghandler {
+                SetValue - RevertValue {
+                    set app [%obj GetAppearance]
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        slimattribute float WeftThreads {
+            label {Weft Threads}
+            description {
+                The number of weft threads in the pattern.
+            }
+            subtype slider
+            range {2 10 1}
+            default 2
+
+            msghandler {
+                SetValue - RevertValue {
+                    set app [%obj GetAppearance]
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        parameter float WarpDiameter {
+            label {Warp Diameter}
+            description {
+                The thread diameter as a percentage of the available thread width
+                as determined by the Threadcount.
+                Values less than 1 will "open" the weave.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        parameter float WeftDiameter {
+            label {Weft Diameter}
+            description {
+                The thread diameter as a percentage of the available thread width
+                as determined by the Threadcount.
+                Values less than 1 will "open" the weave.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        parameter float Tension {
+            label {Tension}
+            description {
+                This sets the ratio of Warp to Weft Tension, which determines
+                how much each thread type is displaced as it crosses the other.
+                When .5, both warp and weft threads are equally tensioned.
+                When 1, the warp threads are fully tensioned.
+                When 0, the weft threads are fully tensioned.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default .5
+        }
+
+        parameter manifold_s Manifold {
+            label {Manifold}
+            description {
+                Defines the space the weave pattern will be generated in.
+                The pattern is mapped to a unit square in the Manifold space,
+                and will repeat if the space is bigger than 0-1.
+                Note that the space should be the same aspect ratio as the pattern.
+                Otherwise, the weave will be distorted.
+            }
+            detail mustvary "laika,UV"
+        }
+
+        parameter float Warp {
+            display hidden
+            access output
+        }
+
+        parameter float Weft {
+            display hidden
+            access output
+        }
+
+        parameter float Weave {
+            display hidden
+            access output
+        }
+
+        parameter float Gap {
+            display hidden
+            access output
+        }
+
+        parameter float WarpDisp {
+            label {Warp Displacement}
+            display hidden
+            access output
+        }
+
+        parameter float WeftDisp {
+            label {Weft Displacement}
+            display hidden
+            access output
+        }
+
+        parameter float WeaveDisp {
+            label {Weave Displacement}
+            display hidden
+            access output
+        }
+
+        parameter float Occlusion {
+            display hidden
+            access output
+        }
+
+        parameter color MatteData {
+            label {Matte: (Warp,Weft,Weave)}
+            display hidden
+            access output
+        }
+
+        parameter color DispData {
+            label {Disp: (Warp,Weft,Weave)}
+            display hidden
+            access output
+        }
+
+        parameter color WWD {
+            label {(Warp,Weft,WeaveDisp)}
+            display hidden
+            access output
+        }
+
+        parameter color GO {
+            label {(Gap,Occlusion,0)}
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {manifold.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                # Get the draft button matrix values.
+                set warpUpList {}
+                set weftUpList {}
+                for {set j 0} {$j < [getval WeftThreads]} {incr j} {
+                    for {set i 0} {$i < [getval WarpThreads]} {incr i} {
+                        set gridParam [safeeval %c GetProperties -name "grid_${i}_${j}"]
+                        set gridValue [safeeval $gridParam GetValue]
+
+                        if {[getval RightSide] == 1} {
+                            set warpUp(${i},${j}) $gridValue
+                            set weftUp(${i},${j}) [expr 1 - $gridValue]
+
+                            lappend warpUpList $gridValue
+                            lappend weftUpList [expr 1 - $gridValue]
+                        } else {
+                            set warpUp(${i},${j}) [expr 1 - $gridValue]
+                            set weftUp(${i},${j}) $gridValue
+
+                            lappend warpUpList [expr 1 - $gridValue]
+                            lappend weftUpList $gridValue
+                        }
+                    }
+                }
+
+                # Create the RSL Up array intializer values.
+                set warpUpInit [join $warpUpList ","]
+                set weftUpInit [join $weftUpList ","]
+
+
+                # Extend the matrices on all sides so the up/down transitions can be found.
+                # Copy the first value in the row into an extra column at the end and vice versa.
+                set lastWarpIndex [expr [getval WarpThreads] - 1]
+                for {set j 0} {$j < [getval WeftThreads]} {incr j} {
+                    set warpUp([getval WarpThreads],${j}) $warpUp(0,${j})
+                    set warpUp(-1,${j}) $warpUp(${lastWarpIndex},${j})
+
+                    set weftUp([getval WeftThreads],${j}) $weftUp(0,${j})
+                    set weftUp(-1,${j}) $weftUp(${lastWarpIndex},${j})
+                }
+                # Copy the first value in the column into an extra row at the end and vice versa.
+                set lastWeftIndex [expr [getval WeftThreads] - 1]
+                for {set i 0} {$i < [getval WarpThreads]} {incr i} {
+                    set warpUp(${i},[getval WeftThreads]) $warpUp(${i},0)
+                    set warpUp(${i},-1) $warpUp(${i},${lastWeftIndex})
+
+                    set weftUp(${i},[getval WeftThreads]) $weftUp(${i},0)
+                    set weftUp(${i},-1) $weftUp(${i},${lastWeftIndex})
+                }
+
+
+
+                generateBody {
+output "
+                    // Fill in the draft matrices.
+                    uniform float   warpNum = [getval WarpThreads];
+                    uniform float   weftNum = [getval WeftThreads];
+
+                    uniform float   warpUp\[\] = { $warpUpInit };
+                    uniform float   weftUp\[\] = { $weftUpInit };
+
+                    uniform float   tension = [getvar Tension];
+
+
+                    // Function definitions.
+                    varying float index (
+                        varying float   x, y;   // x and y are 0-1, convering a single draft.
+                    ) {
+                        extern uniform float    warpNum, weftNum;
+
+                        varying float   result = floor(mod(x*warpNum,warpNum)) + warpNum*floor(mod(y*weftNum,weftNum));
+
+                        return result;
+                    }
+
+                    varying float warpOverUnder (
+                        varying float   x, y;   // x and y are 0-1, convering a single draft.
+                    ) {
+                        extern uniform float    warpNum, weftNum, warpUp\[\];
+
+                        varying float   ff = linear (-1, 1, cos(mix(-HALFPI,HALFPI,mod(weftNum*y,1))));
+                        varying float   yOffset = mix (-1/weftNum, 1/weftNum, step(.5,mod(weftNum*y,1)));
+                        varying float   result = ff * warpUp\[index(x,y)\] + (1-ff)*warpUp\[index(x,y+yOffset)\];
+
+                        return result;
+                    }
+
+                    varying float weftOverUnder (
+                        varying float   x, y;   // x and y are 0-1, convering a single draft.
+                    ) {
+                        extern uniform float    warpNum, weftNum, weftUp\[\];
+
+                        varying float   ff = linear (-1, 1, cos(mix(-HALFPI,HALFPI,mod(warpNum*x,1))));
+                        varying float   xOffset = mix (-1/warpNum, 1/warpNum, step(.5,mod(warpNum*x,1)));
+                        varying float   result = ff * weftUp\[index(x,y)\] + (1-ff)*weftUp\[index(x+xOffset,y)\];
+
+                        return result;
+                    }
+
+                    varying float threadMatte (varying float x, diameter)
+                    {
+                        varying float   result = 1 - step (diameter, abs(mix(-1,1,mod(x,1))));
+
+                        return result;
+                    }
+
+                    varying float halfCylinder (varying float x, diameter)
+                    {
+                        varying float   y = clamp (mix(-1,1,mod(x,1))/diameter, -1, 1);
+
+                        y = sqrt (1 - y*y);
+
+                        return y*diameter;
+                    }
+
+
+                    // Initialize the output values.
+                    [getvar Warp] = [getvar Weft] = [getvar Weave] = [getvar Gap] = [getvar Occlusion] = [getvar WeaveDisp] = [getvar WarpDisp] = [getvar WeftDisp] = 0;
+                    [getvar MatteData] = [getvar DispData] = color 0;
+
+                    // Create the thread generation space.
+                    varying float   x, y;
+                    {
+                        manifold_s  M = [getvar Manifold];
+                        varying point   Q = M->GetQ();
+
+                        x = xcomp(Q);
+                        y = ycomp(Q);
+                    }
+
+                    // Create the thread mattes.
+                    {
+                        varying float   warp, weft;
+
+                        warp = threadMatte (x*warpNum, [getvar WarpDiameter]);
+                        weft = threadMatte (y*weftNum, [getvar WeftDiameter]);
+
+                        [getvar Weave] = max (warp, weft);
+                        [getvar Gap] = 1 - [getvar Weave];
+
+                        if (warpUp\[index(x,y)\] == 1) {
+                            warp = mix (warp, 0, weft);
+                        }
+                        else {
+                            weft = mix (weft, 0, warp);
+                        }
+
+                        [getvar Warp] = warp;
+                        [getvar Weft] = weft;
+
+                        [getvar Weave] = max (warp, weft);
+                        [getvar Gap] = 1 - [getvar Weave];
+
+                    }
+
+                    // Create the thread displacements and occlusion.
+                    {
+                        extern uniform float    warpNum, weftNum, tension;
+
+                        varying float   warpRadius, weftRadius, weaveRadius;
+                        varying float   warpDisp, weftDisp;
+
+                        warpRadius = [getvar WarpDiameter] / 2;
+                        weftRadius = [getvar WeftDiameter] / 2;
+                        weaveRadius = warpRadius + weftRadius;
+
+                        warpDisp = halfCylinder (x*warpNum, [getvar WarpDiameter]) / 2;
+                        weftDisp = halfCylinder (y*weftNum, [getvar WeftDiameter]) / 2;
+
+                        varying float   warpOU = warpOverUnder(x,y);
+                        varying float   weftOU = weftOverUnder(x,y);
+                        varying float   maxDisp;
+
+                        if (tension < .5) {
+                            warpOU = mix (2*warpOU, warpOU, linear(0,.5,tension));
+                            weftOU = mix (1, weftOU, linear(0,.5,tension));
+                            maxDisp = mix (2*weftRadius + warpRadius, weaveRadius, linear(0,.5,tension));
+                        }
+                        else {
+                            warpOU = mix (warpOU, 1, linear(.5,1,tension));
+                            weftOU = mix (weftOU, 2*weftOU, linear(.5,1,tension));
+                            maxDisp = mix (weaveRadius, weftRadius + 2*warpRadius, linear(.5,1,tension));
+                        }
+
+                        warpDisp += weftRadius * warpOU * threadMatte (x*warpNum, [getvar WarpDiameter]);
+                        weftDisp += warpRadius * weftOU * threadMatte (y*weftNum, [getvar WeftDiameter]);
+
+                        [getvar WarpDisp] = warpDisp;
+                        [getvar WeftDisp] = weftDisp;
+
+                        [getvar WeaveDisp] = max (warpDisp, weftDisp);
+
+                        [getvar Occlusion] = mix (
+                            (1 - [getvar WarpDiameter]) * (1 - [getvar WeftDiameter]),
+                            1,
+                            [getvar WeaveDisp] / maxDisp
+                        );
+                    }
+
+                    // Output the composite data.
+                    [getvar MatteData] = color ([getvar Warp], [getvar Weft], [getvar Weave]);
+                    [getvar DispData] = color ([getvar WarpDisp], [getvar WeftDisp], [getvar WeaveDisp]);
+                    [getvar WWD] = color ([getvar Warp], [getvar Weft], [getvar WeaveDisp]);
+                    [getvar GO] = color ([getvar Gap], [getvar Occlusion], 0);
+"
+                }
+            }
+        }
+    }
+
+  }
+}

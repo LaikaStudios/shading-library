@@ -1,0 +1,2472 @@
+##
+##  Copyright(c) 2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV volumematerial Volume 0 {
+        description {
+            General purpose volume shader.
+        }
+
+        eval [::__categoryParam "volume"]
+
+        parameter float __computesOpacity {
+            label {Computes Density}
+            description {
+                Sets the prman opacity caching behavior.
+                Set this based on the Density parameter value: whether it varies with the
+                camera view or not.
+                Note: you don't want to use a view-dependent Density.
+            }
+            provider primitive
+            detail uniform
+            subtype selector
+            range {
+                "View Independent Density" 1
+                "View Dependent Density" 2
+            }
+            default 1
+        }
+
+        parameter float Density {
+            label {Density}
+            description {
+                The density of the scattering medium.
+                This would usually be a constant, or a value that varies three dimensionally
+                relative to the scene (and perhaps time).
+                This directly sets the shaded opacity, so be sure to set Computes Density accordingly.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default .5
+        }
+
+        parameter float DensityScale {
+            label {Density Scale}
+            description {
+                Scales the desity value used when computing the volume's opacity characteristics.
+                The higher the density, the more opaque the volume becomes.
+            }
+            detail varying
+            subtype slider
+            range {0 10}
+            default 1
+        }
+
+        parameter vector Normal {
+            label {Normal}
+            description {
+                Specifies the volume's shading normal for responses that need one.
+                If not connected, one will be computed internally from the Density,
+                but the quality of such a normal is not high.
+            }
+            detail varying
+            default {0 0 0}
+        }
+        parameter coshader Normal_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter volumeBD_s volumeBD {
+            label {Bump Disp}
+            description {
+                Connect a volume BumpDisp template here to displace the Volume
+                and/or alter its normal.
+            }
+            detail varying
+        }
+
+        collection void AdvancedControls {
+            state closed
+            label {Advanced Controls}
+            description {
+                These control the prman Specular and Diffuse
+                computation contexts and the results they produce.
+            }
+
+            parameter string __groupList {
+                label {Light __group List}
+                description {
+                    A comma-separated list of light __group parameter values.
+                    The direct lighting results will be output as a set of AOV's per light group.
+                    If left -1, all light groups will be output.
+                }
+                detail varying
+                default "-1"
+            }
+
+            collection void SpecControls {
+                state open
+                label {Specular Computation}
+                description {
+                    These control the computation of the specular context (view dependent) responses.
+                }
+
+                parameter float RightCamSpecular {
+                    label {Right Cam Specular}
+                    description {
+                        Determines how the shader will handle right camera specular computations.
+                        When "Option Setting"(-1), the "user:right_specular" option sets whether to
+                        compute(1) or not(0) the specular response (based on the "user:right_camera" option).
+                        "Reuse Left"(0) will re-use the left camera specular result.
+                        "Compute Right"(1) will result in a separate specular computation for the right_camera.
+                    }
+                    detail uniform
+                    subtype selector
+                    range {
+                        "Option Setting" -1
+                        "Reuse Left" 0
+                        "Compute Right" 1
+                    }
+                    default -1
+                }
+                parameter coshader RightCamSpecular_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter float SpecIndirectOn {
+                    label {Compute Indirect}
+                    description {
+                        Controls whether indirect illumination is computed or not.
+                        Set by "user:SpecIndirectOn" attribute.
+                    }
+                    detail varying
+                    subtype selector
+                    range {
+                        "Attribute Setting" -1
+                        "On" 1
+                        "Off" 0
+                    }
+                    default -1
+                }
+                parameter coshader SpecIndirectOn_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter float SpecMIS {
+                    label {Sampling Strategy}
+                    description {
+                        Used by directlighting().
+                        Sets the sampling strategy used for integrating direct illumination.
+                        Use Light Only (0) to consider light samples only.
+                        Use Light & Surface (1) to perform multiple importance sampling, considering both light and material samples.
+                        Use Surface Only (2) to consider material samples only.
+                        Surface Only is suggested for very narrow specular distributions (i.e. chrome)
+                        and Light Only is suggested for very small light sources.
+                    }
+                    detail uniform
+                    subtype selector
+                    range {
+                        "Light Only" 0
+                        "Light & Surface" 1
+                        "Suface Only" 2
+                    }
+                    default 1
+                }
+
+                parameter float SpecSampleDensity {
+                    label {Sample Density}
+                    description {
+                        Sets the default specular context sample density.
+                        When Default (-1), use the Attribute user:surf_density value.
+                    }
+                    detail uniform
+                    subtype slider
+                    range {-1 50 1}
+                    default -1
+                }
+                parameter coshader SpecSampleDensity_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter string SpecTraceSet {
+                    label {Trace Set}
+                    description {
+                        Specifies the set of objects that will participate in the indirect specular computation.
+                        If blank, all objects in the scene are used.
+                        If "-1", use the user:SpecTraceSet attribute value.
+                    }
+                    detail varying
+                    default "-1"
+                }
+                parameter coshader SpecTraceSet_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter string SpecExcludeSet {
+                    label {Exclude Set}
+                    description {
+                        Specifies the set of objects to specifically exclude in the indirect specular computation.
+                        If blank, no objects will specifically be ignored.
+                        If "-1", use the user:SpecExcludeSet attribute value.
+                    }
+                    detail varying
+                    default "-1"
+                }
+                parameter coshader SpecExcludeSet_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter string SpecHitMode {
+                    label {Hit Mode}
+                    description {
+                        Used by indirectspecular().
+                        Specifies how the color should be computed at ray hit points.
+                        Use Shader to perform full shader execution.
+                        Use Cache to use the color from the radiosity cache.
+                    }
+                    detail uniform
+                    subtype selector
+                    range {
+                        "Shader" "default"
+                        "Cache" "cache"
+                    }
+                    default "cache"
+                }
+                parameter coshader SpecHitMode_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter string SpecHitSides {
+                    label {Hit Sides}
+                    description {
+                        Used by indirectspecular().
+                        Specifies which side(s) of surfaces can be hit by the rays.
+                    }
+                    detail uniform
+                    subtype selector
+                    range {
+                        "Front" "front"
+                        "Back" "back"
+                        "Front & Back" "both"
+                    }
+                    default "both"
+                }
+                parameter coshader SpecHitSides_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter float SpecMaxDist {
+                    label {Max Dist}
+                    description {
+                        Used by indirectspecular().
+                        Can significantly effect render times and the visual result.
+                        Determines the cutoff distance beyond which no illumination of the shaded point occurs.
+                        Smaller values produce a more localized effect. The value is dependent
+                        on your scene size and scale. Larger distances will require more geometry to be tested,
+                        and so may result in longer render times. Setting it to -1 is equivalent to making it
+                        infinite.
+                    }
+                    detail varying
+                    range {0 1e4}
+                    default -1
+                }
+                parameter coshader SpecMaxDist_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                collection void SpecDirectIllumination {
+                    label {Direct Illumination}
+                    description {
+                        Modify the direct illumination result.
+                    }
+
+                    parameter float SpecDirectIntensity {
+                        label {Intensity}
+                        description {
+                            Scales the resulting intensity.
+                            If -1, use the SpecDirectIntensity user attribute value.
+                        }
+                        detail varying
+                        range {0 2}
+                        default -1
+                    }
+                    parameter coshader SpecDirectIntensity_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+
+                    parameter float SpecDirectSaturation {
+                        label {Saturation}
+                        description {
+                            Adjusts the resulting saturation.
+                            If -1, use the SpecDirectSaturation user attribute value.
+                        }
+                        detail varying
+                        range {0 2}
+                        default -1
+                    }
+                    parameter coshader SpecDirectSaturation_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+
+                    parameter color SpecDirectTint {
+                        label {Tint}
+                        description {
+                            Tints the result.
+                            If (-1,-1,-1), use the SpecDirectTint user attribute value.
+                        }
+                        detail varying
+                        default {-1 -1 -1}
+                    }
+                    parameter coshader SpecDirectTint_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+                }
+
+                collection void SpecIndirectIllumination {
+                    label {Indirect Illumination}
+                    description {
+                        Modify the indirect illumination result.
+                    }
+
+                    parameter float SpecIndirectIntensity {
+                        label {Intensity}
+                        description {
+                            Scales the resulting intensity.
+                            If -1, use the SpecIndirectIntensity user attribute value.
+                        }
+                        detail varying
+                        range {0 2}
+                        default -1
+                    }
+                    parameter coshader SpecIndirectIntensity_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+
+                    parameter float SpecIndirectSaturation {
+                        label {Saturation}
+                        description {
+                            Adjusts the resulting saturation.
+                            If -1, use the SpecIndirectSaturation user attribute value.
+                        }
+                        detail varying
+                        range {0 2}
+                        default -1
+                    }
+                    parameter coshader SpecIndirectSaturation_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+
+                    parameter color SpecIndirectTint {
+                        label {Tint}
+                        description {
+                            Tints the result.
+                            If (-1,-1,-1), use the SpecIndirectTint user attribute value.
+                        }
+                        detail varying
+                        default {-1 -1 -1}
+                    }
+                    parameter coshader SpecIndirectTint_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+                }
+            }
+
+            collection void DiffControls {
+                state open
+                label {Diffuse Computation}
+                description {
+                    These control the computation of the diffuse context (view independent) responses.
+                }
+
+                parameter float DiffIndirectOn {
+                    label {Compute Indirect}
+                    description {
+                        Controls whether indirect illumination is computed or not.
+                        Set by "user:DiffIndirectOn" attribute.
+                    }
+                    detail varying
+                    subtype selector
+                    range {
+                        "Attribute Setting" -1
+                        "On" 1
+                        "Off" 0
+                    }
+                    default -1
+                }
+                parameter coshader DiffIndirectOn_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter float DiffSampleDensity {
+                    label {Sample Density}
+                    description {
+                        Sets the diffuse context default sample density.
+                        When Default (-1), use the Attribute user:surf_density value.
+                    }
+                    detail uniform
+                    subtype slider
+                    range {-1 100 1}
+                    default -1
+                }
+                parameter coshader DiffSampleDensity_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter string DiffTraceSet {
+                    label {Trace Set}
+                    description {
+                        Specifies the set of objects that will participate in the indirect diffuse computation.
+                        If blank, all objects in the scene are used.
+                        If "-1", use the user:DiffTraceSet attribute value.
+                    }
+                    detail varying
+                    default "-1"
+                }
+                parameter coshader DiffTraceSet_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter string DiffExcludeSet {
+                    label {Exclude Set}
+                    description {
+                        Specifies the set of objects to specifically exclude in the indirect diffuse computation.
+                        If blank, no objects will specifically be ignored.
+                        If "-1", use the user:DiffExcludeSet attribute value.
+                    }
+                    detail varying
+                    default "-1"
+                }
+                parameter coshader DiffExcludeSet_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter float DiffMaxVariation {
+                    label {Max Variation}
+                    description {
+                        Used by indirectdiffuse().
+                        Controls interpolation across shading grids: how far the interpolated
+                        results can deviate from the true illumination. Smaller values are higher quality.
+                        At 0, there is no interpolation. Values such as .02 or .03 usually produce the
+                        same image as 0, but possibly up to twice as fast.
+                    }
+                    detail varying
+                    subtype slider
+                    range {0 .1 .001}
+                    default .02
+                }
+                parameter coshader DiffMaxVariation_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter float DiffAdaptive {
+                    label {Adaptive}
+                    description {
+                        Used by indirectdiffuse().
+                        A ray-trace sampling optimization useful in scenes
+                        with large objects and smoothly varying appearance.
+                        Not helpful in scenes with lots of small objects
+                        or high frequency brightness changes.
+                    }
+                    detail varying
+                    subtype switch
+                    default 1
+                }
+                parameter coshader DiffAdaptive_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter float DiffMaxDist {
+                    label {Max Dist}
+                    description {
+                        Used by indirectdiffuse().
+                        Can significantly effect render times and the visual result.
+                        Determines the cutoff distance beyond which no illumination of the shaded point occurs.
+                        Smaller values produce a more localized effect. The value is dependent
+                        on your scene size and scale. Larger distances will require more geometry to be tested,
+                        and so may result in longer render times. Setting it to -1 is equivalent to making it
+                        infinite.
+                    }
+                    detail varying
+                    range {0 1e4}
+                    default -1
+                }
+                parameter coshader DiffMaxDist_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                collection void DiffDirectIllumination {
+                    label {Direct Illumination}
+                    description {
+                        Modify the indirect illumination result.
+                    }
+
+                    parameter float DiffDirectIntensity {
+                        label {Intensity}
+                        description {
+                            Scales the resulting intensity.
+                            If -1, use the DiffDirectIntensity user attribute value.
+                        }
+                        detail varying
+                        range {0 2}
+                        default -1
+                    }
+                    parameter coshader DiffDirectIntensity_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+
+                    parameter float DiffDirectSaturation {
+                        label {Saturation}
+                        description {
+                            Adjusts the resulting saturation.
+                            If -1, use the DiffDirectSaturation user attribute value.
+                        }
+                        detail varying
+                        range {0 2}
+                        default -1
+                    }
+                    parameter coshader DiffDirectSaturation_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+
+                    parameter color DiffDirectTint {
+                        label {Tint}
+                        description {
+                            Tints the result.
+                            If (-1,-1,-1), use the DiffDirectTint user attribute value.
+                        }
+                        detail varying
+                        default {-1 -1 -1}
+                    }
+                    parameter coshader DiffDirectTint_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+                }
+
+                collection void DiffIndirectIllumination {
+                    label {Indirect Illumination}
+                    description {
+                        Modify the indirect illumination result.
+                    }
+
+                    parameter float DiffIndirectIntensity {
+                        label {Intensity}
+                        description {
+                            Scales the resulting intensity.
+                            If -1, use the DiffIndirectIntensity user attribute value.
+                        }
+                        detail varying
+                        range {0 2}
+                        default -1
+                    }
+                    parameter coshader DiffIndirectIntensity_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+
+                    parameter float DiffIndirectSaturation {
+                        label {Saturation}
+                        description {
+                            Adjusts the resulting saturation.
+                            If -1, use the DiffIndirectSaturation user attribute value.
+                        }
+                        detail varying
+                        range {0 2}
+                        default -1
+                    }
+                    parameter coshader DiffIndirectSaturation_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+
+                    parameter color DiffIndirectTint {
+                        label {Tint}
+                        description {
+                            Tints the result.
+                            If (-1,-1,-1), use the DiffIndirectTint user attribute value.
+                        }
+                        detail varying
+                        default {-1 -1 -1}
+                    }
+                    parameter coshader DiffIndirectTint_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+                }
+            }
+        }
+
+        parameter float IntensityScale {
+            label {Intensity Scale}
+            description {
+                Scale the overall intensity of the shading.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        collection void HenyeyGreenstein0 {
+            state open
+            label {Henyey-Greenstein 0}
+            description {
+                Henyey-Greenstein scattering (Specular context).
+            }
+
+            parameter float HG0_OnOff {
+                label {On Off}
+                description {
+                    Turn this response on or off.
+                    On = Normal Computation.
+                    Off = Remove it.
+                }
+                detail varying
+                subtype selector
+                range {
+                    "On" 1
+                    "Off" -1
+                }
+                default 1
+            }
+
+            parameter float HG0_Intensity {
+                label {Intensity}
+                description {
+                    The Intensity of the response.
+                }
+                detail varying
+                subtype slider
+                range {0 2}
+                default 1
+            }
+
+            parameter color HG0_Color {
+                label {Color}
+                description {
+                    The color of the response.
+                }
+                detail varying
+                default {1 1 1}
+            }
+
+            parameter float HG0_UseColor {
+                label {Use Color}
+                description {
+                    Determines how much of the Color is used in the response.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 1
+            }
+
+            parameter float HG0_G {
+                label {Scatter Direction}
+                description {
+                    The Henyey-Greenstein phase function parameter.
+                    This controls the degree of forward to backward scattering:
+                    Back scattering < 0 < Forward scattering.
+                    Back scattering is brighter when viewed from the same side as the light (a key light).
+                    Forward scattering is brighter when looking toward the light (a back light).
+                    When 0, scattering is isotropic.
+                }
+                detail varying
+                subtype slider
+                range {-1 1}
+                default 0
+            }
+
+            parameter float HG0_SampleDensity {
+                label {Sample Density}
+                description {
+                    Sets the sample density to use. The actual number of samples
+                    used is a function of the response size.
+                    When Default (-1), use the Advanced Controls, Specular Computation density.
+                }
+                detail uniform
+                subtype slider
+                range {-1 50 1}
+                default -1
+            }
+            parameter coshader HG0_SampleDensity_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            collection void HG0DirectIllumination {
+                label {Direct Illumination}
+                description {
+                    Adjust the response to direct illumination.
+                }
+
+                parameter float HG0_DirectIntensity {
+                    label {Intensity}
+                    description {
+                        Scales the response's intensity.
+                    }
+                    detail varying
+                    range {0 2}
+                    default 1
+                }
+                parameter coshader HG0_DirectIntensity_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter color HG0_DirectTint {
+                    label {Tint}
+                    description {
+                        Tints the response's color.
+                    }
+                    detail varying
+                    default {1 1 1}
+                }
+                parameter coshader HG0_DirectTint_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+            }
+
+            collection void HG0IndirectIllumination {
+                label {Indirect Illumination}
+                description {
+                    Adjust the response to indirect illumination.
+                }
+
+                parameter float HG0_IndirectIntensity {
+                    label {Intensity}
+                    description {
+                        Scales the response's intensity.
+                    }
+                    detail varying
+                    range {0 2}
+                    default 1
+                }
+                parameter coshader HG0_IndirectIntensity_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter color HG0_IndirectTint {
+                    label {Tint}
+                    description {
+                        Tints the response's color.
+                    }
+                    detail varying
+                    default {1 1 1}
+                }
+                parameter coshader HG0_IndirectTint_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+            }
+        }
+
+        collection void HenyeyGreenstein1 {
+            label {Henyey-Greenstein 1}
+            description {
+                Henyey-Greenstein scattering (Specular context).
+            }
+
+            parameter float HG1_OnOff {
+                label {On Off}
+                description {
+                    Turn this response on or off.
+                    On = Normal Computation.
+                    Off = Remove it.
+                }
+                detail varying
+                subtype selector
+                range {
+                    "On" 1
+                    "Off" -1
+                }
+                default -1
+            }
+
+            parameter float HG1_Intensity {
+                label {Intensity}
+                description {
+                    The Intensity of the response.
+                }
+                detail varying
+                subtype slider
+                range {0 2}
+                default 1
+            }
+
+            parameter color HG1_Color {
+                label {Color}
+                description {
+                    The color of the response.
+                }
+                detail varying
+                default {1 1 1}
+            }
+
+            parameter float HG1_UseColor {
+                label {Use Color}
+                description {
+                    Determines how much of the Color is used in the response.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 1
+            }
+
+            parameter float HG1_G {
+                label {Scatter Direction}
+                description {
+                    The Henyey-Greenstein phase function parameter.
+                    This controls the degree of forward to backward scattering:
+                    Back scattering < 0 < Forward scattering.
+                    Back scattering is brighter when viewed from the same side as the light (a key light).
+                    Forward scattering is brighter when looking toward the light (a back light).
+                    When 0, scattering is isotropic.
+                }
+                detail varying
+                subtype slider
+                range {-1 1}
+                default 0
+            }
+
+            parameter float HG1_SampleDensity {
+                label {Sample Density}
+                description {
+                    Sets the sample density to use. The actual number of samples
+                    used is a function of the response size.
+                    When Default (-1), use the Advanced Controls, Specular Computation density.
+                }
+                detail uniform
+                subtype slider
+                range {-1 50 1}
+                default -1
+            }
+            parameter coshader HG1_SampleDensity_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            collection void HG1DirectIllumination {
+                label {Direct Illumination}
+                description {
+                    Adjust the response to direct illumination.
+                }
+
+                parameter float HG1_DirectIntensity {
+                    label {Intensity}
+                    description {
+                        Scales the response's intensity.
+                    }
+                    detail varying
+                    range {0 2}
+                    default 1
+                }
+                parameter coshader HG1_DirectIntensity_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter color HG1_DirectTint {
+                    label {Tint}
+                    description {
+                        Tints the response's color.
+                    }
+                    detail varying
+                    default {1 1 1}
+                }
+                parameter coshader HG1_DirectTint_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+            }
+
+            collection void HG1IndirectIllumination {
+                label {Indirect Illumination}
+                description {
+                    Adjust the response to indirect illumination.
+                }
+
+                parameter float HG1_IndirectIntensity {
+                    label {Intensity}
+                    description {
+                        Scales the response's intensity.
+                    }
+                    detail varying
+                    range {0 2}
+                    default 1
+                }
+                parameter coshader HG1_IndirectIntensity_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter color HG1_IndirectTint {
+                    label {Tint}
+                    description {
+                        Tints the response's color.
+                    }
+                    detail varying
+                    default {1 1 1}
+                }
+                parameter coshader HG1_IndirectTint_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+            }
+        }
+
+        collection void AS0 {
+            label {Ashikhmin-Shirley 0}
+            description {
+                The Ashikhmin-Shirley response (Specular context).
+            }
+
+            parameter float AS0_OnOff {
+                label {On Off}
+                description {
+                    Turn this response on or off.
+                    On = Normal Computation.
+                    Off = Remove it.
+                }
+                detail varying
+                subtype selector
+                range {
+                    "On" 1
+                    "Off" -1
+                }
+                default -1
+            }
+            parameter coshader AS0_OnOff_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter float AS0_Intensity {
+                label {Intensity}
+                description {
+                    The Intensity of the response.
+                }
+                detail varying
+                subtype slider
+                range {0 2}
+                default 1
+            }
+            parameter coshader AS0_Intensity_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter color AS0_Color {
+                label {Color}
+                description {
+                    The color of the response.
+                }
+                detail varying
+                default {1 1 1}
+            }
+            parameter coshader AS0_Color_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter float AS0_UseColor {
+                label {Use Color}
+                description {
+                    Determines how much of the Color is used in the response.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 1
+            }
+            parameter coshader AS0_UseColor_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter float AS0_Direction {
+                label {Direction}
+                description {
+                    Determines whether the response lobe is in the surface normal or reflection direction.
+                    0 is in the surface normal direction, and 1 is in the reflection direction.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 1
+            }
+            parameter coshader AS0_Direction_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter float AS0_Exponent {
+                label {Exponent}
+                description {
+                    The Ashikhmin-Shirley focusing exponent.
+                    Larger values decrease the response size.
+                    The actual cosine-lobe power is 10^Exponent.
+                }
+                detail varying
+                subtype slider
+                range {0 6}
+                default 3
+            }
+            parameter coshader AS0_Exponent_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter float AS0_Anisotropy {
+                label {Anisotropy}
+                description {
+                    The degree of anisotropy.
+                    0 will produce an isotropic specular response.
+                    Increasing the value toward 1 will produce an increasingly anisotropic result.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 0
+            }
+            parameter coshader AS0_Anisotropy_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter vector AS0_Tangent {
+                label {Tangent}
+                description {
+                    Provides the orientation of the Ashikhmin-Shirley anisotropic response.
+                    This direction is along the length of the reflective micro-cylinders.
+                }
+                provider connection
+                detail mustvary "laika,UVTangent"
+                default {0 0 1}
+            }
+            parameter coshader AS0_Tangent_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter float AS0_SampleDensity {
+                label {Sample Density}
+                description {
+                    Sets the sample density to use. The actual number of samples
+                    used is a function of the response size.
+                    When Default (-1), use the Advanced Controls Specular setting.
+                }
+                detail uniform
+                subtype slider
+                range {-1 150 1}
+                default -1
+            }
+            parameter coshader AS0_SampleDensity_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            collection void AS0DirectIllumination {
+                label {Direct Illumination}
+                description {
+                    Adjust the response to direct illumination.
+                }
+
+                parameter float AS0_DirectIntensity {
+                    label {Intensity}
+                    description {
+                        Scales the response's intensity.
+                    }
+                    detail varying
+                    range {0 2}
+                    default 1
+                }
+                parameter coshader AS0_DirectIntensity_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter color AS0_DirectTint {
+                    label {Tint}
+                    description {
+                        Tints the response's color.
+                    }
+                    detail varying
+                    default {1 1 1}
+                }
+                parameter coshader AS0_DirectTint_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+            }
+
+            collection void AS0IndirectIllumination {
+                label {Indirect Illumination}
+                description {
+                    Adjust the response to indirect illumination.
+                }
+
+                parameter float AS0_IndirectIntensity {
+                    label {Intensity}
+                    description {
+                        Scales the response's intensity.
+                    }
+                    detail varying
+                    range {0 2}
+                    default 1
+                }
+                parameter coshader AS0_IndirectIntensity_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter color AS0_IndirectTint {
+                    label {Tint}
+                    description {
+                        Tints the response's color.
+                    }
+                    detail varying
+                    default {1 1 1}
+                }
+                parameter coshader AS0_IndirectTint_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+            }
+        }
+
+        collection void AS1 {
+            label {Ashikhmin-Shirley 1}
+            description {
+                The Ashikhmin-Shirley response (Specular context).
+            }
+
+            parameter float AS1_OnOff {
+                label {On Off}
+                description {
+                    Turn this response on or off.
+                    On = Normal Computation.
+                    Off = Remove it.
+                }
+                detail varying
+                subtype selector
+                range {
+                    "On" 1
+                    "Off" -1
+                }
+                default -1
+            }
+            parameter coshader AS1_OnOff_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter float AS1_Intensity {
+                label {Intensity}
+                description {
+                    The Intensity of the response.
+                }
+                detail varying
+                subtype slider
+                range {0 2}
+                default 1
+            }
+            parameter coshader AS1_Intensity_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter color AS1_Color {
+                label {Color}
+                description {
+                    The color of the response.
+                }
+                detail varying
+                default {1 1 1}
+            }
+            parameter coshader AS1_Color_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter float AS1_UseColor {
+                label {Use Color}
+                description {
+                    Determines how much of the Color is used in the response.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 1
+            }
+            parameter coshader AS1_UseColor_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter float AS1_Direction {
+                label {Direction}
+                description {
+                    Determines whether the response lobe is in the surface normal or reflection direction.
+                    0 is in the surface normal direction, and 1 is in the reflection direction.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 1
+            }
+            parameter coshader AS1_Direction_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter float AS1_Exponent {
+                label {Exponent}
+                description {
+                    The Ashikhmin-Shirley focusing exponent.
+                    Larger values decrease the response size.
+                    The actual cosine-lobe power is 10^Exponent.
+                }
+                detail varying
+                subtype slider
+                range {0 6}
+                default 3
+            }
+            parameter coshader AS1_Exponent_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter float AS1_Anisotropy {
+                label {Anisotropy}
+                description {
+                    The degree of anisotropy.
+                    0 will produce an isotropic specular response.
+                    Increasing the value toward 1 will produce an increasingly anisotropic result.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 0
+            }
+            parameter coshader AS1_Anisotropy_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter vector AS1_Tangent {
+                label {Tangent}
+                description {
+                    Provides the orientation of the Ashikhmin-Shirley anisotropic response.
+                    This direction is along the length of the reflective micro-cylinders.
+                }
+                provider connection
+                detail mustvary "laika,UVTangent"
+                default {0 0 1}
+            }
+            parameter coshader AS1_Tangent_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter float AS1_SampleDensity {
+                label {Sample Density}
+                description {
+                    Sets the sample density to use. The actual number of samples
+                    used is a function of the response size.
+                    When Default (-1), use the Advanced Controls Specular setting.
+                }
+                detail uniform
+                subtype slider
+                range {-1 150 1}
+                default -1
+            }
+            parameter coshader AS1_SampleDensity_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            collection void AS1DirectIllumination {
+                label {Direct Illumination}
+                description {
+                    Adjust the response to direct illumination.
+                }
+
+                parameter float AS1_DirectIntensity {
+                    label {Intensity}
+                    description {
+                        Scales the response's intensity.
+                    }
+                    detail varying
+                    range {0 2}
+                    default 1
+                }
+                parameter coshader AS1_DirectIntensity_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter color AS1_DirectTint {
+                    label {Tint}
+                    description {
+                        Tints the response's color.
+                    }
+                    detail varying
+                    default {1 1 1}
+                }
+                parameter coshader AS1_DirectTint_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+            }
+
+            collection void AS1IndirectIllumination {
+                label {Indirect Illumination}
+                description {
+                    Adjust the response to indirect illumination.
+                }
+
+                parameter float AS1_IndirectIntensity {
+                    label {Intensity}
+                    description {
+                        Scales the response's intensity.
+                    }
+                    detail varying
+                    range {0 2}
+                    default 1
+                }
+                parameter coshader AS1_IndirectIntensity_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter color AS1_IndirectTint {
+                    label {Tint}
+                    description {
+                        Tints the response's color.
+                    }
+                    detail varying
+                    default {1 1 1}
+                }
+                parameter coshader AS1_IndirectTint_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+            }
+        }
+
+        collection void GCL {
+            label {GCL}
+            description {
+                The Generalized Cosine Lobe response (Diffuse context).
+            }
+
+            parameter float GCL_OnOff {
+                label {On Off}
+                description {
+                    Turn this response on or off.
+                    On = Normal Computation.
+                    Off = Remove it.
+                }
+                detail varying
+                subtype selector
+                range {
+                    "On" 1
+                    "Off" -1
+                }
+                default -1
+            }
+            parameter coshader GCL_OnOff_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter float GCL_Intensity {
+                label {Intensity}
+                description {
+                    The Intensity of the response.
+                }
+                detail varying
+                subtype slider
+                range {0 2}
+                default 1
+            }
+            parameter coshader GCL_Intensity_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter color GCL_Color {
+                label {Color}
+                description {
+                    The color of the response.
+                }
+                detail varying
+                default {1 1 1}
+            }
+            parameter coshader GCL_Color_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter float GCL_UseColor {
+                label {Use Color}
+                description {
+                    Determines how much of the Color is used in the response.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 1
+            }
+            parameter coshader GCL_UseColor_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter float GCL_Direction {
+                label {Lobe Direction}
+                description {
+                    Determines whether the response lobe is in the diffuse or specular direction.
+                    0 is diffuse, and 1 is in the reflection direction.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 1
+            }
+            parameter coshader GCL_Direction_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter float GCL_Exponent {
+                label {Exponent}
+                description {
+                    The response lobe focusing Exponent.
+                    Larger values decrease the response size.
+                    Raises the response lobe function to 2^Exponent power.
+                }
+                detail varying
+                subtype slider
+                range {0 6}
+                default 3
+            }
+            parameter coshader GCL_Exponent_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+        }
+
+        collection void Scatter {
+            description {
+                A Scatter response (Diffuse context).
+            }
+
+            parameter float Scatter_OnOff {
+                label {On Off}
+                description {
+                    Turn this response on or off.
+                    On = Normal Computation.
+                    Off = Remove it.
+                }
+                detail varying
+                subtype selector
+                range {
+                    "On" 1
+                    "Off" -1
+                }
+                default -1
+            }
+            parameter coshader Scatter_OnOff_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter float Scatter_Intensity {
+                label {Intensity}
+                description {
+                    The Intensity of the response.
+                }
+                detail varying
+                subtype slider
+                range {0 2}
+                default 1
+            }
+            parameter coshader Scatter_Intensity_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter color Scatter_Color {
+                label {Color}
+                description {
+                    The color of the response.
+                }
+                detail varying
+                default {1 1 1}
+            }
+            parameter coshader Scatter_Color_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter float Scatter_UseColor {
+                label {Use Color}
+                description {
+                    Determines how much of the Color is used in the response.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 1
+            }
+            parameter coshader Scatter_UseColor_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+
+            parameter float Scatter_Direction {
+                label {Scatter Direction}
+                description {
+                    This controls the degree of forward to backward scattering:
+                    Back scattering < 0 < Forward scattering.
+                    Back scattering is brighter when viewed from the same side as the light (a key light).
+                    Forward scattering is brighter when looking toward the light (a back light).
+                    When 0, scattering is isotropic.
+                }
+                detail varying
+                subtype slider
+                range {-1 1}
+                default 0
+            }
+            parameter coshader Scatter_Direction_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter float Scatter_Exponent {
+                label {Exponent}
+                description {
+                    The response lobe focusing Exponent.
+                    Larger values decrease the response size.
+                }
+                detail varying
+                subtype slider
+                range {0 6}
+                default 3
+            }
+            parameter coshader Scatter_Exponent_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+        }
+
+        collection void Radiance {
+            label {Radiance}
+            description {
+                Does the volume generate its own light?
+            }
+
+            parameter float Rad_OnOff {
+                label {On Off}
+                description {
+                    Turn this response on or off.
+                    On = Normal Computation.
+                    Off = Remove it.
+                }
+                detail varying
+                subtype selector
+                range {
+                    "On" 1
+                    "Off" -1
+                }
+                default -1
+            }
+
+            parameter float Rad_Intensity {
+                label {Intensity}
+                description {
+                    The Intensity of the response.
+                }
+                detail varying
+                subtype slider
+                range {0 2}
+                default 1
+            }
+
+            parameter color Rad_Color {
+                label {Color}
+                description {
+                    The color of the response.
+                }
+                detail varying
+                default {1 1 1}
+            }
+
+            parameter float Rad_UseColor {
+                label {Use Color}
+                description {
+                    Determines how much of the Color is used in the response.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 1
+            }
+
+            collection void RadCamera {
+                display hidden
+                label {Camera Output}
+                description {
+                    Adjust the camera-visible radiance.
+                }
+
+                parameter float Rad_CameraIntensity {
+                    label {Intensity}
+                    description {
+                        Scales the camera output.
+                    }
+                    detail varying
+                    range {0 2}
+                    default 1
+                }
+                parameter coshader Rad_CameraIntensity_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter color Rad_CameraTint {
+                    label {Tint}
+                    description {
+                        Tints the camera output.
+                    }
+                    detail varying
+                    default {1 1 1}
+                }
+                parameter coshader Rad_CameraTint_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+            }
+
+            collection void RadDiff {
+                display hidden
+                label {Diffuse Output}
+                description {
+                    Adjust the diffuse radiance.
+                    Note: the results will be uniform over a grid.
+                }
+
+                parameter float Rad_DiffIntensity {
+                    label {Intensity}
+                    description {
+                        Scales the diffuse output.
+                    }
+                    detail varying
+                    range {0 2}
+                    default 1
+                }
+                parameter coshader Rad_DiffIntensity_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter color Rad_DiffTint {
+                    label {Tint}
+                    description {
+                        Tints the diffuse output.
+                    }
+                    detail varying
+                    default {1 1 1}
+                }
+                parameter coshader Rad_DiffTint_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+            }
+
+            collection void RadSpec {
+                display hidden
+                label {Specular Output}
+                description {
+                    Adjust the specular radiance.
+                    Note: the results will be uniform over a grid.
+                }
+
+                parameter float Rad_SpecIntensity {
+                    label {Intensity}
+                    description {
+                        Scales the specular output.
+                    }
+                    detail varying
+                    range {0 2}
+                    default 1
+                }
+                parameter coshader Rad_SpecIntensity_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter color Rad_SpecTint {
+                    label {Tint}
+                    description {
+                        Tints the specular output.
+                    }
+                    detail varying
+                    default {1 1 1}
+                }
+                parameter coshader Rad_SpecTint_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+            }
+        }
+
+        collection customuiFullWidth AOVs {
+            customui laika AddParam
+            subtype propertycreator
+            drawmode children
+            state open
+            userdata {
+                AddString   "Add AOV"
+                AddDescription "Allows you to add an Arbitrary Output Variable."
+                ParamType   AOV
+                ParamPrefix AOV
+                ParamDetail {mustvary "laika,AOV" inline}
+            }
+        }
+
+        RSLInclude {stdrsl/Math.h}
+        RSLInclude {stdrsl/RadianceSample.h}
+
+        RSLInclude {sl.h}
+        RSLInclude {color.h}
+
+        RSLInclude {coreV7/camera.h}
+        RSLInclude {coreV7/rayinfo.h}
+        RSLInclude {coreV7/override.h}
+        RSLInclude {coreV7/optsandattrs.h}
+
+        RSLInclude {bxdfV7/matlattrs.h}
+
+        RSLClass {
+output "
+            /*
+             *  Global variables.
+             */
+            private camera_s        cameraData;
+            private rayinfo_s       rayinfoData;
+            private matlattrs_s     matlattrsData;
+            private optsandattrs_s  optsandattrsData;
+
+            #include <volume/AS.h>
+            #include <volume/HG.h>
+            #include <volume/GCL.h>
+            #include <volume/Rad.h>
+            #include <volume/Scatter.h>
+
+            private volumeAS_s      AS0;
+            private volumeAS_s      AS1;
+            private volumeHG_s      HG0;
+            private volumeHG_s      HG1;
+            private volumeGCL_s     GCL;
+            private volumeRad_s     Rad;
+            private volumeScatter_s Scatter;
+
+            private varying vector  Nvol = vector(0);
+
+            private uniform shader  plausibleLights\[\] = {};
+            private uniform float   plausibleLightsNum = 0;
+
+            private uniform string  _lightgroups\[\] = {};
+            private uniform float   _lightgroupsnum = 0;
+
+            private varying color   Cindiff = color(0);
+"
+
+            # Parameter declarations.
+            set volumeParams {Density DensityScale Normal IntensityScale}
+
+            set advancedParams {__groupList SpecIndirectOn SpecMIS RightCamSpecular SpecSampleDensity SpecTraceSet SpecExcludeSet SpecHitMode SpecHitSides SpecMaxDist SpecDirectIntensity SpecDirectSaturation SpecDirectTint SpecIndirectIntensity SpecIndirectSaturation SpecIndirectTint DiffIndirectOn DiffSampleDensity DiffMaxVariation DiffAdaptive DiffTraceSet DiffExcludeSet DiffMaxDist DiffDirectIntensity DiffDirectSaturation DiffDirectTint DiffIndirectIntensity DiffIndirectSaturation DiffIndirectTint}
+
+            set HG0Params {HG0_OnOff HG0_Intensity HG0_Color HG0_UseColor HG0_G HG0_DirectIntensity HG0_DirectTint HG0_IndirectIntensity HG0_IndirectTint HG0_SampleDensity}
+            set HG1Params {HG1_OnOff HG1_Intensity HG1_Color HG1_UseColor HG1_G HG1_DirectIntensity HG1_DirectTint HG1_IndirectIntensity HG1_IndirectTint HG1_SampleDensity}
+            set ScatterParams {Scatter_OnOff Scatter_Intensity Scatter_Color Scatter_UseColor Scatter_Direction Scatter_Exponent}
+            set GCLParams {GCL_OnOff GCL_Intensity GCL_Color GCL_UseColor GCL_Direction GCL_Exponent}
+            set AS0Params {AS0_OnOff AS0_Intensity AS0_Color AS0_UseColor AS0_Direction AS0_Exponent AS0_Anisotropy AS0_Tangent AS0_DirectIntensity AS0_DirectTint AS0_IndirectIntensity AS0_IndirectTint AS0_SampleDensity}
+            set AS1Params {AS1_OnOff AS1_Intensity AS1_Color AS1_UseColor AS1_Direction AS1_Exponent AS1_Anisotropy AS1_Tangent AS1_DirectIntensity AS1_DirectTint AS1_IndirectIntensity AS1_IndirectTint AS1_SampleDensity}
+            set RadParams {Rad_OnOff Rad_Intensity Rad_Color Rad_UseColor Rad_DiffIntensity Rad_DiffTint Rad_SpecIntensity Rad_SpecTint Rad_CameraIntensity Rad_CameraTint}
+
+
+            set responseParams [concat $HG0Params $HG1Params $ScatterParams $GCLParams $AS0Params $AS1Params $RadParams]
+            set templateParams [concat $volumeParams $advancedParams $responseParams]
+
+            foreach param $templateParams {
+                set type [getpropertyinfo $param type]
+                set default [getpropertyinfo $param default]
+
+                if {$type == "string"} {
+                    output "private uniform string  _$param = \"$default\";"
+                } else {
+                    set detail [getpropertyinfo $param detail]
+                    if {$detail != "uniform"} {
+                        set detail "varying"
+                    }
+
+                    if {$type != "float"} {
+                        regsub -all {\ } $default {,} default
+                        output "private $detail $type   _$param = $type\( $default \);"
+                    } else {
+                        output "private $detail $type   _$param = $default;"
+                    }
+                }
+            }
+
+
+            generateMethod "public void begin()" {
+output "
+                extern camera_s         cameraData;
+                extern rayinfo_s        rayinfoData;
+                extern matlattrs_s      matlattrsData;
+                extern optsandattrs_s   optsandattrsData;
+
+                rayinfoData->Init();
+                matlattrsData->Init();
+                optsandattrsData->Init();
+
+                uniform float   depth = rayinfoData->depth;
+                varying float   importance = rayinfoData->importance;
+"
+                generate -volumeBD
+
+                # Initialize template parameter private variables.
+                foreach param $templateParams {
+                    set coParam [safeeval %c GetProperties -name "${param}_Co_"]
+                    if {$coParam != ""} {
+                        set coParam [safeeval $coParam GetNameSL 0]
+
+                        set type [getpropertyinfo $param type]
+                        if {$type == "string"} {
+                            output "_$param = overrideU( $coParam, [getvar $param] );"
+                        } else {
+                            set detail [getpropertyinfo $param detail]
+                            if {$detail != "uniform"} {
+                                output "_$param = overrideV( $coParam, [getvar $param] );"
+                            } else {
+                                output "_$param = overrideU( $coParam, [getvar $param] );"
+                            }
+                        }
+                    } else {
+                        output "_$param = [getvar $param];"
+                    }
+                }
+output "
+                /*
+                 *  Handle Advanced Control option and attribute overrides and implicit conversions.
+                 */
+                if (_RightCamSpecular < 0) _RightCamSpecular = optsandattrsData->right_specular;
+
+                cameraData->Init( depth, _RightCamSpecular );
+
+                if (_SpecSampleDensity < 0) _SpecSampleDensity = optsandattrsData->surf_density;
+                if (_DiffSampleDensity < 0) _DiffSampleDensity = optsandattrsData->surf_density;
+
+                if (_SpecIndirectOn < 0) _SpecIndirectOn = matlattrsData->SpecIndirectOn;
+                if (_SpecMaxDist < 0) _SpecMaxDist = matlattrsData->SpecMaxDist;
+                if (_SpecTraceSet == \"-1\") _SpecTraceSet = matlattrsData->SpecTraceSet;
+                if (_SpecExcludeSet == \"-1\") _SpecExcludeSet = matlattrsData->SpecExcludeSet;
+                if (gridalways(_SpecDirectIntensity  == -1)) _SpecDirectIntensity = matlattrsData->SpecDirectIntensity;
+                if (gridalways(_SpecDirectSaturation == -1)) _SpecDirectSaturation = matlattrsData->SpecDirectSaturation;
+                if (gridalways(_SpecDirectTint == color -1)) _SpecDirectTint = matlattrsData->SpecDirectTint;
+                if (gridalways(_SpecIndirectIntensity  == -1)) _SpecIndirectIntensity = matlattrsData->SpecIndirectIntensity;
+                if (gridalways(_SpecIndirectSaturation == -1)) _SpecIndirectSaturation = matlattrsData->SpecIndirectSaturation;
+                if (gridalways(_SpecIndirectTint == color -1)) _SpecIndirectTint = matlattrsData->SpecIndirectTint;
+
+                if (_DiffIndirectOn < 0) _DiffIndirectOn = matlattrsData->DiffIndirectOn;
+                if (_DiffMaxDist < 0) _DiffMaxDist = matlattrsData->DiffMaxDist;
+                if (_DiffTraceSet == \"-1\") _DiffTraceSet = matlattrsData->DiffTraceSet;
+                if (_DiffExcludeSet == \"-1\") _DiffExcludeSet = matlattrsData->DiffExcludeSet;
+                if (gridalways(_DiffDirectIntensity  == -1)) _DiffDirectIntensity = matlattrsData->DiffDirectIntensity;
+                if (gridalways(_DiffDirectSaturation == -1)) _DiffDirectSaturation = matlattrsData->DiffDirectSaturation;
+                if (gridalways(_DiffDirectTint == color -1)) _DiffDirectTint = matlattrsData->DiffDirectTint;
+                if (gridalways(_DiffIndirectIntensity  == -1)) _DiffIndirectIntensity = matlattrsData->DiffIndirectIntensity;
+                if (gridalways(_DiffIndirectSaturation == -1)) _DiffIndirectSaturation = matlattrsData->DiffIndirectSaturation;
+                if (gridalways(_DiffIndirectTint == color -1)) _DiffIndirectTint = matlattrsData->DiffIndirectTint;
+
+                _SpecDirectIntensity = colorSRGBToLinear( _SpecDirectIntensity );
+                _SpecDirectTint = colorSRGBToLinear( _SpecDirectTint );
+                _SpecIndirectIntensity = colorSRGBToLinear( _SpecIndirectIntensity );
+                _SpecIndirectTint = colorSRGBToLinear( _SpecIndirectTint );
+                _DiffDirectIntensity = colorSRGBToLinear( _DiffDirectIntensity );
+                _DiffDirectTint = colorSRGBToLinear( _DiffDirectTint );
+                _DiffIndirectIntensity = colorSRGBToLinear( _DiffIndirectIntensity );
+                _DiffIndirectTint = colorSRGBToLinear( _DiffIndirectTint );
+
+                /*
+                 *  Other parameter variable initializations.
+                 */
+                if (_AS0_SampleDensity < 0) _AS0_SampleDensity = _SpecSampleDensity;
+                if (_AS1_SampleDensity < 0) _AS1_SampleDensity = _SpecSampleDensity;
+                if (_HG0_SampleDensity < 0) _HG0_SampleDensity = _SpecSampleDensity;
+                if (_HG1_SampleDensity < 0) _HG1_SampleDensity = _SpecSampleDensity;
+
+                _DiffSampleDensity *= _DiffSampleDensity;
+
+                _Density *= _DensityScale;
+
+
+                /*
+                 *  Initialize response functions: assign parameter values to
+                 *  response function variables and call response->begin() to
+                 *  compute response sample number.
+                 */
+                extern volumeAS_s       AS0;
+                extern volumeAS_s       AS1;
+                extern volumeHG_s       HG0;
+                extern volumeHG_s       HG1;
+                extern volumeGCL_s      GCL;
+                extern volumeRad_s      Rad;
+                extern volumeScatter_s  Scatter;
+"
+                foreach param $responseParams {
+                    set rp [split $param _ ]
+                    set response [lindex $rp 0]
+                    set paramname [lindex $rp 1]
+                    output "${response}->${paramname} = _${response}_${paramname};"
+                }
+output "
+                AS0->begin( depth, importance );
+                AS1->begin( depth, importance );
+                HG0->begin( depth, importance );
+                HG1->begin( depth, importance );
+
+                GCL->begin();
+                Rad->begin();
+                Scatter->begin();
+
+
+                /*
+                 *  Get the lights.
+                 */
+                uniform string  light_category = \"stdrsl_plausible\";
+                attribute( \"user:light_category\", light_category );
+                if (light_category != \"-1\")
+                {
+                    plausibleLights = getlights( \"category\", light_category );
+                }
+                else
+                {
+                    plausibleLights = getlights();
+                }
+
+                plausibleLightsNum = arraylength( plausibleLights );
+
+                // Process the light __group list.
+                uniform float   i;
+
+                if ([getvar __groupList] != \"-1\")
+                {
+                    _lightgroups = split( [getvar __groupList], \",\" );
+                }
+                else
+                {
+                    reserve( _lightgroups, plausibleLightsNum );
+
+                    uniform string  group;
+                    for (i=0; i < plausibleLightsNum; i+=1)
+                    {
+                        if (getvar( plausibleLights\[i\], \"__group\", group ) == 1 && group != \"\")
+                        {
+                            push( _lightgroups, group );
+                        }
+                    }
+                }
+                _lightgroupsnum = arraylength( _lightgroups );
+"
+            }
+
+
+            generateMethod "public void displacement( output varying point P; output varying normal N )" {
+output "
+                extern vector   Nvol;
+
+                /*
+                 *  Create a normal.
+                 *  In a volume, Du,Dv,Dw are object space deltas.
+                 *  Appears to be no reliable way of handling voxel elongation due to depthrelativeshadingrate.
+                 *  I think there may be a bug in the computation of Dw that makes it dependent on
+                 *  the volume's object space orientation.
+                 */
+
+                // N = 0 in a volume.
+                if (gridalways( N == vector(0) ))
+                {
+                    if (gridalways( [getvar Normal] == vector(0) ))
+                    {
+                        Nvol = - vector( Du(_Density), Dv(_Density), Dw(_Density) );
+                        Nvol = vector ntransform( \"object\", \"current\", normal Nvol );
+                        Nvol = normalize( Nvol );
+                    }
+                    else
+                    {
+                        Nvol = [getvar Normal];
+                    }
+                }
+
+                // Not shading a volume.
+                else
+                {
+                    Nvol = normalize( N );
+                }
+"
+                set dispParam [safeeval %c GetProperties -name volumeBD]
+                set dispFunc  [safeeval $dispParam GetConnectedFunction]
+
+                if {$dispFunc != {}} {
+                    set dispResult [safeeval $dispFunc GetProperties -access output -type volumeBD_s]
+                    set dispRSL [safeeval $dispResult GetNameSL 1]
+output "
+                    $dispRSL->Pin = P;
+                    $dispRSL->Nin = Nvol;
+"
+                    generate volumeBD
+output "
+                    P = $dispRSL->Pout;
+                    Nvol = $dispRSL->Nout;
+"
+                }
+            }
+
+
+            generateMethod "public void opacity( output varying color O )" {
+output "
+                O = _Density * Os;
+"
+            }
+
+
+            generateMethod "public void prelighting( output varying color C, O )" {
+output "
+                extern volumeAS_s       AS0;
+                extern volumeAS_s       AS1;
+                extern volumeHG_s       HG0;
+                extern volumeHG_s       HG1;
+                extern volumeGCL_s      GCL;
+                extern volumeRad_s      Rad;
+                extern volumeScatter_s  Scatter;
+
+                extern camera_s     cameraData;
+                varying vector      Ic = cameraData->GetI( LEFT );
+
+                /*
+                 *  Prepare the responses for lighting computations
+                 *  and set the indirect diffuse Lambert response color.
+                 */
+                HG0->prelighting();
+                HG1->prelighting();
+                Rad->prelighting();
+
+                AS0->prelighting( Nvol );
+                AS1->prelighting( Nvol );
+                GCL->prelighting( Nvol );
+                Scatter->prelighting( Nvol, Ic );
+
+                Cindiff = AS0->IndiffCbxdf
+                        + AS1->IndiffCbxdf
+                        + HG0->IndiffCbxdf
+                        + HG1->IndiffCbxdf
+                        + GCL->IndiffCbxdf
+                        + Rad->IndiffCbxdf
+                        + Scatter->IndiffCbxdf;
+
+                /*
+                 *  Direct light emission.
+                 */
+                uniform string  stage;
+                shaderinfo( \"pipelinestage\", stage );
+
+                if (stage == \"emission\")
+                {
+                    varying color   Crad = Rad->Cbxdf;
+                    uniform color   diffContribution = Rad->diffContribution;
+                    uniform color   specContribution = Rad->specContribution;
+
+                    emit( Crad,
+                        \"areanormalized\", 1,
+                        \"diffusecontribution\", diffContribution,
+                        \"specularcontribution\", specContribution
+                    );
+                }
+"
+            }
+
+
+            generateMethod "public void evaluateSamples( string context; output __radiancesample samples\[\] )" {
+output "
+                extern volumeAS_s       AS0;
+                extern volumeAS_s       AS1;
+                extern volumeHG_s       HG0;
+                extern volumeHG_s       HG1;
+                extern volumeGCL_s      GCL;
+                extern volumeRad_s      Rad;
+                extern volumeScatter_s  Scatter;
+
+                extern camera_s     cameraData;
+                varying vector      Ic = cameraData->GetI( LEFT );
+
+                AS0->evaluateSamples( context, Ic, samples );
+                AS1->evaluateSamples( context, Ic, samples );
+                HG0->evaluateSamples( context, Ic, samples );
+                HG1->evaluateSamples( context, Ic, samples );
+                GCL->evaluateSamples( context, Ic, samples );
+                Rad->evaluateSamples( context, Ic, samples );
+                Scatter->evaluateSamples( context, Ic, samples );
+"
+            }
+
+
+            generateMethod "public void generateSamples( string context; output __radiancesample samples\[\] )" {
+output "
+                extern volumeAS_s       AS0;
+                extern volumeAS_s       AS1;
+                extern volumeHG_s       HG0;
+                extern volumeHG_s       HG1;
+                extern volumeGCL_s      GCL;
+                extern volumeRad_s      Rad;
+                extern volumeScatter_s  Scatter;
+
+                extern camera_s     cameraData;
+                varying vector      Ic = cameraData->GetI( LEFT );
+
+                uniform float   nsamplesPerComponent\[\] = {};
+
+                AS0->generateSamples( context, Ic, samples, nsamplesPerComponent );
+                AS1->generateSamples( context, Ic, samples, nsamplesPerComponent );
+                HG0->generateSamples( context, Ic, samples, nsamplesPerComponent );
+                HG1->generateSamples( context, Ic, samples, nsamplesPerComponent );
+                GCL->generateSamples( context, Ic, samples, nsamplesPerComponent );
+                Rad->generateSamples( context, Ic, samples, nsamplesPerComponent );
+                Scatter->generateSamples( context, Ic, samples, nsamplesPerComponent );
+
+                normalizeMaterialResponse( samples, nsamplesPerComponent );
+"
+            }
+
+
+            generateMethod "public void lighting( output varying color C, O, Radiosity, Irradiance )" {
+output "
+                extern volumeRad_s      Rad;
+
+                varying color   directDiffuse, indirectDiffuse, diffuseResponse,
+                                directSpecular, indirectSpecular, specularResponse,
+                                directIrradiance, indirectIrradiance,
+                                radianceResponse;
+
+                varying color   unshadowed, unshadoweddiffuse, unshadowedspecular,
+                                groupedresults\[_lightgroupsnum\],
+                                groupeddiffuseresults\[_lightgroupsnum\],
+                                groupedspecularresults\[_lightgroupsnum\],
+                                groupedunshadowedresults\[_lightgroupsnum\],
+                                groupedunshadoweddiffuseresults\[_lightgroupsnum\],
+                                groupedunshadowedspecularresults\[_lightgroupsnum\];
+
+
+                uniform string  rayType = \"\";
+                rayinfo( \"type\", rayType );
+
+                uniform float   mis = (rayType != \"diffuse\") ? _SpecMIS : 0;
+
+                directDiffuse = indirectDiffuse = diffuseResponse = color 0;
+                directSpecular = indirectSpecular = specularResponse = color 0;
+                directIrradiance = indirectIrradiance = color 0;
+                radianceResponse = color 0;
+
+                // Direct response.Setting Slim Preferences.
+                directlighting( this, plausibleLights,
+                    \"integrationdomain\", \"sphere\",
+                    \"mis\", mis,
+
+                    // Results
+                    \"diffuseresult\", directDiffuse,
+                    \"specularresult\", directSpecular,
+                    \"irradianceresult\", directIrradiance,
+                    \"unshadowedresult\", unshadowed,
+                    \"unshadoweddiffuseresult\", unshadoweddiffuse,
+                    \"unshadowedspecularresult\", unshadowedspecular,
+                    \"lightgroups\", _lightgroups,
+                    \"groupedresults\", groupedresults,
+                    \"groupeddiffuseresults\", groupeddiffuseresults,
+                    \"groupedspecularresults\", groupedspecularresults,
+                    \"groupedunshadowedresults\", groupedunshadowedresults,
+                    \"groupedunshadoweddiffuseresults\", groupedunshadoweddiffuseresults,
+                    \"groupedunshadowedspecularresults\", groupedunshadowedspecularresults
+                );
+
+                if (rayType != \"diffuse\")
+                {
+                    if (_SpecIndirectOn)
+                    {
+                        indirectSpecular = indirectspecular( this,
+                            \"integrationdomain\", \"sphere\",
+                            \"subset\", _SpecTraceSet,
+                            \"excludesubset\", _SpecExcludeSet,
+                            \"maxdist\", _SpecMaxDist,
+                            \"hitmode\", _SpecHitMode,
+                            \"hitsides\", _SpecHitSides
+                        );
+
+                        // Catch nans in the result.
+                        if (indirectSpecular == indirectSpecular) { }
+                        else { indirectSpecular = color 0; }
+                    }
+                }
+
+                else
+                {
+                    if (_DiffIndirectOn)
+                    {
+                        indirectIrradiance = indirectdiffuse( P, N, _DiffSampleDensity,
+                            \"coneangle\", PI,
+                            \"distribution\", \"uniform\",
+                            \"maxvariation\", _DiffMaxVariation,
+                            \"adaptive\", _DiffAdaptive,
+                            \"subset\", _DiffTraceSet,
+                            \"excludesubset\", _DiffExcludeSet,
+                            \"maxdist\", _DiffMaxDist
+                        );
+
+                        // Catch nans in the result.
+                        if (indirectIrradiance == indirectIrradiance) { }
+                        else { indirectIrradiance = color 0; }
+
+                        // Compute response to indirect irradiance.
+                        indirectDiffuse = indirectIrradiance * Cindiff;
+                    }
+                }
+
+                colorAdjust( directDiffuse, _DiffDirectIntensity, _DiffDirectSaturation, _DiffDirectTint );
+                colorAdjust( directSpecular, _SpecDirectIntensity, _SpecDirectSaturation, _SpecDirectTint );
+                colorAdjust( indirectDiffuse, _DiffIndirectIntensity, _DiffIndirectSaturation, _DiffIndirectTint );
+                colorAdjust( indirectSpecular, _SpecIndirectIntensity, _SpecIndirectSaturation, _SpecIndirectTint );
+
+                Irradiance = directIrradiance + indirectIrradiance;
+
+                // opacity(O)
+                O = _Density * Os;
+
+                // Done.
+                diffuseResponse = directDiffuse + indirectDiffuse;
+                specularResponse = directSpecular + indirectSpecular;
+
+                C = diffuseResponse + specularResponse;
+
+                Radiosity = Rad->Cbxdf;
+
+                if (rayType == \"camera\")
+                {
+                    radianceResponse = Radiosity * Rad->cameraContribution;
+                    C += radianceResponse;
+                }
+
+                C *= _IntensityScale;
+                C *= O;
+
+                // Write AOVs.
+                if (rayinfoData->depth == 0)
+                {
+                    directIrradiance *= O;
+                    indirectIrradiance *= O;
+                    directDiffuse *= O;
+                    indirectDiffuse *= O;
+                    diffuseResponse *= O;
+                    directSpecular *= O;
+                    indirectSpecular *= O;
+                    specularResponse *= O;
+                    radianceResponse *= O;
+                    unshadoweddiffuse *= O;
+                    unshadowedspecular *= O;
+
+                    writeaov( \"DirectIrradiance\", directIrradiance );
+                    writeaov( \"IndirectIrradiance\", indirectIrradiance );
+                    writeaov( \"DirectDiffuse\", directDiffuse );
+                    writeaov( \"IndirectDiffuse\", indirectDiffuse );
+                    writeaov( \"Diffuse\", diffuseResponse );
+                    writeaov( \"DirectSpecular\", directSpecular );
+                    writeaov( \"IndirectSpecular\", indirectSpecular );
+                    writeaov( \"Specular\", specularResponse );
+                    writeaov( \"Radiance\", radianceResponse );
+
+                    writeaov( \"DirectIrradianceRight\", directIrradiance );
+                    writeaov( \"IndirectIrradianceRight\", indirectIrradiance );
+                    writeaov( \"DirectDiffuseRight\", directDiffuse );
+                    writeaov( \"IndirectDiffuseRight\", indirectDiffuse );
+                    writeaov( \"DiffuseRight\", diffuseResponse );
+                    writeaov( \"DirectSpecularRight\", directSpecular );
+                    writeaov( \"IndirectSpecularRight\", indirectSpecular );
+                    writeaov( \"SpecularRight\", specularResponse );
+                    writeaov( \"RadianceRight\", radianceResponse );
+
+                    writeaov( \"DirectDiffuseUnshadowed\",  unshadoweddiffuse );
+                    writeaov( \"DirectDiffuseUnshadowedRight\",  unshadowedspecular );
+                    writeaov( \"DirectSpecularUnshadowed\",  unshadowedspecular );
+                    writeaov( \"DirectSpecularUnshadowedRight\",  unshadowedspecular );
+
+                    uniform float   i;
+                    for (i=0; i < _lightgroupsnum; i+=1)
+                    {
+                        colorAdjust( groupeddiffuseresults\[i\], _DiffDirectIntensity, _DiffDirectSaturation, _DiffDirectTint );
+                        colorAdjust( groupedspecularresults\[i\], _SpecDirectIntensity, _SpecDirectSaturation, _SpecDirectTint );
+                        colorAdjust( groupedunshadoweddiffuseresults\[i\], _DiffDirectIntensity, _DiffDirectSaturation, _DiffDirectTint );
+                        colorAdjust( groupedunshadowedspecularresults\[i\], _SpecDirectIntensity, _SpecDirectSaturation, _SpecDirectTint );
+
+                        groupeddiffuseresults\[i\] *= O;
+                        groupedspecularresults\[i\] *= O;
+                        groupedunshadoweddiffuseresults\[i\] *= O;
+                        groupedunshadowedspecularresults\[i\] *= O;
+
+                        writeaov( concat( \"DirectDiffuse_\", _lightgroups\[i\] ), groupeddiffuseresults\[i\] );
+                        writeaov( concat( \"DirectDiffuseUnshadowed_\", _lightgroups\[i\] ), groupedunshadoweddiffuseresults\[i\] );
+                        writeaov( concat( \"DirectSpecular_\", _lightgroups\[i\] ), groupedspecularresults\[i\] );
+                        writeaov( concat( \"DirectSpecularUnshadowed_\", _lightgroups\[i\] ), groupedunshadowedspecularresults\[i\] );
+                        writeaov( concat( \"DirectDiffuse_\", _lightgroups\[i\], \"Right\" ), groupeddiffuseresults\[i\] );
+                        writeaov( concat( \"DirectDiffuseUnshadowed_\", _lightgroups\[i\], \"Right\" ), groupedunshadoweddiffuseresults\[i\] );
+                        writeaov( concat( \"DirectSpecular_\", _lightgroups\[i\], \"Right\" ), groupedspecularresults\[i\] );
+                        writeaov( concat( \"DirectSpecularUnshadowed_\", _lightgroups\[i\], \"Right\" ), groupedunshadowedspecularresults\[i\] );
+                    }
+                }
+"
+            }
+
+
+            generateMethod "public void postlighting( output varying color C, O )" {
+output "
+                extern rayinfo_s        rayinfoData;
+
+                if (rayinfoData->depth == 0)
+                {
+                    writeaov( \"CiLeft\", C );
+                    writeaov( \"CiRight\", C );
+                }
+"
+            }
+        }
+    }
+
+  }
+}

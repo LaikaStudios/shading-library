@@ -1,0 +1,211 @@
+##
+##  Copyright(c) 2010-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV lighteffector leV7ExponFalloff 0 {
+        description {
+            Uses an exponential falloff curve to alter the light's color.
+            Distance is measured from the origin of the Control Space coordinate system
+            and is measured in units of that space.
+        }
+
+        eval [::__categoryParam "ikaRadianceEffector"]
+
+        parameter float Enable {
+            label {Enable}
+            description {
+                Controls how much effect this will have on the illumination.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        parameter color Color {
+            label {Color}
+            description {
+                Applied to the overall illumination.
+                sRGB space.
+            }
+            detail varying
+            default {0 0 0}
+        }
+        parameter float Intensity {
+            description {
+                Applied to the overall illumination.
+                sRGB space.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter color DiffuseTint {
+            label {Diffuse Tint}
+            description {
+                A multiplier applied to the diffuse illumination.
+                sRGB space.
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter float DiffuseIntensity {
+            label {Diffuse Intensity}
+            description {
+                A multiplier applied to the diffuse illumination.
+                sRGB space.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter color SpecularTint {
+            label {Specular Tint}
+            description {
+                A multiplier applied to the specular illumination.
+                sRGB space.
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter float SpecularIntensity {
+            label {Specular Intensity}
+            description {
+                A multiplier applied to the specular illumination.
+                sRGB space.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float Invert {
+            label {Invert}
+            description {
+                If checked, the effect will be inverted.
+            }
+            subtype switch
+            default 0
+        }
+
+        parameter float Clamp {
+            label {Clamp}
+            description {
+                When 1, Clamps the color/intensity effect so there won't be any
+                color inversion when the Exponent/Reference Distance curve
+                is greater than 1.
+            }
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        parameter float Exponent {
+            label {Exponent}
+            description {
+                The falloff exponent. Controls the shape of the falloff.
+                Defaults to inverse-squared.
+            }
+            detail varying
+            subtype slider
+            range {0 3}
+            default 2
+        }
+
+        parameter float Distance {
+            label {Reference Distance}
+            description {
+                The distance at which the effect of this is nil.
+                A positive Exponent will cause the effect to increase
+                further away from the light than this, and have the opposite effect closer to it.
+            }
+            detail varying
+            subtype slider
+            range {0 100}
+            default 0
+        }
+
+        parameter string Space {
+            label {Control Space}
+            description {
+                This is set to the name of a coordinate system.
+                If "shader" or blank, the object this is attached to will define the space.
+            }
+            provider variable
+            detail uniform
+            subtype place3d
+            default "shader"
+        }
+
+
+        RSLInclude {coreV7/light.h}
+        RSLInclude {effectorV7/ExponFalloff.h}
+
+        RSLClass {
+output "
+            private effectorV7ExponFalloff_s    _le;
+"
+
+            #   Dummy method for Katana coshader-as-light workaround.
+            generateMethod "public void light (output vector L; output color Cl)" {
+output "
+                L = vector 0;
+                Cl = color 0;
+"
+            }
+
+            #
+            #  Intialize globals.
+            #
+            generateMethod "public void begin()" {
+                generate *
+output "
+                _le->Enable = [getvar Enable];
+                _le->Color = [getvar Color];
+                _le->Intensity = [getvar Intensity];
+                _le->DiffuseTint = [getvar DiffuseTint];
+                _le->DiffuseIntensity = [getvar DiffuseIntensity];
+                _le->SpecularTint = [getvar SpecularTint];
+                _le->SpecularIntensity = [getvar SpecularIntensity];
+                _le->Invert = [getvar Invert];
+                _le->Clamp = [getvar Clamp];
+                _le->Exponent = [getvar Exponent];
+                _le->Distance = [getvar Distance];
+                _le->Space = [getvar Space];
+
+                _le->begin();
+"
+            }
+
+            #
+            #   LightEffector method.
+            #
+            generateMethod "public void radianceEffect( output light_s _light )" {
+output "
+                _le->radianceEffect( _light );
+"
+            }
+        }
+    }
+
+  }
+}

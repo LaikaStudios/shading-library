@@ -1,0 +1,782 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    #
+    # The Fractal template prototype
+    #
+    set TemplatePrototype {
+    templateV %Type %TypeFractal 1 {
+        description {
+            Produces a fractal using noise.
+        }
+
+        slimattribute string Type {
+            label {Type}
+            description {
+                Selects whether a standard Fractal or fractional Brownian motion
+                is produced.
+            }
+            subtype selector
+            range {
+                Fractal Fractal
+                fBm fBm
+            }
+            default fBm
+
+            msghandler {
+                SetValue {
+                    set typeParam %obj
+                    set typeValue [$typeParam GetValue]
+                    set app [$typeParam GetAppearance]
+
+                    switch $typeValue {
+                        fBm {
+                            [$app GetProperties -name Dimension] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Gain] SetDisplayLevel ""
+                        }
+                        default {
+                            [$app GetProperties -name Dimension] SetDisplayLevel ""
+                            [$app GetProperties -name Gain] SetDisplayLevel "hidden"
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        slimattribute float Abs {
+            label {Abs}
+            description {
+                Use the absolute value of the noise function.
+            }
+            subtype switch
+            default 0
+
+            msghandler {
+                SetValue {
+                    set param %obj
+                    set app [$param GetAppearance]
+
+                    set paramValue [$param GetValue]
+                    switch $paramValue {
+                        0 {
+                            [$app GetProperties -name AbsWidth] SetDisplayLevel "hidden"
+                        }
+                        1 {
+                            [$app GetProperties -name AbsWidth] SetDisplayLevel ""
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+        parameter float AbsWidth {
+            display hidden
+            label {Abs Width}
+            description {
+                Controls the width of the Abs transition.
+                Larger values produce a smoother transition.
+                0 produces a hard (possibly aliased) transition.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        slimattribute float Invert {
+            label {Invert}
+            description {
+                Invert the result.
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute string Expand {
+            label {Expand}
+            description {
+                Selects the type of noise range adjustment to use,
+                increasing the contrast of the output.
+                The noise function itself typically produces values that
+                range from .2 to .8. This will expand that to be more in the
+                0 to 1 range.
+            }
+            subtype selector
+            range {
+                None None
+                Linear Linear
+                Smoothstep Smoothstep
+            }
+            default Smoothstep
+        }
+
+        collection manifold Manifold {
+            label {Manifold}
+            description {
+                The space in which the Fractal will be generated.
+            }
+            parameter point M {detail mustvary}
+            parameter vector dMu {detail mustvary}
+            parameter vector dMv {detail mustvary}
+
+            detail mustvary "laika,Pshader"
+        }
+
+        parameter float Frequency {
+            label {Frequency}
+            description {
+                Sets the starting scale (lowest frequency) of the noise.
+                Note: while connectable, do NOT actually vary this value.
+                It must be a constant or the results will not be predictable.
+            }
+            detail varying
+            subtype slider
+            range {.1 10}
+            default 1
+        }
+        parameter float Iterations {
+            label {Layers}
+            description {
+                The number of noise layers to use.
+            }
+            detail uniform
+            subtype slider
+            range {1 8 1}
+            default 3
+        }
+        parameter float Dimension {
+            display hidden
+            label {Dimension}
+            description {
+                The frequency exponent.
+                Bigger values are "rougher", smaller values are "smoother".
+                This value is used to control the contribution of each sucessive
+                Pattern using the formula 1/f^(3-2*Dimension); where f is the
+                frequency of the Pattern being used for a given layer.
+                It's called Dimension since this value relates to the fractal dimension.
+            }
+            detail uniform
+            subtype slider
+            range {0 2}
+            default 1
+        }
+        parameter float Gain {
+            label {Gain}
+            description {
+                The scaling factor use to control the contribution of each successive layer.
+                Bigger values are "rougher", smaller values are "smoother".
+                The magnitude of the contribution is Gain^(i-1); where i is the layer number.
+            }
+            detail uniform
+            subtype slider
+            range {0 2}
+            default .5
+        }
+        parameter float Lacunarity {
+            label {Lacunarity}
+            description {
+                Determines the size of each sucessive noise layer.
+                Smaller numbers will cause the sizes to be more closely scaled together.
+                Larger values will produce larger scale differences.
+            }
+            detail uniform
+            subtype slider
+            range {1.25 4}
+            default 2
+        }
+        parameter float Erosion {
+            description {
+                Erosion determines the so-called "crossover scale" of the fractal. 
+                Negative values will smooth out the low valued areas,
+                and positive values will smooth the high valued ones.
+                0 gives a uniform appearance.
+                The frequency exponent specified by the Dimension or Gain is
+                itself offset as a function of the Pattern's magnitude.
+                This value adjusts that offset.
+            }
+            detail uniform
+            subtype slider
+            range {-2 2}
+            default 0
+        }
+        parameter float Variation {
+            label {Variation}
+            description {
+                Varies the resulting pattern.
+                Useful for animating the effect.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        slimattribute float Periodic {
+            label {Periodic}
+            description {
+                Does the Fractal repeat or not?
+            }
+            subtype switch
+            default 0
+
+            msghandler {
+                SetValue {
+                    set Param %obj
+                    set Value [$Param GetValue]
+                    set app [$Param GetAppearance]
+
+                    switch $Value {
+                        1 {
+                            [$app GetProperties -name Period] SetDisplayLevel ""
+                            [$app GetProperties -name VariationPeriod] SetDisplayLevel ""
+                        }
+                        default {
+                            [$app GetProperties -name Period] SetDisplayLevel "hidden"
+                            [$app GetProperties -name VariationPeriod] SetDisplayLevel "hidden"
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+        parameter float Period {
+            display hidden
+            label {Manifold Period}
+            description {
+                At what Manifold dimension should the Fractal repeat?
+                Defines a cube in the Manifold space, where all cubes
+                of this dimension contain the same Fractal pattern, and
+                the pattern tiles from one cube to the next.
+                Must be an integer.
+            }
+            detail uniform
+            subtype slider
+            range {1 20 1}
+            default 5
+        }
+        parameter float VariationPeriod {
+            display hidden
+            label {Variation Period}
+            description {
+                Sets the repetition interval for the Variation.
+                Must be an integer.
+            }
+            detail uniform
+            subtype slider
+            range {1 20 1}
+            default 5
+        }
+
+        parameter %Type result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {color.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                    varying point   Q;
+                    varying float   dQ;
+
+                    dQ = sqrt(length([getvar dMu]^[getvar dMv]));
+
+                    uniform float   i;
+                    varying float   f, interval;
+                    varying float   sum, mag;
+
+                    varying %Type   ni;
+
+                    f = [getvar Frequency];
+                    sum = 0;
+                    mag = 1;
+                    result = float 0;
+                    for (i=0; i < [getvar Iterations]; i+=1) {
+"
+                        if {[getval Periodic]} {
+                            output "interval = round (f * [getvar Period]);"
+                            output "Q = [getvar M]*interval/[getvar Period] + vector(1.37, 3.213, 2.759)*i;"
+                            set noiseCall "pnoise (Q, [getvar Variation], point interval, [getvar VariationPeriod])"
+                        } else {
+                            output "Q = [getvar M]*f + vector(1.37, 3.213, 2.759)*i;"
+                            set noiseCall "noise (Q, [getvar Variation])"
+                        }
+output "
+#pragma nolint 1
+                        ni = %Type $noiseCall;
+"
+                        switch [getval Expand] {
+                            Smoothstep {
+                                output "ni = _smoothstep (.2, .8, ni);"
+                            }
+                            Linear {
+                                output "ni = linear (.2, .8, ni);"
+                            }
+                        }
+
+                        if {[getval Abs]} {
+output "                    ni = _mix (%Type 1 - ni, ni, _smoothstep (.5 - [getvar AbsWidth], .5 + [getvar AbsWidth], ni));"
+                            switch [getval Expand] {
+                                Smoothstep {
+output "                            ni += %Type (.5 - float spline (\"catmull-rom\", [getvar AbsWidth], 0.6618, 0.6573, 0.6528, 0.6428, 0.6311, 0.6180, 0.6047, 0.5919, 0.5811, 0.5722, 0.5649, 0.5587, 0.5525));"
+                                }
+                                Linear {
+output "                            ni += %Type (.5 - float spline (\"catmull-rom\", [getvar AbsWidth], 0.6183, 0.6125, 0.6066, 0.5952, 0.5828, 0.5709, 0.5602, 0.5517, 0.5450, 0.5398, 0.5355, 0.5319, 0.5284));"
+                                }
+                                None {
+output "                            ni += %Type (.5 - float spline (\"catmull-rom\", [getvar AbsWidth], 0.5751, 0.5670, 0.5589, 0.5463, 0.5355, 0.5275, 0.5220, 0.5181, 0.5154, 0.5133, 0.5117, 0.5104, 0.5091));"
+                                }
+                            }
+                        }
+output "
+                        ni = _mix (ni, %Type .5, smoothstep (.25, 1, dQ*f));
+
+                        result += mag*ni;
+
+                        f *= [getvar Lacunarity];
+                        sum += mag;
+"
+                        switch [getval Type] {
+                            Fractal {
+                                output "mag = 1/pow (f, 3-2*[getvar Dimension] + mix (-[getvar Erosion], [getvar Erosion], %ToFloatFunc(result)/sum));"
+                            }
+                            fBm {
+                                output "mag = pow ([getvar Gain] + mix ([getvar Erosion]/2, -[getvar Erosion]/2, %ToFloatFunc(result)/sum), i+1);"
+                            }
+                        }
+output "
+                    }
+                    result /= sum;
+"
+                    if {[getval Invert] == 1} {
+                        output "result = %InvertFunc;"
+                    }
+                }
+            }
+        }
+    }
+    }
+
+    #
+    # Generate the float, color, and point Fractal templates.
+    #
+    foreach {type tofloatfunc invertFunc} {
+        float  ""               "1 - result"
+        color  colorSRGBToLuma  "color 1 - result"
+        point  length           "-result"
+    } {
+        regsub -all %Type $TemplatePrototype $type result
+        regsub -all %ToFloatFunc $result $tofloatfunc result
+        regsub -all %InvertFunc $result $invertFunc result
+        if [catch $result msg] {
+            ::RAT::LogMsg ERROR $msg
+        }
+    }
+
+
+    #
+    # The vector Fractal template.
+    #
+    templateV vector vectorFractal 1 {
+        description {
+            Produces a fractal using noise.
+        }
+
+        slimattribute string Type {
+            label {Type}
+            description {
+                Selects whether a standard Fractal or fractional Brownian motion
+                is produced.
+            }
+            subtype selector
+            range {
+                Fractal Fractal
+                fBm fBm
+            }
+            default Fractal
+
+            msghandler {
+                SetValue {
+                    set typeParam %obj
+                    set typeValue [$typeParam GetValue]
+                    set app [$typeParam GetAppearance]
+
+                    switch $typeValue {
+                        fBm {
+                            [$app GetProperties -name Dimension] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Gain] SetDisplayLevel ""
+                        }
+                        default {
+                            [$app GetProperties -name Dimension] SetDisplayLevel ""
+                            [$app GetProperties -name Gain] SetDisplayLevel "hidden"
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        slimattribute float Abs {
+            label {Abs}
+            description {
+                Use the absolute value of the noise function.
+            }
+            subtype switch
+            default 0
+
+            msghandler {
+                SetValue {
+                    set param %obj
+                    set app [$param GetAppearance]
+
+                    set paramValue [$param GetValue]
+                    switch $paramValue {
+                        0 {
+                            [$app GetProperties -name AbsWidth] SetDisplayLevel "hidden"
+                        }
+                        1 {
+                            [$app GetProperties -name AbsWidth] SetDisplayLevel ""
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+        parameter float AbsWidth {
+            display hidden
+            label {Abs Width}
+            description {
+                Controls the width of the Abs transition.
+                Larger values produce a smoother transition.
+                0 produces a hard (possibly aliased) transition.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        slimattribute float Invert {
+            label {Invert}
+            description {
+                Invert the result.
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute string Expand {
+            label {Expand}
+            description {
+                Selects the type of noise range adjustment to use,
+                increasing the contrast of the output.
+                The noise function itself typically produces values that
+                range from .2 to .8. This will expand that to be more in the
+                0 to 1 range.
+            }
+            subtype selector
+            range {
+                None None
+                Linear Linear
+                Smoothstep Smoothstep
+            }
+            default Smoothstep
+        }
+
+        collection manifold Manifold {
+            label {Manifold}
+            description {
+                The space in which the pattern will be generated.
+            }
+            parameter point M {detail mustvary}
+            parameter vector dMu {detail mustvary}
+            parameter vector dMv {detail mustvary}
+
+            detail mustvary "laika,Pshader"
+        }
+
+        parameter float Frequency {
+            label {Frequency}
+            description {
+                Sets the starting scale (lowest frequency) of the noise.
+                Note: while connectable, do NOT actually vary this value.
+                It must be a constant or the results will not be predictable.
+            }
+            detail varying
+            subtype slider
+            range {.1 10}
+            default 1
+        }
+        parameter float Iterations {
+            label {Layers}
+            description {
+                The number of noise layers to use.
+            }
+            detail uniform
+            subtype slider
+            range {1 8 1}
+            default 3
+        }
+        parameter float Dimension {
+            label {Dimension}
+            description {
+                The frequency exponent.
+                Bigger values are "rougher", smaller values are "smoother".
+                This value is used to control the contribution of each sucessive
+                Pattern using the formula 1/f^(3-2*Dimension); where f is the
+                frequency of the Pattern being used for a given layer.
+                It's called Dimension since this value relates to the fractal dimension.
+            }
+            detail uniform
+            subtype slider
+            range {0 2}
+            default 1
+        }
+        parameter float Gain {
+            display hidden
+            label {Gain}
+            description {
+                The scaling factor use to control the contribution of each successive layer.
+                Bigger values are "rougher", smaller values are "smoother".
+                The magnitude of the contribution is Gain^(i-1); where i is the layer number.
+            }
+            detail uniform
+            subtype slider
+            range {0 2}
+            default .5
+        }
+        parameter float Lacunarity {
+            label {Lacunarity}
+            description {
+                Determines the size of each sucessive noise layer.
+                Smaller numbers will cause the sizes to be more closely scaled together.
+                Larger values will produce larger scale differences.
+            }
+            detail uniform
+            subtype slider
+            range {1.25 4}
+            default 2
+        }
+        parameter float Erosion {
+            description {
+                Erosion determines the so-called "crossover scale" of the fractal. 
+                Negative values will smooth out the low valued areas,
+                and positive values will smooth the high valued ones.
+                0 gives a uniform appearance.
+                The frequency exponent specified by the Dimension or Gain is
+                itself offset as a function of the Pattern's magnitude.
+                This value adjusts that offset.
+            }
+            detail uniform
+            subtype slider
+            range {-2 2}
+            default 0
+        }
+        parameter float FlowMag {
+            label {Flow Magnitude}
+            description {
+                Adjusts the Magnitude of the vector distortion by
+                setting the degree to which the Manifold is warped
+                by each successive vector Fractal layer.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default .25
+        }
+
+        parameter float Variation {
+            label {Variation}
+            description {
+                Varies the resulting pattern.
+                Useful for animating the effect.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        slimattribute float Periodic {
+            label {Periodic}
+            description {
+                Does the pattern repeat or not?
+            }
+            subtype switch
+            default 0
+
+            msghandler {
+                SetValue {
+                    set Param %obj
+                    set Value [$Param GetValue]
+                    set app [$Param GetAppearance]
+
+                    switch $Value {
+                        1 {
+                            [$app GetProperties -name Period] SetDisplayLevel ""
+                            [$app GetProperties -name VariationPeriod] SetDisplayLevel ""
+                        }
+                        default {
+                            [$app GetProperties -name Period] SetDisplayLevel "hidden"
+                            [$app GetProperties -name VariationPeriod] SetDisplayLevel "hidden"
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+        parameter float Period {
+            display hidden
+            label {Manifold Period}
+            description {
+                At what Manifold dimension should the pattern repeat?
+                Defines a cube in the Manifold space, where all cubes
+                of this dimension contain the same pattern, and
+                the pattern tiles from one cube to the next.
+                Must be an integer.
+            }
+            detail uniform
+            subtype slider
+            range {1 20 1}
+            default 5
+        }
+        parameter float VariationPeriod {
+            display hidden
+            label {Variation Period}
+            description {
+                Sets the repetition interval for the Variation.
+                Must be an integer.
+            }
+            detail uniform
+            subtype slider
+            range {1 20 1}
+            default 5
+        }
+
+        parameter vector result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {color.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                    varying point   Q, Qn;
+                    varying float   dQ;
+
+                    dQ = sqrt(length([getvar dMu]^[getvar dMv]));
+
+                    uniform float   i;
+                    varying float   f, interval;
+                    varying float   sum, mag;
+
+                    varying vector  ni;
+
+                    f = [getvar Frequency];
+                    sum = 0;
+                    mag = 1;
+                    Qn = [getvar M];
+                    result = vector 0;
+                    for (i=0; i < [getvar Iterations]; i+=1) {
+"
+                        if {[getval Periodic]} {
+                            output "interval = round (f * [getvar Period]);"
+                            output "Q = Qn*interval/[getvar Period] + vector(1.37, 3.213, 2.759)*i;"
+                            set noiseCall "pnoise (Q, [getvar Variation], point interval, [getvar VariationPeriod])"
+                        } else {
+                            output "Q = Qn*f + vector(1.37, 3.213, 2.759)*i;"
+                            set noiseCall "noise (Q, [getvar Variation])"
+                        }
+output "
+#pragma nolint 1
+                        ni = vector $noiseCall;
+"
+                        switch [getval Expand] {
+                            Smoothstep {
+                                output "ni = _smoothstep (.2, .8, ni);"
+                            }
+                            Linear {
+                                output "ni = linear (.2, .8, ni);"
+                            }
+                        }
+
+                        if {[getval Abs]} {
+output "                    ni = _mix (vector 1 - ni, ni, _smoothstep (.5 - [getvar AbsWidth], .5 + [getvar AbsWidth], ni));"
+                            switch [getval Expand] {
+                                Smoothstep {
+output "                            ni += vector (.5 - float spline (\"catmull-rom\", [getvar AbsWidth], 0.6618, 0.6573, 0.6528, 0.6428, 0.6311, 0.6180, 0.6047, 0.5919, 0.5811, 0.5722, 0.5649, 0.5587, 0.5525));"
+                                }
+                                Linear {
+output "                            ni += vector (.5 - float spline (\"catmull-rom\", [getvar AbsWidth], 0.6183, 0.6125, 0.6066, 0.5952, 0.5828, 0.5709, 0.5602, 0.5517, 0.5450, 0.5398, 0.5355, 0.5319, 0.5284));"
+                                }
+                                None {
+output "                            ni += vector (.5 - float spline (\"catmull-rom\", [getvar AbsWidth], 0.5751, 0.5670, 0.5589, 0.5463, 0.5355, 0.5275, 0.5220, 0.5181, 0.5154, 0.5133, 0.5117, 0.5104, 0.5091));"
+                                }
+                            }
+                        }
+output "
+                        ni = _mix (ni, vector .5, smoothstep (.25, 1, dQ*f));
+                        ni = mag * (2*ni - vector 1);
+
+                        result += ni;
+                        Qn += [getvar FlowMag]*ni;
+
+                        f *= [getvar Lacunarity];
+                        sum += mag;
+"
+                        switch [getval Type] {
+                            Fractal {
+                                output "mag = 1/pow (f, 3-2*[getvar Dimension] + mix (-[getvar Erosion], [getvar Erosion], length(result)/sum));"
+                            }
+                            fBm {
+                                output "mag = pow ([getvar Gain] + mix ([getvar Erosion]/2, -[getvar Erosion]/2, length(result)/sum), i+1);"
+                            }
+                        }
+output "
+                    }
+                    result /= sum;
+"
+                    if {[getval Invert] == 1} {
+                        output "result = -result;"
+                    }
+                }
+            }
+        }
+    }
+
+
+  }
+}

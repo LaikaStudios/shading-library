@@ -1,0 +1,189 @@
+##
+##  Copyright(c) 2010 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV float Curvature 1 {
+		label {Curvature}
+		description {
+			Produces Gaussian or Prater curvature,
+            along with the derivative of N.
+		}
+
+        collection manifold Manifold {
+            description {
+                The surface point where the Curvature is to be computed.
+            }
+            detail mustvary "pixar,CurrentPoint"
+            state locked
+
+            parameter point Q {detail mustvary}
+            parameter vector duQ {detail mustvary}
+            parameter vector dvQ {detail mustvary}
+        }
+
+        parameter normal N {
+            label {Normal}
+            description {
+                The surface Normal used to compute the Curvature.
+            }
+            detail mustvary "pixar,SurfaceNormal"
+        }
+
+        parameter float Type {
+            label {Type}
+            description {
+                Selects Gaussian or Prater curvature,
+                or dN.
+            }
+            provider variable
+            detail uniform
+            subtype selector
+            range {
+                "Gaussian" 0
+                "Prater" 1
+                "dN" 2
+            }
+            default 1
+        }
+
+        parameter float Partials {
+            label {Use Partial Derivs}
+            description {
+                Parital Derivatives can be used when the uv space of
+                the geometry has discontinuities, as happens with
+                subdivision surfaces. Has no effect on dN.
+            }
+            provider variable
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        collection void OutputAdjust {
+            label {Adjust Output}
+            description {
+                Gaussian and Prater curvature functions produce values ranging from roughly
+                +/-30, depending on the object. dN ranges from 0 to around 10.
+            }
+
+            parameter float Zero {
+                label {Zero}
+                description {
+                    Gaussian and Prater curvature functions produce values ranging from roughly
+                    +/-30, depending on the object. dN ranges from 0 to around 10.
+                    This parameter will determine what value in the range ends up as
+                    a zero in the output.
+                }
+                provider variable
+                detail uniform
+                subtype slider
+                range {-30 30}
+                default -10
+            }
+
+            parameter float One {
+                label {One}
+                description {
+                    Gaussian and Prater curvature functions produce values ranging from roughly
+                    +/-30, depending on the object. dN ranges from 0 to around 10.
+                    This parameter will determine what value in the range ends up as
+                    a one in the output.
+                }
+                provider variable
+                detail uniform
+                subtype slider
+                range {-30 30}
+                default 10
+            }
+
+            parameter float OutputType {
+                label {Type}
+                description {
+                    Selects the type of output range adjustment to apply.
+                }
+                provider variable
+                detail uniform
+                subtype selector
+                range {
+                    "Smoothstep" 0
+                    "Linear" 1
+                }
+                default 0
+            }
+        }
+
+        parameter float result {
+            access output
+            detail varying
+            display hidden
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {math.h}
+        RSLInclude {prman.h}
+        RSLInclude {computePartials.h}
+
+        RSLFunction {
+            void vfxCurvature (
+                point   Q;
+                vector  duQ;
+                vector  dvQ;
+                normal  QN;
+                float   Type;
+                float   Partials;
+                float   Zero;
+                float   One;
+                float   OutputType;
+                output float   result;
+            ) {
+#if SLIM_SHADERTYPEID == SLIM_TYPEID_volume
+                result = 0;
+#else
+                normal  QNn = normalize (QN);
+
+                varying vector  dQu, dQv;
+
+                if (Partials) {
+                    computePartials (Q, dQu, dQv);
+                }
+                else {
+                    dQu = duQ;
+                    dQv = dvQ;
+                }
+
+                if (Type == 0)
+                    result = mathPraterCurvature (dQu, dQv, QNn);
+                else if (Type == 1)
+                    result = mathGaussianCurvature (dQu, dQv, QNn);
+                else {
+                    result = length (Du(QNn)*du + Dv(QNn)*dv);  // dN.
+                    result += length (Du(QNn)*du - Dv(QNn)*dv); // Hack for quad
+                    result /= 2;                                // subdivision geometry.
+                }
+
+                if (OutputType == 0)
+                    result = smoothstep (Zero, One, result);
+                else
+                    result = linear (Zero, One, result);
+#endif
+            }
+        }
+    }
+
+  }
+}

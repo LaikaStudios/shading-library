@@ -1,0 +1,118 @@
+##
+##  Copyright(c) 2013-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV materialeffector meV7Disp 0 {
+        description {
+            Lets you create an arbitrary network to alter the Material's
+            surface point prior to being lit.
+        }
+
+        eval [::__categoryParam "ika_meV7Disp"]
+
+        parameter float Invert {
+            label {Invert Match}
+            description {
+                Causes the category pattern matching to determine which shaders will NOT match.
+                All others will match.
+            }
+            subtype switch
+            default 0
+        }
+
+        parameter float Enable {
+            label {Enable}
+            description {
+                Determines how much effect this will produce.
+            }
+            detail varying
+            range {0 1}
+            default 1
+        }
+
+        parameter meV7BumpDispSocket_s Socket {
+            label {Socket}
+            description {
+                Communicates a Material's surface point to a BumpDispSocket template.
+                That template is then used as the start of a network whose
+                result you connect to the Network Point Result parameter below.
+                The circuit thus produced alters the surface point
+                of the Material this shader is attached to.
+            }
+            detail mustvary "laika,meV7BumpDispSocket"
+        }
+
+        parameter point PResult {
+            label {Network Point Result}
+            description {
+                Connect here the result of a network that starts
+                with the BumpDispSocket template's Network Point output.
+                This value is used as the new surface point.
+            }
+            detail varying
+            default {0 0 0}
+        }
+
+        RSLInclude {sl.h}
+        RSLInclude {effectorV7/BumpDispSocket.h}
+
+        RSLClass {
+            set parm [safeeval %c GetProperties -name "Socket"] 
+            set func [safeeval $parm GetConnectedFunction]
+            set result [safeeval $func GetProperties -access output -type meV7BumpDispSocket_s]
+            set SocketRSL [safeeval $result GetNameSL 0]
+
+output "
+            private uniform string  userCategory\[\];
+            private uniform float   _Invert;
+            private varying float   _Enable;
+"
+
+            generateMethod "public void begin()" {
+                generate -Socket -PResult
+output "
+                userCategory = split( [getvar __categoryUser], \",\" );
+                _Invert = [getvar Invert];
+                _Enable = [getvar Enable];
+"
+            }
+
+            generateMethod "public point dispEffect( string materialCategory; point Pbxdf; vector Nbxdf )" {
+output "
+                varying point   Output = Pbxdf;
+
+                // Determine which Materials to effect.
+                uniform float   categoryMatch = _match( userCategory, materialCategory, _Invert );
+
+                // If there's a match, alter the Output.
+                if (categoryMatch == 1 && gridever(_Enable != 0) == 1)
+                {
+                    [getvar $SocketRSL]->Set( Pbxdf,Nbxdf );
+"
+                    generate PResult
+output "
+                    Output = mix( Pbxdf, [getvar PResult], _Enable );
+                }
+
+                return Output;
+"
+            }
+        }
+    }
+
+  }
+}

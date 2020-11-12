@@ -1,0 +1,215 @@
+##
+##  Copyright(c) 2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    set TemplatePrototype {
+    templateV %Type %TypeFlow 0 {
+        description {
+            Reproduces a Mari Flow Procedural using the input Base Pattern
+            and Flow Field texture.
+        }
+
+        parameter FlowManifold_s FlowManifold {
+            label {Flow Manifold}
+            description {
+                Defines the space in which to generate the Base Pattern.
+                The same FlowManifold template connected here must also be
+                connected to the Base Pattern generation template/network.
+            }
+            detail mustvary "laika,FlowManifold"
+        }
+
+        parameter %Type Input {
+            label {Base Pattern}
+            description {
+                The pattern to be flowed.
+                The Base Pattern generation template/network MUST use the Flow Manifold
+                as its manifold.
+            }
+            detail mustvary ""
+            default .5
+        }
+
+        parameter color FlowField {
+            label {Flow Field}
+            description {
+                The flow direction vectors.
+            }
+            detail varying
+            default {0 0 0}
+        }
+        parameter string FlowDataRange {
+            label {Flow Data Range}
+            description {
+                Do the Flow Field vector values range from 0 to 1, or -1 to 1?
+                If the Flow Field comes from a Mari flow paint texture, use 0 to 1,
+                since Mari encodes -1 to 1 into a 0 to 1 value ranged image.
+            }
+            detail varying
+            subtype selector
+            range {
+                "0 to 1" ZeroToOne
+                "-1 to 1" OneToOne
+            }
+            default ZeroToOne
+        }
+        parameter float FlowMatte {
+            label {Flow Matte}
+            description {
+                The Mari Flow field matte.
+                Scales the Flow Vector magnitude.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        parameter float Time {
+            label {Time}
+            description {
+                Determines the offset used to animate the flow effect.
+            }
+            detail mustvary "pixar,Time"
+            subtype slider
+            range {0 10}
+            default 0
+        }
+
+        parameter float Speed {
+            label {Speed}
+            description {
+                Scales the rate at which the flow moves.
+            }
+            detail varying
+            subtype slider
+            range {-5 5}
+            default 1
+        }
+
+
+        parameter %Type result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {color.h}
+
+        RSLSource GenerativeFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    generate -Input
+output "
+                    [getvar result] = %Type 0;
+"
+                    set inputParam [safeeval %c GetProperties -name "Input"]
+                    set basePattern [safeeval $inputParam GetConnectedFunction]
+                    if {$basePattern != ""} {
+output "
+                        //
+                        // Generate the Flow vector.
+                        //
+                        varying vector  flow;
+                        {
+                            varying vector  ff = vector( [getvar FlowField] );
+
+                            if ([getvar FlowDataRange] != \"OneToOne\")
+                            {
+                                flow = vector _mix( -1, 1, ff );    // ff is 0 to 1.
+                            }
+
+                            flow *= [getvar FlowMatte];
+                        }
+
+                        //
+                        // Get Initial FlowManifold.
+                        //
+                        varying point   M;
+                        varying vector  dMu, dMv;
+                        {
+                            M = [getvar FlowManifold]->GetQ();
+                            dMu = [getvar FlowManifold]->GetdQu();
+                            dMv = [getvar FlowManifold]->GetdQv();
+                        }
+
+                        //
+                        // Generate the bi-phase offsets.
+                        //
+                        varying float   phase0, phase1;
+                        {
+                            phase0 = mod( [getvar Time] * [getvar Speed], 1 );
+                            phase1 = mod( phase0 + sign([getvar Speed])*0.5, 1 );
+                        }
+
+                        //
+                        // Access the base pattern at both phases.
+                        //
+                        varying %Type   In0, In1;
+                        {
+                            varying point   Q = M;
+                            varying vector  dQu = dMu;
+                            varying vector  dQv = dMv;
+
+                            [getvar FlowManifold]->Set( Q - flow*phase0, dQu, dQv );
+"
+                            generate Input
+output "
+                            In0 = [getvar Input];
+
+                            [getvar FlowManifold]->Set( Q - flow*phase1, dQu, dQv );
+"
+                            generate Input
+output "
+                            In1 = [getvar Input];
+                        }
+
+                        //
+                        // Combine the phases.
+                        //
+                        {
+                            varying float   blend = 2 * abs( phase0 - 0.5 );
+
+                            [getvar result] = mix( In0, In1, blend );
+                        }
+"
+                    }
+                }
+            }
+        }
+    }
+    }
+
+#
+# Generate the float, color, point, and vector Flow templates.
+#
+    foreach {type} {
+        float
+        color
+        point
+        vector
+    } {
+        regsub -all %Type $TemplatePrototype $type    result
+        if [catch $result msg] {
+            ::RAT::LogMsg ERROR $msg
+        }
+    }
+
+  }
+}

@@ -1,0 +1,89 @@
+##
+##  Copyright(c) 2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV ImplicitManifold_s ImplicitPrefManifold 0 {
+        description {
+            Used in conjunction with the ImplicitSurface template.
+            Defines the space in which the Implicit Surface is generated.
+            Must also be used as the manifold of the pattern generator
+            connected to the ImplictSurface's Field parameter.
+        }
+
+        slimattribute string PrefName {
+            label {Pref Name}
+            description {
+                If the ImplicitSurface is to remain fixed as the geometry deforms,
+                its surface points must be defined by a reference Primitive Variable.
+                This is the name of that Primitive Variable.
+                Note that the ImplicitSurface can only linearly interpolate points
+                within the interior of the object based on the Pref surface points;
+                so it cannot truly account for the deformation of the object's interior
+                when generating its result.
+            }
+            default "Pref"
+        }
+
+        parameter ImplicitManifold_s out {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {slim.h}
+        RSLInclude {mapper/ImplicitManifold.h}
+
+        RSLSource DynamicFunction {
+            variable prefName
+
+            set param [safeeval %c GetProperties -name "PrefName"]
+            set prefName [safeeval $param GetValue]
+
+            proc primvars {} {
+                variable prefName
+
+                if {$prefName != ""} {
+                    declare {} varying point $prefName {point (-1e10, -1e10, -1e10)}
+                }
+            }
+
+            proc function {} {
+                variable prefName
+
+                generateBody {
+                    if {$prefName != ""} {
+output "
+                        out->PrefName = \"$prefName\";
+
+                        if ($prefName != point(-1e10))
+                            out->Set(transform (\"object\", $prefName), \"world\");
+                        else
+                            out->Set(transform (\"world\", SLIM_P), \"world\");
+"
+                    } else {
+output "
+                        out->PrefName = \"null\";
+                        out->Set(transform (\"world\", SLIM_P), \"world\");
+"
+                    }
+                }
+            }
+        }
+    }
+
+  }
+}

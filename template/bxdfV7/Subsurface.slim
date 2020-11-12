@@ -1,0 +1,473 @@
+##
+##  Copyright(c) 2012-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV bxdfV7Subsurface_s bxdfV7Subsurface 0 {
+        description {
+            A Subsurface Scattering material response.
+        }
+
+        parameter float OnOff {
+            label {On Off}
+            description {
+                Turn this response on or off.
+                On(1) = Normal Computation.
+                Bypass(0) = Don't show its response in the result.
+                Kill(-1) = Remove it from the Material.
+            }
+            detail varying
+            subtype selector
+            range {
+                "On" 1
+                "Bypass" 0
+                "Kill" -1
+            }
+            default 1
+        }
+        parameter coshader OnOff_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float NormOnOff {
+            label {Normalize On}
+            description {
+                Does this response participate in the Intensity Normalization within this Layer or not?
+                Note that when this is first turned off, the intensities of all the normalized responses
+                (including it) will change. But once it's been removed from that computation, further changes
+                will not interact with the rest of the responses.
+            }
+            detail varying
+            subtype switch
+            default 1
+        }
+        parameter coshader NormOnOff_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float Intensity {
+            description {
+                The Intensity of the response.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+        parameter coshader Intensity_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter color Albedo {
+            label {Albedo}
+            description {
+                The "diffuse" color of the material.
+                Should usually be the same as the Diffuse Color, but doesn't have to be.
+                This defines what percentage of the light's red, green, and blue wavelengths
+                are reflected from the surface (versus penetrating it).
+                As such, (WHITE - Albedo) represents how much of the illumination
+                will enter the surface and become available for scattering within it.
+            }
+            detail varying
+            default {.5 .5 .5}
+        }
+        parameter coshader Albedo_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter color DMFP {
+            label {Diffuse Mean Free Path}
+            description {
+                The Diffuse Mean Free Path Lengths, measured in cm (not mm).
+                These describe, statistically, how far the red, green and blue wavelengths
+                of light can travel through the material (in cm) before they'll be scattered.
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter coshader DMFP_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float CoefficientScale {
+            label {Coefficient Scale}
+            description {
+                This scales the Diffuse Mean Free Path Lengths to account for modeling units,
+                or just to alter its effect. The Coefficients are specified in world-space units (cm).
+                To specify mm unit values, set this to 0.1.
+            }
+            detail varying
+            subtype slider
+            range {0 10}
+            default 1
+        }
+        parameter coshader CoefficientScale_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter string Type {
+            label {Type}
+            description {
+                Dipole Diffusion is the classic subsurface computation.
+                Single Scatter produces single scattering.
+                Beam Diffusion produces the new diffusion computation.
+                Beam + Single produces the sum of Beam Diffusion and Single scattering.
+            }
+            detail varying
+            subtype selector
+            range {
+                "Dipole Diffusion" ssdiffusion
+                "Beam Diffusion" beamdiffusion
+                "Single Scatter" singlescatter
+                "Beam + Single" "beamdiffusion,singlescatter"
+            }
+            default ssdiffusion
+        }
+        parameter coshader Type_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float IOR {
+            label {Index of Refraction}
+            description {
+                The Index of Refraction of the scattering material.
+                Higher values produce more focused scattering, and
+                lower values produce a more broad effect.
+            }
+            detail uniform
+            subtype slider
+            range {1 2}
+            default 1.3
+        }
+        parameter coshader IOR_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float FollowTopology {
+            label {Follow Topology}
+            description {
+                Specifies whether the SubSurface Scattering should be diminished across
+                locally concave regions (where the surface normals point toward each other)
+                such as wrinkles, skin pores, creases, etc.
+                0 means off (allow scattering across the gap).
+                1 means don't allow scattering between surfaces that face each other.
+            }
+            detail uniform
+            subtype slider
+            range {0 1}
+            default 1
+        }
+        parameter coshader FollowTopology_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float Offset {
+            label {Offset}
+            description {
+                Specifies how far inside the object subsurface rays should originate.
+                If -1, the offset is computed automatically.
+            }
+            detail varying
+            subtype slider
+            range {0 .1 .001}
+            default -1
+        }
+        parameter coshader Offset_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float LambertSize {
+            label {Lambert Size}
+            description {
+                Use a Lambert response as an approximation to the subsurface result
+                when the Diffuse Mean Free Path * Coefficient Scale is smaller than
+                this size in pixels. 0 turns this optimization off.
+            }
+            detail uniform
+            subtype slider
+            range {0 1}
+            default .1
+        }
+        parameter coshader LambertSize_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float IgnoreOcclusion {
+            label {Ignore Occlusion}
+            description {
+                When on, ignore occlusion when computing the response.
+                Makes the result look more like point-based subsurface scattering.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+        parameter coshader IgnoreOcclusion_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float Smooth {
+            label {Smooth}
+            description {
+                Reduces aliasing artifacts.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+        parameter coshader Smooth_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter color Tint {
+            label {Tint}
+            description {
+                Use this to tint the result if the scattering isn't quite producing the color you want.
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter coshader Tint_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float SampleDensity {
+            label {Sample Density}
+            description {
+                Sets the sample density to use.
+                When Default (-1), use the Attribute user:surf_density value.
+            }
+            detail uniform
+            subtype slider
+            range {-1 100 1}
+            default -1
+        }
+        parameter coshader SampleDensity_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float MaxDist {
+            label {Max Dist}
+            description {
+                Can significantly effect render times and the visual result.
+                Determines the cutoff distance beyond which no scattering influence on the shaded point occurs.
+                Smaller values produce a more localized effect. The value is dependent
+                on your scene size and scale.
+                Setting it to -1 is equivalent to making it infinite.
+            }
+            detail varying
+            range {0 100}
+            default -1
+        }
+        parameter coshader MaxDist_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        collection void NsOverride {
+            label {Normal Override}
+            description {
+                These controls allow you to alter the shading normal that
+                will be used. This overrides any bump that's been applied to
+                the Material with the Bump Disp parameter.
+            }
+
+            parameter float NsInfluence {
+                label {Influence}
+                description {
+                    How much of the alternate Shading Normal is used?
+                    This is a mix between the regular normal and the alternate Shading Normal.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 0
+            }
+            parameter coshader NsInfluence_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter normal Ns {
+                label {Shading Normal}
+                description {
+                    An alternate Shading Normal to use.
+                }
+                detail mustvary "pixar,SurfaceNormal"
+            }
+            parameter coshader Ns_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+        }
+
+        collection void1 FresnelOverride {
+            label {Fresnel Override}
+            description {
+                These controls allow you to alter the Fresnel Value that
+                will be used. This overrides any Fresnel function that's connected to
+                the Material with the Fresnel parameter.
+            }
+
+            parameter float FresnelInfluence {
+                label {Influence}
+                description {
+                    How much of the alternate Fresnel Value is used?
+                    This is a mix between the connected Fresnel function and the alternate Fresnel Value.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 0
+            }
+            parameter coshader FresnelInfluence_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter color FresnelValue {
+                label {Fresnel Value}
+                description {
+                    An alternate Fresnel Value to use.
+                }
+                detail varying
+                default {1 1 1}
+            }
+            parameter coshader FresnelValue_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+        }
+
+        parameter bxdfV7Subsurface_s result {
+            display hidden
+            access output
+        }
+
+
+#        RSLInclude <bxdfV7/Subsurface.h> -within body
+
+        RSLInclude {sl.h}
+        RSLInclude {coreV7/override.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+
+                    # Template parameter declarations.
+                    set templateParams {OnOff NormOnOff Intensity Albedo DMFP CoefficientScale Type IOR FollowTopology Offset LambertSize IgnoreOcclusion Smooth Tint SampleDensity MaxDist NsInfluence Ns FresnelInfluence FresnelValue}
+
+                    foreach param $templateParams {
+                        set type [getpropertyinfo $param type]
+                        set detail [getpropertyinfo $param detail]
+                        set default [getpropertyinfo $param default]
+                        set coParam [safeeval %c GetProperties -name "${param}_Co_"]
+
+                        if {$coParam != ""} {
+                            set coParam [safeeval $coParam GetNameSL 1]
+
+                            if {$type == "string"} {
+                                output "uniform string  _$param = overrideU( $coParam, [getvar $param] );"
+                            } else {
+                                if {$detail != "uniform"} {
+                                    output "varying $type   _$param = overrideV( $coParam, [getvar $param] );"
+                                } else {
+                                    output "uniform $type   _$param = overrideU( $coParam, [getvar $param] );"
+                                }
+                            }
+                        } else {
+                            if {$type == "string"} {
+                                output "uniform string  _$param = \"$default\";"
+                            } else {
+                                if {$detail != "uniform"} {
+                                    set detail "varying"
+                                }
+
+                                if {$type != "float"} {
+                                    regsub -all {\ } $default {,} default
+                                    output "$detail $type   _$param = $type\( $default \);"
+                                } else {
+                                    output "$detail $type   _$param = $default;"
+                                }
+                            }
+                        }
+                    }
+output "
+                    if (gridalways(_MaxDist < 0)) _MaxDist = MAXDIST;
+
+                    result->OnOff = _OnOff;
+                    result->NormOnOff = _NormOnOff * step( -0.5, _OnOff );  // Do not normalize if killed.
+                    result->Intensity = _Intensity;
+                    result->Color = _Tint;
+                    result->Albedo = _clamp( _Albedo, .001, .999 );
+                    result->DMFP = _max( _DMFP, .001 ) * _CoefficientScale;
+                    result->Type = _Type;
+                    result->IOR = _IOR;
+                    result->FollowTopology = _FollowTopology;
+                    result->Offset = _Offset;
+                    result->LambertSize = _LambertSize;
+                    result->IgnoreOcclusion = _IgnoreOcclusion;
+                    result->Smooth = _Smooth;
+                    result->SampleDensity = _SampleDensity;
+                    result->MaxDist = _MaxDist;
+                    result->NsInfluence = _NsInfluence;
+                    result->Ns = _Ns;
+                    result->FresnelInfluence = _FresnelInfluence;
+                    result->FresnelValue = _FresnelValue;
+"
+                }
+            }
+        }
+    }
+
+  }
+}

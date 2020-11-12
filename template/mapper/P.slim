@@ -1,0 +1,305 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV multiple P 0 {
+        description {
+            Returns the current point being shaded in any number of 3D or 2D spaces.
+        }
+
+        parameter string NamedCS {
+            label {Coordinate System}
+            description {
+                If you make this an External Value (and leave it blank),
+                a Maya 3d Placement node will be created when the shader is added to Maya.
+                The transformed P is output in the CoordSys variable with the origin at the
+                indicated corner and the 3d placement node representing a unit cube.
+            }
+            provider constant
+            detail varying
+            subtype place3d
+            default {}
+        }
+
+        slimattribute string PrimVar {
+            label {Primitive Variable}
+            description {
+                The name of a primitive variable that contains the desired point data.
+                This is output in the PrimVar variable.
+            }
+            default {Pref}
+        }
+
+		slimattribute string UVSet {
+            label {Maya UV Set}
+			description {
+                The base name of a Maya UV Set that contains the desired uv data.
+                Each uvSet index is output in a separate uvSet variable.
+                Note that RMS puts Maya's default UV Set into s and t,
+                so use the st output to get that set of UV's.
+			}
+            default {uvSet}
+		}
+
+        parameter point Pcurrent {
+            label {current}
+            display hidden
+            access output
+        }
+
+        parameter point Pworld {
+            label {world}
+            display hidden
+            access output
+        }
+
+        parameter point Pobject {
+            label {object}
+            display hidden
+            access output
+        }
+
+        parameter point Pshader {
+            label {shader}
+            display hidden
+            access output
+        }
+
+        parameter point Pcamera {
+            label {camera}
+            display hidden
+            access output
+        }
+
+        parameter point Pscreen {
+            label {screen}
+            display hidden
+            access output
+        }
+
+        parameter point Pndc {
+            label {NDC}
+            display hidden
+            access output
+        }
+
+        parameter point Praster {
+            label {raster}
+            display hidden
+            access output
+        }
+
+        parameter point Pcs {
+            label {CoordSys}
+            display hidden
+            access output
+        }
+
+        parameter point Pprimvar {
+            label {PrimVar}
+            display hidden
+            access output
+        }
+
+        parameter point Puv {
+            label {uv}
+            display hidden
+            access output
+        }
+
+        parameter point Pst {
+            label {st}
+            display hidden
+            access output
+        }
+
+        parameter point Puvset {
+            label {uvSet}
+            display hidden
+            access output
+        }
+
+        parameter point Puvset1 {
+            label {uvSet1}
+            display hidden
+            access output
+        }
+
+        parameter point Puvset2 {
+            label {uvSet2}
+            display hidden
+            access output
+        }
+
+        parameter point Puvset3 {
+            label {uvSet3}
+            display hidden
+            access output
+        }
+
+        parameter point Puvset4 {
+            label {uvSet4}
+            display hidden
+            access output
+        }
+
+        parameter point Puvset5 {
+            label {uvSet5}
+            display hidden
+            access output
+        }
+
+        RSLInclude {slim.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {
+                declare {} varying point [getval PrimVar] {point (-1e10, -1e10, -1e10)}
+                declare {} varying float u_[getval UVSet]\[\] \{\}
+                declare {} varying float v_[getval UVSet]\[\] \{\}
+            }
+            proc function {} {
+output "
+                void [getFunctionName] (
+                    uniform string  NamedCS;
+
+                    output varying point    Pcurrent; 
+                    output varying point    Pworld; 
+                    output varying point    Pobject; 
+                    output varying point    Pshader; 
+                    output varying point    Pcamera; 
+                    output varying point    Pscreen; 
+                    output varying point    Pndc; 
+                    output varying point    Praster; 
+                    output varying point    Pcs; 
+                    output varying point    Pprimvar; 
+                    output varying point    Puv; 
+                    output varying point    Pst; 
+                    output varying point    Puvset; 
+                    output varying point    Puvset1; 
+                    output varying point    Puvset2; 
+                    output varying point    Puvset3; 
+                    output varying point    Puvset4; 
+                    output varying point    Puvset5; 
+                ) {
+                    Pcurrent = SLIM_P;
+
+                    Pworld = transform (\"world\", Pcurrent);
+                    Pobject = transform (\"object\", Pcurrent);
+                    Pshader = transform (\"shader\", Pcurrent);
+                    Pcamera = transform (\"camera\", Pcurrent);
+                    Pscreen = transform (\"screen\", Pcurrent);
+                    Pndc = transform (\"NDC\", Pcurrent);
+                    Praster = transform (\"raster\", Pcurrent);
+
+                    if (NamedCS != \"\") {
+                        Pcs = transform (NamedCS, Pcurrent) / 2;
+                        Pcs = point (
+                            .5 + xcomp(Pcs),
+                            .5 + ycomp(Pcs),
+                            .5 - zcomp(Pcs)
+                        );
+                    }
+                    else
+                        Pcs = point 0;
+
+                    if ([getval PrimVar] == point (-1e10))
+                        Pprimvar = Pshader; 
+                    else
+                        Pprimvar = transform (\"object\", [getval PrimVar]);
+
+#if SLIM_SHADERTYPEID == SLIM_TYPEID_volume
+                    Puv = Pst = Puvset = Puvset1 = Puvset2 = Puvset3 = Puvset4 = Puvset5 = point 0;
+#else
+                    Puv = point (u, v, 0);
+                    Pst = point (s, t, 0);
+
+                    uniform float   uvLen = min (arraylength(u_[getval UVSet]), 6);
+                    varying point   uvset\[6\] = {0};
+
+                    uniform float   i;
+                    for (i=0; i < uvLen; i+=1) {
+                        uvset\[i\] = point (u_[getval UVSet]\[i\], v_[getval UVSet]\[i\], 0);
+                    }
+                    Puvset = uvset\[0\];
+                    Puvset1 = uvset\[1\];
+                    Puvset2 = uvset\[2\];
+                    Puvset3 = uvset\[3\];
+                    Puvset4 = uvset\[4\];
+                    Puvset5 = uvset\[5\];
+#endif
+                }
+"
+            }
+        }
+    }
+
+
+    templateV manifold_s Pcurrent 2 {
+        description {
+            The surface point P (or Ps if in a light shader)
+            in current space.
+        }
+
+        parameter manifold_s result {
+            access output
+            display hidden
+        }
+
+        RSLInclude {slim.h}
+
+        RSLFunction {
+            void vfxPcurrent (
+                output manifold_s   result;
+            ) {
+                result->Set(SLIM_P, "current");
+            }
+        }
+    }
+
+    set TemplatePrototype {
+    templateV manifold_s P%Space 2 {
+        description {
+            The surface point P (or Ps if in a light shader)
+            in %Space space.
+        }
+
+        parameter manifold_s result {
+            access output
+            display hidden
+        }
+
+        RSLInclude {slim.h}
+
+        RSLFunction {
+            void vfxP%Space (
+                output manifold_s   result;
+            ) {
+                result->Set (transform("%Space", SLIM_P), "%Space");
+            }
+        }
+    }
+    }
+
+    foreach {space} {shader world object camera screen raster NDC} {
+        regsub -all %Space $TemplatePrototype $space result
+        if [catch $result msg] {
+            ::RAT::LogMsg ERROR $msg
+        }
+    }
+
+  }
+}

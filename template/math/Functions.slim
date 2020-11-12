@@ -1,0 +1,861 @@
+##
+##  Copyright(c) 2010-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV float FFunctions 0 {
+        description {
+            Simple functions of one or two variables.
+        }
+
+        slimattribute string Type {
+            label {Function}
+            description {
+                Select the Function to return.
+            }
+            subtype selector
+            range {
+                "x" bypass
+                "1-x" invert
+                "1/x" inverse
+                "-x"  negate
+                "x+y" add
+                "x-y" subtract
+                "x*y" multiply
+                "x/y" divide
+                "mod(x,y)" mod
+                "pow(x,y)" pow
+                "max(x,y)" max
+                "min(x,y)" min
+                "avg(x,y)" avg
+                "gamma(x,1/2.2)" gammainv
+                "gamma(x,2.2)" gamma
+                "sRGB to Linear" linear
+                "Linear to sRGB" sRGB
+                "x*x" square
+                "sqrt(x)" sqrt
+                "1/sqrt(x)" inversesqrt
+                "exp(-x*y)" expxy
+                "exp(-x)" expnegate
+                "exp(x)" exp
+                "log(x)" log
+                "abs(x)" abs
+                "sign(x)" sign
+                "floor(x)" floor
+                "ceil(x)" ceil
+                "round(x)" round
+                "clamp(x,0,1)" clamp
+                "erf(x)" erf
+                "erfc(x)" erfc
+            }
+            default bypass
+
+            msghandler {
+                SetValue {
+                    set typeParam %obj
+                    set typeValue [$typeParam GetValue]
+                    set app [$typeParam GetAppearance]
+
+                    switch $typeValue {
+                        add - subtract - multiply - divide - mod - pow - max - min - avg - expxy {
+                            [$app GetProperties -name y] SetDisplayLevel ""
+                        }
+                        default {
+                            [$app GetProperties -name y] SetDisplayLevel "hidden"
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        parameter float x {
+            label {x}
+            description {
+                The x value.
+            }
+            defaultinput 1
+            provider variable
+            detail varying
+            subtype slider
+            range {0 1}
+            default .5
+        }
+
+        parameter float y {
+            display hidden
+            label {y}
+            description {
+                The y value.
+            }
+            provider variable
+            detail varying
+            subtype slider
+            range {0 1}
+            default .5
+        }
+
+        slimattribute float Negate {
+            label {Negate}
+            description {
+                Negate the result:
+                result = -result.
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute float Invert {
+            label {Invert}
+            description {
+                Invert the result:
+                result = 1 - result.
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute float Clamp {
+            label {Clamp}
+            description {
+                Clamp the result between 0 and 1.
+            }
+            subtype switch
+            default 0
+        }
+
+
+        parameter float result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {color.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                set templateName [safeeval %c GetName]
+                generateBody {
+output "
+                    varying float   _x = [getvar x];
+                    varying float   _y = [getvar y];
+"
+                    switch [getval Type] {
+                        invert  {output "result = 1-_x;"}
+                        inverse {output "result = 1/_x;"}
+                        negate  {output "result = -_x;"}
+                        add     {output "result = _x+_y;"}
+                        subtract {output "result = _x-_y;"}
+                        multiply {output "result = _x*_y;"}
+                        divide  {output "result = _x/_y;"}
+                        mod     {output "result = mod(_x,_y);"}
+                        square  {output "result = _x*_x;"}
+                        pow     {output "result = pow(_x,_y);"}
+                        max     {output "result = max(_x,_y);"}
+                        min     {output "result = min(_x,_y);"}
+                        avg     {output "result = (_x+_y)/2;"}
+                        linear      {output "result = _sRGBDecode(_x);" }
+                        sRGB        {output "result = _sRGBEncode(_x);"}
+                        gammainv    {output "result = pow(_x,2.2);"}
+                        gamma       {output "result = pow(_x,1/2.2);"}
+                        sqrt    {output "result = sqrt(_x);"}
+                        inversesqrt {output "result = inversesqrt(_x);"}
+                        exp     {output "result = exp(_x);"}
+                        expnegate {output "result = exp(-_x);"}
+                        expxy   {output "result = exp(-_x*_y);"}
+                        log     {output "result = log(_x);"}
+                        abs     {output "result = abs(_x);"}
+                        sign    {output "result = sign(_x);"}
+                        floor   {output "result = floor(_x);"}
+                        ceil    {output "result = ceil(_x);"}
+                        round   {output "result = round(_x);"}
+                        clamp   {output "result = clamp(_x,0,1);"}
+                        erf     {output "result = erf(_x);"}
+                        erfc    {output "result = erfc(_x);"}
+                        default {output "result = _x;"}
+                    }
+                    if {[getval Negate] == 1} {
+                        output "result = -result;"
+                    }
+                    if {[getval Invert] == 1} {
+                        output "result = 1 - result;"
+                    }
+                    if {[getval Clamp] == 1} {
+                        output "result = clamp (result, 0, 1);"
+                    }
+                }
+            }
+        }
+    }
+
+    templateV color CFunctions 0 {
+        description {
+            Produces the selected Function of the input(s).
+        }
+
+        slimattribute string Type {
+            label {Function}
+            description {
+                Select the Function to return.
+            }
+            subtype selector
+            range {
+                "x" bypass
+                "1-x" invert
+                "1/x" inverse
+                "-x"  negate
+                "x+y" add
+                "x-y" subtract
+                "x*y" multiply
+                "x/y" divide
+                "avg(x,y)" avg
+                "pow(x,y)" pow
+                "sRGB to Linear" linear
+                "Linear to sRGB" sRGB
+                "x*x" square
+                "sqrt(x)" sqrt
+                "1/sqrt(x)" inversesqrt
+                "gamma(x,1/2.2)" gammainv
+                "gamma(x,2.2)" gamma
+                "exp(-x*y)" expxy
+                "exp(-x)" expnegate
+                "exp(x)" exp
+                "abs(x)" abs
+                "mod(x,y)" mod
+                "clamp(x,0,1)" clamp
+            }
+            default bypass
+
+            msghandler {
+                SetValue {
+                    set typeParam %obj
+                    set typeValue [$typeParam GetValue]
+                    set app [$typeParam GetAppearance]
+
+                    switch $typeValue {
+                        add - subtract - multiply - divide - mod - pow - avg - expxy {
+                            [$app GetProperties -name y] SetDisplayLevel ""
+                        }
+                        default {
+                            [$app GetProperties -name y] SetDisplayLevel "hidden"
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        parameter color x {
+            label {x}
+            description {
+                The x value.
+            }
+            defaultinput 1
+            provider variable
+            detail varying
+            default {.5 .5 .5}
+        }
+
+        parameter color y {
+            display hidden
+            label {y}
+            description {
+                The y value.
+            }
+            provider variable
+            detail varying
+            default {.5 .5 .5}
+        }
+
+        slimattribute float Clamp {
+            label {Clamp}
+            description {
+                Clamp the result between 0 and 1.
+            }
+            subtype switch
+            default 0
+        }
+
+
+        parameter color result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {color.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                set templateName [safeeval %c GetName]
+                generateBody {
+output "
+                    varying color   _x = [getvar x];
+                    varying color   _y = [getvar y];
+"
+                    switch [getval Type] {
+                        invert      {output "result = color 1 - _x;"}
+                        inverse     {output "result = color 1 / _x;"}
+                        negate      {output "result = -_x;"}
+                        add         {output "result = _x+_y;"}
+                        subtract    {output "result = _x-_y;"}
+                        multiply    {output "result = _x*_y;"}
+                        divide      {output "result = _x/_y;"}
+                        mod         {output "result = _mod(_x,_y);"}
+                        square      {output "result = _x*_x;"}
+                        pow         {output "result = _pow(_x,_y);"}
+                        avg         {output "result = (_x+_y)/2;"}
+                        linear      {output "result = colorSRGBDecode(_x);" }
+                        sRGB        {output "result = colorSRGBEncode(_x);"}
+                        sqrt        {output "result = _pow(_x,.5);"}
+                        inversesqrt {output "result = color 1 / _pow(_x,.5);"}
+                        gammainv    {output "result = _pow(_x,2.2);"}
+                        gamma       {output "result = _pow(_x,1/2.2);"}
+                        exp         {output "result = _exp(_x);"}
+                        expnegate   {output "result = _exp(-_x);"}
+                        expxy       {output "result = _exp(-_x*_y);"}
+                        abs         {output "result = _abs(_x);"}
+                        clamp       {output "result = _clamp(_x,0,1);"}
+                        default     {output "result = _x;"}
+                    }
+                    if {[getval Clamp] == 1} {
+                        output "result = _clamp (result, 0, 1);"
+                    }
+                }
+            }
+        }
+    }
+
+    templateV float floatAdd 0 {
+        description {
+            Adds any number of float values together.
+        }
+
+        collection customuiFullWidth Inputs {
+            customui laika AddParam
+            subtype propertycreator
+            drawmode children
+            state open
+            userdata {
+                AddString "Add Input"
+                AddDescription "Adds a new input value."
+                ParamType   float
+                ParamPrefix Input
+                ParamDetail varying
+                ParamSubtype slider
+                ParamRange {0 1}
+                ParamDefault 0
+            }
+        }
+
+        slimattribute float Negate {
+            label {Negate}
+            description {
+                Negate the result:
+                result = -result.
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute float Invert {
+            label {Invert}
+            description {
+                Invert the result:
+                result = 1 - result.
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute float Clamp {
+            label {Clamp}
+            description {
+                Clamp the result between 0 and 1.
+            }
+            subtype switch
+            default 0
+        }
+
+        parameter float result {
+            display hidden
+            access output
+        }
+
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    set inputs [getproperties -name Input_* -access input]
+                    set numArgs [llength $inputs]
+                    set funcArgs [join $inputs +]
+
+                    switch $numArgs {
+                        0 {output "result = 0;"}
+                        1 {output "result = $inputs;"}
+                        default {output "result = $funcArgs;"}
+                    }
+
+                    if {[getval Negate] == 1} {
+                        output "result = -result;"
+                    }
+                    if {[getval Invert] == 1} {
+                        output "result = 1 - result;"
+                    }
+                    if {[getval Clamp] == 1} {
+                        output "result = clamp (result, 0, 1);"
+                    }
+                }
+            }
+        }
+    }
+
+    templateV float floatMultiply 0 {
+        description {
+            Multiplies any number of float values together.
+        }
+
+        collection customuiFullWidth Inputs {
+            customui laika AddParam
+            subtype propertycreator
+            drawmode children
+            state open
+            userdata {
+                AddString "Add Input"
+                AddDescription "Adds a new input value."
+                ParamType   float
+                ParamPrefix Input
+                ParamDetail varying
+                ParamSubtype slider
+                ParamRange {0 1}
+                ParamDefault 0
+            }
+        }
+
+        slimattribute float Negate {
+            label {Negate}
+            description {
+                Negate the result:
+                result = -result.
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute float Invert {
+            label {Invert}
+            description {
+                Invert the result:
+                result = 1 - result.
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute float Clamp {
+            label {Clamp}
+            description {
+                Clamp the result between 0 and 1.
+            }
+            subtype switch
+            default 0
+        }
+
+        parameter float result {
+            display hidden
+            access output
+        }
+
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    set inputs [getproperties -name Input_* -access input]
+                    set numArgs [llength $inputs]
+                    set funcArgs [join $inputs *]
+
+                    switch $numArgs {
+                        0 {output "result = 0;"}
+                        1 {output "result = $inputs;"}
+                        default {output "result = $funcArgs;"}
+                    }
+
+                    if {[getval Negate] == 1} {
+                        output "result = -result;"
+                    }
+                    if {[getval Invert] == 1} {
+                        output "result = 1 - result;"
+                    }
+                    if {[getval Clamp] == 1} {
+                        output "result = clamp (result, 0, 1);"
+                    }
+                }
+            }
+        }
+    }
+
+    templateV float floatAverage 0 {
+        description {
+            Returns the average of all the input values.
+        }
+
+        collection customuiFullWidth Inputs {
+            customui laika AddParam
+            subtype propertycreator
+            drawmode children
+            state open
+            userdata {
+                AddString "Add Input"
+                AddDescription "Adds a new input value."
+                ParamType   float
+                ParamPrefix Input
+                ParamDetail varying
+                ParamSubtype slider
+                ParamRange {0 1}
+                ParamDefault 0
+            }
+        }
+
+        slimattribute float Negate {
+            label {Negate}
+            description {
+                Negate the result:
+                result = -result.
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute float Invert {
+            label {Invert}
+            description {
+                Invert the result:
+                result = 1 - result.
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute float Clamp {
+            label {Clamp}
+            description {
+                Clamp the result between 0 and 1.
+            }
+            subtype switch
+            default 0
+        }
+
+        parameter float result {
+            display hidden
+            access output
+        }
+
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    set inputs [getproperties -name Input_* -access input]
+                    set numArgs [llength $inputs]
+                    set funcArgs [join $inputs +]
+
+                    switch $numArgs {
+                        0 {output "result = 0;"}
+                        1 {output "result = $inputs;"}
+                        default {output "result = ( $funcArgs ) / $numArgs;"}
+                    }
+
+                    if {[getval Negate] == 1} {
+                        output "result = -result;"
+                    }
+                    if {[getval Invert] == 1} {
+                        output "result = 1 - result;"
+                    }
+                    if {[getval Clamp] == 1} {
+                        output "result = clamp (result, 0, 1);"
+                    }
+                }
+            }
+        }
+    }
+
+    templateV float floatGeoMean 0 {
+        description {
+            Returns the geometric mean of all the input values.
+        }
+
+        collection customuiFullWidth Inputs {
+            customui laika AddParam
+            subtype propertycreator
+            drawmode children
+            state open
+            userdata {
+                AddString "Add Input"
+                AddDescription "Adds a new input value."
+                ParamType   float
+                ParamPrefix Input
+                ParamDetail varying
+                ParamSubtype slider
+                ParamRange {0 1}
+                ParamDefault 0
+            }
+        }
+
+        slimattribute float Negate {
+            label {Negate}
+            description {
+                Negate the result:
+                result = -result.
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute float Invert {
+            label {Invert}
+            description {
+                Invert the result:
+                result = 1 - result.
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute float Clamp {
+            label {Clamp}
+            description {
+                Clamp the result between 0 and 1.
+            }
+            subtype switch
+            default 0
+        }
+
+        parameter float result {
+            display hidden
+            access output
+        }
+
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    set inputs [getproperties -name Input_* -access input]
+                    set numArgs [llength $inputs]
+                    set funcArgs [join $inputs *]
+
+                    switch $numArgs {
+                        0 {output "result = 0;"}
+                        1 {output "result = $inputs;"}
+                        default {output "result = pow( $funcArgs, 1/$numArgs );"}
+                    }
+
+                    if {[getval Negate] == 1} {
+                        output "result = -result;"
+                    }
+                    if {[getval Invert] == 1} {
+                        output "result = 1 - result;"
+                    }
+                    if {[getval Clamp] == 1} {
+                        output "result = clamp (result, 0, 1);"
+                    }
+                }
+            }
+        }
+    }
+
+    templateV float floatMin 0 {
+        description {
+            Returns the min() of all the input values.
+        }
+
+        collection customuiFullWidth Inputs {
+            customui laika AddParam
+            subtype propertycreator
+            drawmode children
+            state open
+            userdata {
+                AddString "Add Input"
+                AddDescription "Adds a new input value."
+                ParamType   float
+                ParamPrefix Input
+                ParamDetail varying
+                ParamSubtype slider
+                ParamRange {0 1}
+                ParamDefault 0
+            }
+        }
+
+        slimattribute float Negate {
+            label {Negate}
+            description {
+                Negate the result:
+                result = -result.
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute float Invert {
+            label {Invert}
+            description {
+                Invert the result:
+                result = 1 - result.
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute float Clamp {
+            label {Clamp}
+            description {
+                Clamp the result between 0 and 1.
+            }
+            subtype switch
+            default 0
+        }
+
+        parameter float result {
+            display hidden
+            access output
+        }
+
+        RSLInclude <sl.h>
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    set inputs [getproperties -name Input_* -access input]
+                    set numArgs [llength $inputs]
+                    set funcArgs [join $inputs ,]
+
+                    switch $numArgs {
+                        0 {output "result = 0;"}
+                        1 {output "result = $inputs;"}
+                        default {output "result = min( $funcArgs );"}
+                    }
+
+                    if {[getval Negate] == 1} {
+                        output "result = -result;"
+                    }
+                    if {[getval Invert] == 1} {
+                        output "result = 1 - result;"
+                    }
+                    if {[getval Clamp] == 1} {
+                        output "result = clamp (result, 0, 1);"
+                    }
+                }
+            }
+        }
+    }
+
+    templateV float floatMax 0 {
+        description {
+            Returns the max() of all the input values.
+        }
+
+        collection customuiFullWidth Inputs {
+            customui laika AddParam
+            subtype propertycreator
+            drawmode children
+            state open
+            userdata {
+                AddString "Add Input"
+                AddDescription "Adds a new input value."
+                ParamType   float
+                ParamPrefix Input
+                ParamDetail varying
+                ParamSubtype slider
+                ParamRange {0 1}
+                ParamDefault 0
+            }
+        }
+
+        slimattribute float Negate {
+            label {Negate}
+            description {
+                Negate the result:
+                result = -result.
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute float Invert {
+            label {Invert}
+            description {
+                Invert the result:
+                result = 1 - result.
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute float Clamp {
+            label {Clamp}
+            description {
+                Clamp the result between 0 and 1.
+            }
+            subtype switch
+            default 0
+        }
+
+        parameter float result {
+            display hidden
+            access output
+        }
+
+        RSLInclude <sl.h>
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    set inputs [getproperties -name Input_* -access input]
+                    set numArgs [llength $inputs]
+                    set funcArgs [join $inputs ,]
+
+                    switch $numArgs {
+                        0 {output "result = 0;"}
+                        1 {output "result = $inputs;"}
+                        default {output "result = max( $funcArgs );"}
+                    }
+
+                    if {[getval Negate] == 1} {
+                        output "result = -result;"
+                    }
+                    if {[getval Invert] == 1} {
+                        output "result = 1 - result;"
+                    }
+                    if {[getval Clamp] == 1} {
+                        output "result = clamp (result, 0, 1);"
+                    }
+                }
+            }
+        }
+    }
+
+  }
+}

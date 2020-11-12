@@ -1,0 +1,247 @@
+##
+##  Copyright(c) 2010-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV string String 0 {
+        description {
+            Returns the string.
+        }
+
+        parameter string String {
+            label {String}
+            description {
+                The string value to return.
+            }
+            detail varying
+            subtype file
+        }
+
+        parameter string Result {
+            display hidden
+            access output
+            detail uniform
+        }
+
+        RSLSource StaticFunction {
+            void vfxString (
+                uniform string  String;
+                output string   Result;
+            ) {
+                Result = String;
+            }
+        }
+    }
+
+    templateV string Concat 1 {
+        description {
+            Concatenates any number of input strings together.
+        }
+
+        parameter string String {
+            label {First String}
+            description {
+                This will be the first (left-most) string in the result.
+            }
+            detail varying
+            subtype file
+        }
+
+        collection customuiFullWidth void {
+            subtype propertycreator
+            drawmode children
+            customui pixar ListUI2
+            state open
+            label { -buttonlabel {Add String} -elementdesc {
+                { -label Value -type string -detail varying }
+            } }
+            userdata {inputLabel String inputPrefix String}
+        }
+
+        parameter string Result {
+            display hidden
+            access output
+            detail uniform
+        }
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "            Result = concat([getvar String]"
+                    foreach val [getproperties -name String_* -access input] {
+output "            , [getvar $val]"
+                    }
+output "            );"
+                }
+            }
+        }
+
+    }
+
+    templateV string Format 0 {
+        description {
+            Convert a float to a string. You specify the output format.
+        }
+
+        parameter float value {
+            label Value
+            description {
+                The number to convert to a string.
+            }
+            detail varying
+            default 0 
+        }
+
+        parameter string format {
+            label Format
+            description {
+                RSL printf() style format used to convert the Value to a string.
+            }
+            detail varying
+            default "%d"
+        }
+
+        parameter string result {
+            display hidden
+            access output
+        }
+
+        RSLFunction {
+            void vfxFormat (
+                varying float   value;
+                uniform string  formatString;
+                output string   result;
+            ) {
+                uniform float   y = gridmin( value );
+                result = format( formatString, y );
+            }
+        }
+    }
+
+    templateV multiple PassInfo 0 {
+        description {
+            Returns various types of information about the render pass.
+            Class: possible return values are things like Final, RenderRadiosity,
+                Shadow, DeepShadow, SSRender, etc.
+            ID: the name of the pass.
+            Camera: the name of the camera used to render the pass.
+            Crew: optionally used in baking passes.
+            Flavor: optionally used in baking passes.
+        }
+
+        parameter string pass_class {
+            label {Class}
+            display hidden
+            access output
+        }
+
+        parameter string pass_id {
+            label {ID}
+            display hidden
+            access output
+        }
+
+        parameter string pass_camera_name {
+            label {Camera}
+            display hidden
+            access output
+        }
+
+        parameter string pass_crew {
+            label {Crew}
+            display hidden
+            access output
+        }
+
+        parameter string pass_flavor {
+            label {Flavor}
+            display hidden
+            access output
+        }
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                    pass_id = pass_class = pass_camera_name = pass_crew = pass_flavor = \"\";
+
+                    option (\"user:pass_id\", pass_id);
+                    option (\"user:pass_class\", pass_class);
+                    option (\"user:pass_camera_name\", pass_camera_name);
+                    option (\"user:pass_crew\", pass_crew);
+                    option (\"user:pass_flavor\", pass_flavor);
+"
+                }
+            }
+        }
+    }
+
+    templateV string PassFilename 0 {
+        description {
+            Given the name of a Pass, returns the filename associated with it using
+            [PassFileName Pass].
+        }
+
+        parameter string Pass {
+            label {Pass}
+            description {
+                Set this to the name of the Pass generating the file you want.
+            }
+            provider variable
+            detail varying
+            default "rmanRenderRadiosity"
+
+            msghandler {
+                SetValue - RevertValue {
+                    set param %obj
+                    set app [%obj GetAppearance]
+
+                    set paramValue [$param GetValue]
+                    set fileParam [$app GetProperties -name File]
+                    $fileParam SetValue "\[PassFileName $paramValue\]"
+                }
+            }
+        }
+
+        parameter string File {
+            display hidden
+            provider variable
+            detail uniform
+            default {[PassFileName rmanRenderRadiosity]}
+        }
+
+        parameter string result {
+            display hidden
+            access output
+        }
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    generate
+output "
+                    result = [getvar File];
+"
+                }
+            }
+        }
+    }
+
+  }
+}

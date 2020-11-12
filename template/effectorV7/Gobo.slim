@@ -1,0 +1,79 @@
+##
+##  Copyright(c) 2013 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+	templateV geolighteffector gleV7Gobo 0 {
+		description {
+			A texture map that light will shine through.
+		}
+
+        eval [::__categoryParam "ikaGeoLightGobo"]
+
+        parameter string TextureMap {
+            label {Texture Map}
+            description {
+                The texture to use.
+                Light is projected through this texture.
+                The edges of the texture are mapped to the +/-1 locations
+                of the X and Y axes in the Control Space coordinate system.
+                Light will shine through the texture from either side (+/-Z).
+            }
+            detail varying
+            subtype texture
+            default ""
+        }
+
+        parameter string Space {
+            label {Control Space}
+            description {
+                This is set to the name of a coordinate system.
+                The edges of the gobo are defined by +/-1 locations of the Control Space X and Y axes.
+                Light will shine through the texture from either side (+/-Z).
+                If "shader" or blank, the object this is attached to will define the coordinate system.
+            }
+            provider variable
+            detail varying
+            subtype place3d
+            default "shader"
+        }
+
+
+        RSLClass {
+output "
+            public  uniform string  File = \"\";
+            public  uniform matrix  Matrix = matrix 1;
+"
+            generateMethod "public void begin()" {
+                generate *
+output "
+                uniform string  _TextureMap = [getvar TextureMap];
+                uniform string  _Space = [getvar Space];
+
+                if (_TextureMap != \"\")
+                {
+                    File = _TextureMap;
+
+                    if (_Space == \"\") _Space = \"shader\";
+                    Matrix = transform( _Space, matrix 1 );
+                }
+"
+            }
+        }
+	}
+
+  }
+}

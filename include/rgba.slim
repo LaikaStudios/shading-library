@@ -1,0 +1,76 @@
+##
+##  Copyright(c) 2013 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV rgba_s rgba 0 {
+        description {
+            A struct containing an rgb (color) triple and a color alpha value.
+        }
+
+        parameter color rgb {
+            label {rgb}
+            description {
+                rgb
+            }
+            default {0 0 0}
+        }
+
+        parameter color a {
+            label {a}
+            description {
+                alpha
+            }
+            default {0 0 0}
+        }
+
+        parameter rgba_s result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {rgba.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                    result->rgb = [getvar rgb];
+                    result->a = [getvar a];
+"
+                }
+            }
+        }
+    }
+
+    template visualizer rgba_s {
+        parameter rgba_s vis {}
+
+        RSLInclude {rgba.h}
+
+        RSLMain {
+            generate
+            output "
+                Ci = [getvar vis]->rgb;
+                Oi = [getvar vis]->a;
+            "
+        }
+    }
+
+  }
+}

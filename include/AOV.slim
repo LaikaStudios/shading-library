@@ -1,0 +1,402 @@
+##
+##  Copyright(c) 2011-2013 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV AOV_s AOV 1 {
+        description {
+            Writes an AOV value with the given Name and Type.
+        }
+
+        parameter string Name {
+            label {Name}
+            description {
+                The name of the AOV.
+            }
+            detail varying
+            default ""
+        }
+
+        parameter float NameRight {
+            label {NameRight}
+            description {
+                When on, creates a "NameRight" AOV with the same value as the "Name" AOV.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        slimattribute string Type {
+            label {Type}
+            description {
+                The type of the AOV.
+            }
+            subtype selector
+            range {
+                "Float" float
+                "Color" color
+                "Point" point
+                "Vector" vector
+                "Normal" normal
+            }
+            default float
+
+            msghandler {
+                SetValue - RevertValue {
+                    set param %obj
+                    set app [$param GetAppearance]
+
+                    set paramValue [$param GetValue]
+                    switch $paramValue {
+                        float {
+                            [$app GetProperties -name Float] SetDisplayLevel ""
+                            [$app GetProperties -name Color] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Point] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Vector] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Normal] SetDisplayLevel "hidden"
+                        }
+                        color {
+                            [$app GetProperties -name Float] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Color] SetDisplayLevel ""
+                            [$app GetProperties -name Point] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Vector] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Normal] SetDisplayLevel "hidden"
+                        }
+                        point {
+                            [$app GetProperties -name Float] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Color] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Point] SetDisplayLevel ""
+                            [$app GetProperties -name Vector] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Normal] SetDisplayLevel "hidden"
+                        }
+                        vector {
+                            [$app GetProperties -name Float] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Color] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Point] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Vector] SetDisplayLevel ""
+                            [$app GetProperties -name Normal] SetDisplayLevel "hidden"
+                        }
+                        normal {
+                            [$app GetProperties -name Float] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Color] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Point] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Vector] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Normal] SetDisplayLevel ""
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        parameter float Float {
+            label {Value}
+            description {
+                The value that will be written to the AOV.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        parameter color Color {
+            display hidden
+            label {Value}
+            description {
+                The value that will be written to the AOV.
+            }
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter point Point {
+            display hidden
+            label {Value}
+            description {
+                The value that will be written to the AOV.
+            }
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter vector Vector {
+            display hidden
+            label {Value}
+            description {
+                The value that will be written to the AOV.
+            }
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter normal Normal {
+            display hidden
+            label {Value}
+            description {
+                The value that will be written to the AOV.
+            }
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter AOV_s result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {AOV.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    switch [getval Type] {
+                        float {
+                            output "float tmp = [getvar Float];"
+                        }
+                        color {
+                            output "color tmp = [getvar Color];"
+                        }
+                        point {
+                            output "point tmp = [getvar Point];"
+                        }
+                        vector {
+                            output "vector tmp = [getvar Vector];"
+                        }
+                        normal {
+                            output "normal tmp = [getvar Normal];"
+                        }
+                    }
+output "
+                    writeaov( [getvar Name], tmp );
+
+                    if ([getvar NameRight])
+                    {
+                        uniform string  nameRight = concat( [getvar Name], \"Right\" );
+                        writeaov( nameRight, tmp );
+                    }
+"
+                }
+            }
+        }
+    }
+
+    templateV csAOV_s csAOVparam 0 {
+        description {
+            Writes an AOV value with the given Name and Type.
+        }
+
+        parameter string Name {
+            label {Name}
+            description {
+                The name of the AOV.
+            }
+            detail varying
+            default ""
+        }
+
+        parameter float NameRight {
+            label {NameRight}
+            description {
+                When on, creates a "NameRight" AOV with the same value as the "Name" AOV.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        slimattribute string Type {
+            label {Type}
+            description {
+                The type of the AOV.
+            }
+            subtype selector
+            range {
+                "Float" float
+                "Color" color
+                "Point" point
+                "Vector" vector
+                "Normal" normal
+            }
+            default float
+
+            msghandler {
+                SetValue - RevertValue {
+                    set param %obj
+                    set app [$param GetAppearance]
+
+                    set paramValue [$param GetValue]
+                    switch $paramValue {
+                        float {
+                            [$app GetProperties -name Float] SetDisplayLevel ""
+                            [$app GetProperties -name Color] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Point] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Vector] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Normal] SetDisplayLevel "hidden"
+                        }
+                        color {
+                            [$app GetProperties -name Float] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Color] SetDisplayLevel ""
+                            [$app GetProperties -name Point] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Vector] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Normal] SetDisplayLevel "hidden"
+                        }
+                        point {
+                            [$app GetProperties -name Float] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Color] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Point] SetDisplayLevel ""
+                            [$app GetProperties -name Vector] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Normal] SetDisplayLevel "hidden"
+                        }
+                        vector {
+                            [$app GetProperties -name Float] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Color] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Point] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Vector] SetDisplayLevel ""
+                            [$app GetProperties -name Normal] SetDisplayLevel "hidden"
+                        }
+                        normal {
+                            [$app GetProperties -name Float] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Color] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Point] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Vector] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Normal] SetDisplayLevel ""
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        parameter float Float {
+            label {Value}
+            description {
+                The value that will be written to the AOV.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        parameter color Color {
+            display hidden
+            label {Value}
+            description {
+                The value that will be written to the AOV.
+            }
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter point Point {
+            display hidden
+            label {Value}
+            description {
+                The value that will be written to the AOV.
+            }
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter vector Vector {
+            display hidden
+            label {Value}
+            description {
+                The value that will be written to the AOV.
+            }
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter normal Normal {
+            display hidden
+            label {Value}
+            description {
+                The value that will be written to the AOV.
+            }
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter float OiScale {
+            label {Oi Scale}
+            description {
+                When on, the aov value will be multiplied by the surface shader's Oi value.
+            }
+            detail varying
+            subtype switch
+            default 0
+        }
+
+        parameter AOV_s result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {AOV.h}
+        RSLInclude {sl.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                    varying color   _Oi = color 1;
+
+                    getvar( surface, \"postlighting_Oi\", _Oi );
+
+                    _Oi = mix( color 1, _Oi, [getvar OiScale] );
+"
+                    switch [getval Type] {
+                        float {
+                            output "float tmp = [getvar Float] * average( _Oi );"
+                        }
+                        color {
+                            output "color tmp = [getvar Color] * color( _Oi );"
+                        }
+                        point {
+                            output "point tmp = [getvar Point] * point( _Oi );"
+                        }
+                        vector {
+                            output "vector tmp = [getvar Vector] * vector( _Oi );"
+                        }
+                        normal {
+                            output "normal tmp = [getvar Normal] * normal( _Oi );"
+                        }
+                    }
+output "
+                    writeaov( [getvar Name], tmp );
+
+                    if ([getvar NameRight])
+                    {
+                        uniform string  nameRight = concat( [getvar Name], \"Right\" );
+                        writeaov( nameRight, tmp );
+                    }
+"
+                }
+            }
+        }
+    }
+
+  }
+}

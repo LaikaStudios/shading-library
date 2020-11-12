@@ -1,0 +1,1248 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+#
+#   A complete set of polymorphic mix functions for linearly interpolating
+#   between two templates of various types.
+#
+#   The prefix of the template name designates the template types used.
+#   A single letter designates the output type; a float is the controlling input.
+#   Two letters designate the input controlling type and output type respectively.
+#
+#   For multiple value controlling types, each component is used individually to
+#   control the interpolation.
+#
+	templateV float FMix 0 {
+        label {Mix}
+		description {
+            Linearly interpolates between the Zero and One parameter values as the Input varies between 0 and 1.
+		}
+
+		parameter float Input {
+			description {
+                When this equals 0, the Zero parameter's value will be returned.
+                When this equals 1, the One parameter's value will be returned.
+			}
+            defaultinput 1
+			provider variable
+            detail varying
+            range {0 1}
+			default .5
+		}
+
+		parameter float Invert {
+			label {Invert}
+			description {
+				If checked, flip the Input before using it: 0 produces the One value,
+                and 1 produces the Zero value.
+			}
+			provider variable
+            detail uniform
+			subtype switch
+			default 0
+		}
+
+        parameter float Limit {
+            label {Limit}
+            description {
+                Limits the effective range by clamping or smoothstepping the Input between 0 and 1.
+            }
+            provider variable
+            detail uniform
+            subtype selector
+            range {
+                "None" 0
+                "Clamp" 1
+                "Smoothstep" 2
+            }
+            default 0
+        }
+
+        parameter float Zero {
+            label {Zero}
+            description {
+                When the Input is 0, this value will result.
+            }
+            provider variable
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        parameter float One {
+            label {One}
+            description {
+                When the Input is 1, this value will result.
+            }
+            provider variable
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        parameter float result {
+            display hidden
+            access output
+        }
+
+		RSLFunction {
+		    void vfxFMix (
+                float   Input;
+                uniform float   Invert;
+                uniform float   Limit;
+                float   Zero;
+                float   One;
+
+                output float    result;
+            )
+            {
+                float   in = Input;
+
+                if (Invert)
+                    in = 1-in;
+
+                if (Limit == 1)
+                    in = clamp (in, 0, 1);
+                else if (Limit == 2)
+                    in = smoothstep (0, 1, in);
+
+                result = mix (Zero, One, in);
+            }
+		}
+	}
+
+	templateV color CMix 0 {
+        label {Mix}
+		description {
+            Linearly interpolates between the Zero and One parameter values as the Input varies between 0 and 1.
+		}
+
+		parameter float Input {
+			description {
+                When this equals 0, the Zero parameter's value will be returned.
+                When this equals 1, the One parameter's value will be returned.
+			}
+			provider variable
+            detail varying
+            range {0 1}
+			default .5
+		}
+
+		parameter float Invert {
+			label {Invert}
+			description {
+				If checked, flip the Input before using it: 0 produces the One value,
+                and 1 produces the Zero value.
+			}
+			provider variable
+            detail uniform
+			subtype switch
+			default 0
+		}
+
+        parameter float Limit {
+            label {Limit}
+            description {
+                Limits the effective range by clamping or smoothstepping the Input between 0 and 1.
+            }
+            provider variable
+            detail uniform
+            subtype selector
+            range {
+                "None" 0
+                "Clamp" 1
+                "Smoothstep" 2
+            }
+            default 0
+        }
+
+        parameter color Zero {
+            label {Zero}
+            description {
+                When the Input is 0, this value will result.
+            }
+            provider variable
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter color One {
+            label {One}
+            description {
+                When the Input is 1, this value will result.
+            }
+            provider variable
+            detail varying
+            default {1 1 1}
+        }
+
+        parameter color result {
+            display hidden
+            access output
+        }
+
+		RSLFunction {
+		    void vfxCMix (
+                float   Input;
+                uniform float   Invert;
+                uniform float   Limit;
+                color   Zero;
+                color   One;
+
+                output color    result;
+            )
+            {
+                float   in = Input;
+
+                if (Invert)
+                    in = 1-in;
+
+                if (Limit == 1)
+                    in = clamp (in, 0, 1);
+                else if (Limit == 2)
+                    in = smoothstep (0, 1, in);
+
+                result = mix (Zero, One, in);
+            }
+		}
+	}
+
+	templateV color CCMix 0 {
+        label {MixColor}
+		description {
+            Linearly interpolates between the Zero and One parameter component values
+            as the Input components vary between 0 and 1.
+		}
+
+		parameter color Input {
+			description {
+                When this equals 0, the Zero parameter's value will be returned.
+                When this equals 1, the One parameter's value will be returned.
+			}
+			provider variable
+            detail varying
+			default {.5 .5 .5}
+		}
+
+		parameter float Invert {
+			label {Invert}
+			description {
+				If checked, flip the Input before using it: 0 produces the One value,
+                and 1 produces the Zero value.
+			}
+			provider variable
+            detail uniform
+			subtype switch
+			default 0
+		}
+
+        parameter float Limit {
+            label {Limit}
+            description {
+                Limits the effective range by clamping or smoothstepping the Input between 0 and 1.
+            }
+            provider variable
+            detail uniform
+            subtype selector
+            range {
+                "None" 0
+                "Clamp" 1
+                "Smoothstep" 2
+            }
+            default 0
+        }
+
+        parameter color Zero {
+            label {Zero}
+            description {
+                When the Input is 0, this value will result.
+            }
+            provider variable
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter color One {
+            label {One}
+            description {
+                When the Input is 1, this value will result.
+            }
+            provider variable
+            detail varying
+            default {1 1 1}
+        }
+
+        parameter color result {
+            display hidden
+            access output
+        }
+
+        RSLInclude {sl.h}
+
+		RSLFunction {
+		    void vfxCCMix (
+                color   Input;
+                uniform float   Invert;
+                uniform float   Limit;
+                color   Zero;
+                color   One;
+
+                output color    result;
+            )
+            {
+                color   in = Input;
+
+                if (Invert)
+                    in = color 1 - in;
+
+                if (Limit == 1)
+                    in = clamp (in, color 0, color 1);
+                else if (Limit == 2)
+                    in = _smoothstep (color 0, color 1, in);
+
+                result = mix (Zero, One, in);
+            }
+		}
+	}
+
+	templateV shadingcomponent SCMix 0 {
+        label {Mix}
+		description {
+            Linearly interpolates between the Zero and One parameter values as the Input varies between 0 and 1.
+		}
+
+		parameter float Input {
+			description {
+                When this equals 0, the Zero parameter's value will be returned.
+                When this equals 1, the One parameter's value will be returned.
+			}
+			provider variable
+            detail varying
+            range {0 1}
+			default .5
+		}
+
+		parameter float Invert {
+			label {Invert}
+			description {
+				If checked, flip the Input before using it: 0 produces the One value,
+                and 1 produces the Zero value.
+			}
+			provider variable
+            detail uniform
+			subtype switch
+			default 0
+		}
+
+        parameter float Limit {
+            label {Limit}
+            description {
+                Limits the effective range by clamping or smoothstepping the Input between 0 and 1.
+            }
+            provider variable
+            detail uniform
+            subtype selector
+            range {
+                "None" 0
+                "Clamp" 1
+                "Smoothstep" 2
+            }
+            default 0
+        }
+
+        collection shadingcomponent Zero {
+            label {Zero}
+            description {
+                When the Input is 0, this value will result.
+            }
+            detail mustvary "laika,Flat#0"
+            parameter color zero_Color {detail mustvary}
+            eval [::aovInputParameterMacro zero]
+        }
+
+        collection shadingcomponent One {
+            label {One}
+            description {
+                When the Input is 1, this value will result.
+            }
+            detail mustvary "laika,GCL#1"
+            parameter color one_Color {detail mustvary}
+            eval [::aovInputParameterMacro one]
+        }
+
+        collection shadingcomponent result {
+            display hidden
+            access output
+            parameter color o_Color {access output}
+            eval [::aovOutputParameterMacro]
+        }
+
+        RSLInclude {pxslAOV.h}
+
+		RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                    float   in = Input;
+
+                    if (Invert)
+                        in = 1-in;
+
+                    if (Limit == 1)
+                        in = clamp (in, 0, 1);
+                    else if (Limit == 2)
+                        in = smoothstep (0, 1, in);
+
+                    o_Color = mix (zero_Color, one_Color, in);
+"
+                    foreach aov [safeeval ::aovGetAOVNames] {
+                        output "o_$aov = mix (zero_$aov, one_$aov, in);"
+                    }
+                }
+            }
+		}
+	}
+
+	templateV point PMix 1 {
+        label {Mix}
+		description {
+            Linearly interpolates between the Zero and One parameter values as the Input varies between 0 and 1.
+		}
+
+		parameter float Input {
+			description {
+                When this equals 0, the Zero parameter's value will be returned.
+                When this equals 1, the One parameter's value will be returned.
+			}
+			provider variable
+            detail varying
+            range {0 1}
+			default .5
+		}
+
+		parameter float Invert {
+			label {Invert}
+			description {
+				If checked, flip the Input before using it: 0 produces the One value,
+                and 1 produces the Zero value.
+			}
+			provider variable
+            detail uniform
+			subtype switch
+			default 0
+		}
+
+        parameter float Limit {
+            label {Limit}
+            description {
+                Limits the effective range by clamping or smoothstepping the Input between 0 and 1.
+            }
+            provider variable
+            detail uniform
+            subtype selector
+            range {
+                "None" 0
+                "Clamp" 1
+                "Smoothstep" 2
+            }
+            default 0
+        }
+
+        parameter point Zero {
+            label {Zero}
+            description {
+                When the Input is 0, this value will result.
+            }
+            provider variable
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter point One {
+            label {One}
+            description {
+                When the Input is 1, this value will result.
+            }
+            provider variable
+            detail varying
+            default {1 1 1}
+        }
+
+        parameter point result {
+            display hidden
+            access output
+        }
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    output "varying point   one;"
+                    set OneProvider [getpropertyinfo One provider]
+                    if {$OneProvider == "variable" || $OneProvider == "expression"} {
+                        output "one = transform (\"shader\", [getvar One]);"
+                    } else {
+                        output "one = [getvar One];"
+                    }
+
+                    output "varying point   zero;"
+                    set ZeroProvider [getpropertyinfo Zero provider]
+                    if {$ZeroProvider == "variable" || $ZeroProvider == "expression"} {
+                        output "zero = transform (\"shader\", [getvar Zero]);"
+                    } else {
+                        output "zero = [getvar Zero];"
+                    }
+output "
+                    varying float   in = [getvar Input];
+
+                    if ([getvar Invert])
+                        in = 1-in;
+
+                    if ([getvar Limit] == 1)
+                        in = clamp (in, 0, 1);
+                    else if ([getvar Limit] == 2)
+                        in = smoothstep (0, 1, in);
+
+                    result = mix (zero, one, in);
+"
+                }
+            }
+        }
+	}
+
+	templateV point PPMix 1 {
+        label {MixPoint}
+		description {
+            Linearly interpolates between the Zero and One parameter component values
+            as the Input components vary between 0 and 1.
+		}
+
+		parameter point Input {
+			description {
+                When this equals 0, the Zero parameter's value will be returned.
+                When this equals 1, the One parameter's value will be returned.
+			}
+			provider variable
+            detail varying
+			default {.5 .5 .5}
+		}
+
+		parameter float Invert {
+			label {Invert}
+			description {
+				If checked, flip the Input before using it: 0 produces the One value,
+                and 1 produces the Zero value.
+			}
+			provider variable
+            detail uniform
+			subtype switch
+			default 0
+		}
+
+        parameter float Limit {
+            label {Limit}
+            description {
+                Limits the effective range by clamping or smoothstepping the Input between 0 and 1.
+            }
+            provider variable
+            detail uniform
+            subtype selector
+            range {
+                "None" 0
+                "Clamp" 1
+                "Smoothstep" 2
+            }
+            default 0
+        }
+
+        parameter point Zero {
+            label {Zero}
+            description {
+                When the Input is 0, this value will result.
+            }
+            provider variable
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter point One {
+            label {One}
+            description {
+                When the Input is 1, this value will result.
+            }
+            provider variable
+            detail varying
+            default {1 1 1}
+        }
+
+        parameter point result {
+            display hidden
+            access output
+        }
+
+        RSLInclude {sl.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    output "varying point   in;"
+                    set InputProvider [getpropertyinfo Input provider]
+                    if {$InputProvider == "variable" || $InputProvider == "expression"} {
+                        output "in = transform (\"shader\", [getvar Input]);"
+                    } else {
+                        output "in = [getvar Input];"
+                    }
+
+                    output "varying point   one;"
+                    set OneProvider [getpropertyinfo One provider]
+                    if {$OneProvider == "variable" || $OneProvider == "expression"} {
+                        output "one = transform (\"shader\", [getvar One]);"
+                    } else {
+                        output "one = [getvar One];"
+                    }
+
+                    output "varying point   zero;"
+                    set ZeroProvider [getpropertyinfo Zero provider]
+                    if {$ZeroProvider == "variable" || $ZeroProvider == "expression"} {
+                        output "zero = transform (\"shader\", [getvar Zero]);"
+                    } else {
+                        output "zero = [getvar Zero];"
+                    }
+output "
+                    if ([getvar Invert])
+                        in = point 1 - vector in;
+
+                    if ([getvar Limit] == 1)
+                        in = clamp (in, point 0, point 1);
+                    else if ([getvar Limit] == 2)
+                        in = _smoothstep (point 0, point 1, in);
+
+                    result = mix (zero, one, color in);
+"
+                }
+            }
+        }
+	}
+
+	templateV vector VMix 1 {
+        label {Mix}
+		description {
+            Interpolates between the Zero and One parameter values as the Input varies between 0 and 1.
+            The output is not normalized. However, when using Spherical Linear interpolation, the inputs
+            should be normalized, and if so, the output will also be normalized.
+		}
+
+        parameter float Interpolation {
+            label {Interpolation}
+            description {
+                Selects whether to use Linear or Spherical Linear (slerp) interpolation.
+            }
+            provider variable
+            detail uniform
+            subtype selector
+            range {
+                Linear 0
+                {Spherical Linear} 1
+            }
+            default 0
+        }
+
+		parameter float Input {
+			description {
+                When this equals 0, the Zero parameter's value will be returned.
+                When this equals 1, the One parameter's value will be returned.
+			}
+			provider variable
+            detail varying
+            range {0 1}
+			default .5
+		}
+
+		parameter float Invert {
+			label {Invert}
+			description {
+				If checked, flip the Input before using it: 0 produces the One value,
+                and 1 produces the Zero value.
+			}
+			provider variable
+            detail uniform
+			subtype switch
+			default 0
+		}
+
+        parameter float Limit {
+            label {Limit}
+            description {
+                Limits the effective range by clamping or smoothstepping the Input between 0 and 1.
+            }
+            provider variable
+            detail uniform
+            subtype selector
+            range {
+                "None" 0
+                "Clamp" 1
+                "Smoothstep" 2
+            }
+            default 0
+        }
+
+        parameter vector Zero {
+            label {Zero}
+            description {
+                When the Input is 0, this value will result.
+            }
+            provider variable
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter vector One {
+            label {One}
+            description {
+                When the Input is 1, this value will result.
+            }
+            provider variable
+            detail varying
+            default {1 1 1}
+        }
+
+        parameter vector result {
+            display hidden
+            access output
+        }
+
+        RSLInclude {sl.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    output "varying vector  one;"
+                    set OneProvider [getpropertyinfo One provider]
+                    if {$OneProvider == "variable" || $OneProvider == "expression"} {
+                        output "one = vtransform (\"shader\", [getvar One]);"
+                    } else {
+                        output "one = [getvar One];"
+                    }
+
+                    output "varying vector  zero;"
+                    set ZeroProvider [getpropertyinfo Zero provider]
+                    if {$ZeroProvider == "variable" || $ZeroProvider == "expression"} {
+                        output "zero = vtransform (\"shader\", [getvar Zero]);"
+                    } else {
+                        output "zero = [getvar Zero];"
+                    }
+output "
+                    varying float   in = [getvar Input];
+
+                    if ([getvar Invert])
+                        in = 1-in;
+
+                    if ([getvar Limit] == 1)
+                        in = clamp (in, 0, 1);
+                    else if ([getvar Limit] == 2)
+                        in = smoothstep (0, 1, in);
+
+                    if ([getvar Interpolation])
+                        result = slerp (zero, one, in);
+                    else
+                        result = mix (zero, one, in);
+"
+                }
+            }
+        }
+	}
+
+	templateV vector VVMix 1 {
+        label {MixVector}
+		description {
+            Linearly interpolates between the Zero and One parameter component values
+            as the Input components vary between 0 and 1.
+		}
+
+		parameter vector Input {
+			description {
+                When this equals 0, the Zero parameter's value will be returned.
+                When this equals 1, the One parameter's value will be returned.
+			}
+			provider variable
+            detail varying
+			default {.5 .5 .5}
+		}
+
+		parameter float Invert {
+			label {Invert}
+			description {
+				If checked, flip the Input before using it: 0 produces the One value,
+                and 1 produces the Zero value.
+			}
+			provider variable
+            detail uniform
+			subtype switch
+			default 0
+		}
+
+        parameter float Limit {
+            label {Limit}
+            description {
+                Limits the effective range by clamping or smoothstepping the Input between 0 and 1.
+            }
+            provider variable
+            detail uniform
+            subtype selector
+            range {
+                "None" 0
+                "Clamp" 1
+                "Smoothstep" 2
+            }
+            default 0
+        }
+
+        parameter vector Zero {
+            label {Zero}
+            description {
+                When the Input is 0, this value will result.
+            }
+            provider variable
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter vector One {
+            label {One}
+            description {
+                When the Input is 1, this value will result.
+            }
+            provider variable
+            detail varying
+            default {1 1 1}
+        }
+
+        parameter vector result {
+            display hidden
+            access output
+        }
+
+        RSLInclude {sl.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    output "varying vector  in;"
+                    set InputProvider [getpropertyinfo Input provider]
+                    if {$InputProvider == "variable" || $InputProvider == "expression"} {
+                        output "in = vtransform (\"shader\", [getvar Input]);"
+                    } else {
+                        output "in = [getvar Input];"
+                    }
+
+                    output "varying vector  one;"
+                    set OneProvider [getpropertyinfo One provider]
+                    if {$OneProvider == "variable" || $OneProvider == "expression"} {
+                        output "one = vtransform (\"shader\", [getvar One]);"
+                    } else {
+                        output "one = [getvar One];"
+                    }
+
+                    output "varying vector  zero;"
+                    set ZeroProvider [getpropertyinfo Zero provider]
+                    if {$ZeroProvider == "variable" || $ZeroProvider == "expression"} {
+                        output "zero = vtransform (\"shader\", [getvar Zero]);"
+                    } else {
+                        output "zero = [getvar Zero];"
+                    }
+output "
+                    if ([getvar Invert])
+                        in = vector 1 - in;
+
+                    if ([getvar Limit] == 1)
+                        in = clamp (in, vector 0, vector 1);
+                    else if ([getvar Limit] == 2)
+                        in = _smoothstep (vector 0, vector 1, in);
+
+                    result = mix (zero, one, color in);
+"
+                }
+            }
+        }
+	}
+
+	templateV manifold MMix 1 {
+        label {Mix}
+		description {
+            Linearly interpolates between the Zero and One parameter values as the Input varies between 0 and 1.
+		}
+
+		parameter float Input {
+			description {
+                When this equals 0, the Zero parameter's value will be returned.
+                When this equals 1, the One parameter's value will be returned.
+			}
+			provider variable
+            detail varying
+            range {0 1}
+			default .5
+		}
+
+		parameter float Invert {
+			label {Invert}
+			description {
+				If checked, flip the Input before using it: 0 produces the One value,
+                and 1 produces the Zero value.
+			}
+			provider variable
+            detail uniform
+			subtype switch
+			default 0
+		}
+
+        parameter float Limit {
+            label {Limit}
+            description {
+                Limits the effective range by clamping or smoothstepping the Input between 0 and 1.
+            }
+            provider variable
+            detail uniform
+            subtype selector
+            range {
+                "None" 0
+                "Clamp" 1
+                "Smoothstep" 2
+            }
+            default 0
+        }
+
+        collection manifold Zero {
+            detail varying
+            parameter point ZeroQ {
+                detail varying
+                default {0 0 0}
+            }
+            parameter vector ZerodQu {
+                detail varying
+                default {0 0 0}
+            }
+            parameter vector ZerodQv {
+                detail varying
+                default {0 0 0}
+            }
+        }
+
+        collection manifold One {
+            detail varying
+            parameter point OneQ {
+                detail varying
+                default {1 1 1}
+            }
+            parameter vector OnedQu {
+                detail varying
+                default {0 0 0}
+            }
+            parameter vector OnedQv {
+                detail varying
+                default {0 0 0}
+            }
+        }
+
+        collection manifold result {
+            display hidden
+            access output
+            parameter point Q {
+                access output
+            }
+            parameter vector dQu {
+                access output
+            }
+            parameter vector dQv {
+                access output
+            }
+        }
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    output "varying point   zeroQ;"
+                    set ZeroQProvider [getpropertyinfo ZeroQ provider]
+                    if {$ZeroQProvider == "variable" || $ZeroQProvider == "expression"} {
+                        output "zeroQ = transform (\"shader\", [getvar ZeroQ]);"
+                    } else {
+                        output "zeroQ = [getvar ZeroQ];"
+                    }
+                    output "varying vector  zerodQu;"
+                    set ZerodQuProvider [getpropertyinfo ZerodQu provider]
+                    if {$ZerodQuProvider == "variable" || $ZerodQuProvider == "expression"} {
+                        output "zerodQu = vtransform (\"shader\", [getvar ZerodQu]);"
+                    } else {
+                        output "zerodQu = [getvar ZerodQu];"
+                    }
+                    output "varying vector  zerodQv;"
+                    set ZerodQvProvider [getpropertyinfo ZerodQv provider]
+                    if {$ZerodQvProvider == "variable" || $ZerodQvProvider == "expression"} {
+                        output "zerodQv = vtransform (\"shader\", [getvar ZerodQv]);"
+                    } else {
+                        output "zerodQv = [getvar ZerodQv];"
+                    }
+
+                    output "varying point   oneQ;"
+                    set OneQProvider [getpropertyinfo OneQ provider]
+                    if {$OneQProvider == "variable" || $OneQProvider == "expression"} {
+                        output "oneQ = transform (\"shader\", [getvar OneQ]);"
+                    } else {
+                        output "oneQ = [getvar OneQ];"
+                    }
+                    output "varying vector  onedQu;"
+                    set OnedQuProvider [getpropertyinfo OnedQu provider]
+                    if {$OnedQuProvider == "variable" || $OnedQuProvider == "expression"} {
+                        output "onedQu = vtransform (\"shader\", [getvar OnedQu]);"
+                    } else {
+                        output "onedQu = [getvar OnedQu];"
+                    }
+                    output "varying vector  onedQv;"
+                    set OnedQvProvider [getpropertyinfo OnedQv provider]
+                    if {$OnedQvProvider == "variable" || $OnedQvProvider == "expression"} {
+                        output "onedQv = vtransform (\"shader\", [getvar OnedQv]);"
+                    } else {
+                        output "onedQv = [getvar OnedQv];"
+                    }
+output "
+                    varying float   in = [getvar Input];
+
+                    if ([getvar Invert])
+                        in = 1 - in;
+
+                    if ([getvar Limit] == 1)
+                        in = clamp (in, 0, 1);
+                    else if ([getvar Limit] == 2)
+                        in = smoothstep (0, 1, in);
+
+                    Q = mix (zeroQ, oneQ, in);
+#if SLIM_SHADERTYPEID == SLIM_TYPEID_volume
+                    dQu = vector 0;
+                    dQv = vector 0;
+#else
+                    dQu = vector Du(Q)*du;
+                    dQv = vector Dv(Q)*dv;
+#endif
+"
+                }
+            }
+        }
+	}
+
+	templateV manifold MMMix 1 {
+        label {MixManifold}
+		description {
+            Linearly interpolates between the Zero and One parameter values as the Input components vary between 0 and 1.
+		}
+
+        collection manifold Input {
+			description {
+                When this equals 0, the Zero parameter's value will be returned.
+                When this equals 1, the One parameter's value will be returned.
+			}
+            detail varying
+            parameter point InputQ {
+                detail varying
+                default {0 0 0}
+            }
+            parameter vector InputdQu {
+                detail varying
+                default {0 0 0}
+            }
+            parameter vector InputdQv {
+                detail varying
+                default {0 0 0}
+            }
+        }
+
+		parameter float Invert {
+			label {Invert}
+			description {
+				If checked, flip the Input before using it: 0 produces the One value,
+                and 1 produces the Zero value.
+			}
+			provider variable
+            detail uniform
+			subtype switch
+			default 0
+		}
+
+        parameter float Limit {
+            label {Limit}
+            description {
+                Limits the effective range by clamping or smoothstepping the Input between 0 and 1.
+            }
+            provider variable
+            detail uniform
+            subtype selector
+            range {
+                "None" 0
+                "Clamp" 1
+                "Smoothstep" 2
+            }
+            default 0
+        }
+
+        collection manifold Zero {
+            detail varying
+            parameter point ZeroQ {
+                detail varying
+                default {0 0 0}
+            }
+            parameter vector ZerodQu {
+                detail varying
+                default {0 0 0}
+            }
+            parameter vector ZerodQv {
+                detail varying
+                default {0 0 0}
+            }
+        }
+
+        collection manifold One {
+            detail varying
+            parameter point OneQ {
+                detail varying
+                default {1 1 1}
+            }
+            parameter vector OnedQu {
+                detail varying
+                default {0 0 0}
+            }
+            parameter vector OnedQv {
+                detail varying
+                default {0 0 0}
+            }
+        }
+
+        collection manifold result {
+            display hidden
+            access output
+            parameter point Q {
+                access output
+            }
+            parameter vector dQu {
+                access output
+            }
+            parameter vector dQv {
+                access output
+            }
+        }
+
+        RSLInclude {sl.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    output "varying point   inQ;"
+                    set InputQProvider [getpropertyinfo InputQ provider]
+                    if {$InputQProvider == "variable" || $InputQProvider == "expression"} {
+                        output "inQ = transform (\"shader\", [getvar InputQ]);"
+                    } else {
+                        output "inQ = [getvar InputQ];"
+                    }
+                    output "varying vector  indQu;"
+                    set InputdQuProvider [getpropertyinfo InputdQu provider]
+                    if {$InputdQuProvider == "variable" || $InputdQuProvider == "expression"} {
+                        output "indQu = vtransform (\"shader\", [getvar InputdQu]);"
+                    } else {
+                        output "indQu = [getvar InputdQu];"
+                    }
+                    output "varying vector  indQv;"
+                    set InputdQvProvider [getpropertyinfo InputdQv provider]
+                    if {$InputdQvProvider == "variable" || $InputdQvProvider == "expression"} {
+                        output "indQv = vtransform (\"shader\", [getvar InputdQv]);"
+                    } else {
+                        output "indQv = [getvar InputdQv];"
+                    }
+
+                    output "varying point   zeroQ;"
+                    set ZeroQProvider [getpropertyinfo ZeroQ provider]
+                    if {$ZeroQProvider == "variable" || $ZeroQProvider == "expression"} {
+                        output "zeroQ = transform (\"shader\", [getvar ZeroQ]);"
+                    } else {
+                        output "zeroQ = [getvar ZeroQ];"
+                    }
+                    output "varying vector  zerodQu;"
+                    set ZerodQuProvider [getpropertyinfo ZerodQu provider]
+                    if {$ZerodQuProvider == "variable" || $ZerodQuProvider == "expression"} {
+                        output "zerodQu = vtransform (\"shader\", [getvar ZerodQu]);"
+                    } else {
+                        output "zerodQu = [getvar ZerodQu];"
+                    }
+                    output "varying vector  zerodQv;"
+                    set ZerodQvProvider [getpropertyinfo ZerodQv provider]
+                    if {$ZerodQvProvider == "variable" || $ZerodQvProvider == "expression"} {
+                        output "zerodQv = vtransform (\"shader\", [getvar ZerodQv]);"
+                    } else {
+                        output "zerodQv = [getvar ZerodQv];"
+                    }
+
+                    output "varying point   oneQ;"
+                    set OneQProvider [getpropertyinfo OneQ provider]
+                    if {$OneQProvider == "variable" || $OneQProvider == "expression"} {
+                        output "oneQ = transform (\"shader\", [getvar OneQ]);"
+                    } else {
+                        output "oneQ = [getvar OneQ];"
+                    }
+                    output "varying vector  onedQu;"
+                    set OnedQuProvider [getpropertyinfo OnedQu provider]
+                    if {$OnedQuProvider == "variable" || $OnedQuProvider == "expression"} {
+                        output "onedQu = vtransform (\"shader\", [getvar OnedQu]);"
+                    } else {
+                        output "onedQu = [getvar OnedQu];"
+                    }
+                    output "varying vector  onedQv;"
+                    set OnedQvProvider [getpropertyinfo OnedQv provider]
+                    if {$OnedQvProvider == "variable" || $OnedQvProvider == "expression"} {
+                        output "onedQv = vtransform (\"shader\", [getvar OnedQv]);"
+                    } else {
+                        output "onedQv = [getvar OnedQv];"
+                    }
+output "
+                    if ([getvar Invert])
+                        inQ = point 1 - vector inQ;
+
+                    if ([getvar Limit] == 1)
+                        inQ = clamp (inQ, point 0, point 1);
+                    else if ([getvar Limit] == 2)
+                        inQ = _smoothstep (point 0, point 1, inQ);
+
+                    Q = mix (zeroQ, oneQ, color inQ);
+#if SLIM_SHADERTYPEID == SLIM_TYPEID_volume
+                    dQu = vector 0;
+                    dQv = vector 0;
+#else
+                    dQu = vector Du(Q)*du;
+                    dQv = vector Dv(Q)*dv;
+#endif
+"
+                }
+            }
+        }
+	}
+
+  }
+}

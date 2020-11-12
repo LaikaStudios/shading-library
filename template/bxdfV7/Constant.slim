@@ -1,0 +1,198 @@
+##
+##  Copyright(c) 2013-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV bxdfV7Constant_s bxdfV7Constant 0 {
+        description {
+            A Constant response.
+            Computed in postlighting(), so does not influence the diffuse cache.
+        }
+
+        parameter float OnOff {
+            label {On Off}
+            description {
+                Turn this response on or off.
+                On(1) = Normal Computation.
+                Bypass(0) = Don't show its response in the result.
+                Kill(-1) = Remove it from the Material.
+                <
+            }
+            detail varying
+            subtype selector
+            range {
+                "On" 1
+                "Bypass" 0
+                "Kill" -1
+            }
+            default 1
+        }
+        parameter coshader OnOff_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float NormOnOff {
+            label {Normalize On}
+            description {
+                Does this response participate in the Intensity Normalization within this Layer or not?
+                Note that when this is first turned off, the intensities of all the normalized responses
+                (including it) will change. But once it's been removed from that computation, further changes
+                will not interact with the rest of the responses.
+                <
+            }
+            detail varying
+            subtype switch
+            default 1
+        }
+        parameter coshader NormOnOff_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float Intensity {
+            description {
+                The Intensity of the response.
+                <
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+        parameter coshader Intensity_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter color Color {
+            label {Color}
+            description {
+                The color of the response.
+                <
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter coshader Color_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float ColorMix {
+            label {Use Color}
+            description {
+                Determines how much of the Color is used in the response.
+                <
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+        parameter coshader ColorMix_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter color Occlusion {
+            label {Occlusion}
+            description {
+                Scale the result by this (linear) value.
+                Can be used to add shadowing to the result.
+                <
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter coshader Occlusion_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float Radiance {
+            label {Radiance}
+            description {
+                Turns radiance on/off.
+                When off, this will only be visible to the camera.
+            }
+            detail varying
+            subtype switch
+            default 1
+        }
+
+        parameter bxdfV7Constant_s result {
+            display hidden
+            access output
+        }
+
+
+#        RSLInclude {bxdfV7/Constant.h} -within body
+
+        RSLInclude {coreV7/override.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+
+                    set overrideParam "OnOff"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "NormOnOff"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "Intensity"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "Color"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying color _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "ColorMix"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "Occlusion"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying color _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    output "varying float _Radiance = [getvar Radiance];"
+output "
+                    result->OnOff = _OnOff;
+                    result->NormOnOff = _NormOnOff * step( -0.5, _OnOff );  // Do not normalize if killed.
+                    result->Intensity = _Intensity;
+                    result->Color = _Color;
+                    result->ColorMix = _ColorMix;
+                    result->Occlusion = _Occlusion;
+                    result->Radiance = _Radiance;
+"
+                }
+            }
+        }
+    }
+
+  }
+}

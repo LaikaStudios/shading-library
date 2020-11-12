@@ -1,0 +1,406 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV multiple Float 1 {
+        description {
+            Outputs the float Value as any number of types.
+        }
+
+        parameter float Value {
+            description {
+                Use this as a common Value for any number of other parameters.
+            }
+            provider variable
+            detail varying
+            subtype slider
+            range {-5 5}
+            default 1
+        }
+
+        parameter float Scale {
+            label {Scale}
+            description {
+                Multiply the output value by this amount.
+            }
+            detail varying
+            subtype slider
+            range {0 5}
+            default 1
+        }
+
+        parameter float Fresult {
+            label {float}
+            display hidden
+            access output
+        }
+        parameter color Cresult {
+            label {color}
+            display hidden
+            access output
+        }
+        parameter point Presult {
+            label {point}
+            display hidden
+            access output
+        }
+        parameter vector Vresult {
+            label {vector}
+            display hidden
+            access output
+        }
+        parameter normal Nresult {
+            label {normal}
+            display hidden
+            access output
+        }
+        parameter float Sresult {
+            label {Scale}
+            display hidden
+            access output
+        }
+
+        RSLFunction {
+            void vfxFloat (
+                varying float   Value;
+                varying float   Scale;
+
+                output float    Fresult;
+                output color    Cresult;
+                output point    Presult;
+                output vector   Vresult;
+                output normal   Nresult;
+                output float    Sresult;
+            ) {
+                Fresult = Scale * Value;
+
+                Cresult = color  Fresult;
+                Presult = point  Fresult;
+                Vresult = vector Fresult;
+                Nresult = normal Fresult;
+                Sresult = Scale;
+            }
+        }
+    }
+
+    templateV multiple Color 1 {
+        description {
+            Outputs the color Value as any number of types.
+        }
+
+        parameter color Value {
+            description {
+                Use this as a common Value for any number of other parameters.
+            }
+            provider variable
+            detail varying
+            default {1 1 1}
+        }
+
+        parameter float Conversion {
+            label {Float Conversion}
+            description {
+                Select what type of color to float conversion to use
+                for the float output.
+            }
+            detail uniform
+            subtype selector
+            range {
+                "Luma" 3
+                "Average" 4
+                "Max" 5
+                "Min" 6
+                "Value(0)" 0
+                "Value(1)" 1
+                "Value(2)" 2
+            }
+            default 3
+        }
+
+        parameter float PVNConversion {
+            label {Triple Conversion}
+            description {
+                Selects how the Value range is converted into the Point, Vector,
+                or Normal output range.
+                "None" just does a direct copy.
+                "0,1 -> -1,1" remaps 0 to 1 values into -1 to 1 in the result.
+            }
+            detail uniform
+            subtype selector
+            range {
+                "None" 0
+                "0,1 -> -1,1" 1
+            }
+            default 0
+        }
+
+        parameter float Scale {
+            label {Scale}
+            description {
+                Multiply the conversion result by this amount.
+            }
+            detail varying
+            subtype slider
+            range {0 5}
+            default 1
+        }
+
+        parameter float Fresult {
+            label {float}
+            display hidden
+            access output
+        }
+        parameter color Cresult {
+            label {color}
+            display hidden
+            access output
+        }
+        parameter point Presult {
+            label {point}
+            display hidden
+            access output
+        }
+        parameter vector Vresult {
+            label {vector}
+            display hidden
+            access output
+        }
+        parameter normal Nresult {
+            label {normal}
+            display hidden
+            access output
+        }
+        parameter float Sresult {
+            label {Scale}
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {color.h}
+
+        RSLFunction {
+            void vfxColor (
+                varying color   Value;
+                uniform float   Conversion;
+                uniform float   PVNConversion;
+                varying float   Scale;
+
+                output float    Fresult;
+                output color    Cresult;
+                output point    Presult;
+                output vector   Vresult;
+                output normal   Nresult;
+                output float    Sresult;
+            ) {
+                if (Conversion < 3) {
+                    Fresult = Value[Conversion];
+                } else {
+                    if (Conversion == 3)
+                        Fresult = colorRGBToLuma (Value);
+                    else if (Conversion == 4)
+                        Fresult = (Value[0] + Value[1] + Value[2]) / 3;
+                    else if (Conversion == 5)
+                        Fresult = max (Value[0], Value[1], Value[2]);
+                    else
+                        Fresult = min (Value[0], Value[1], Value[2]);
+                }
+                Fresult *= Scale;
+
+                Cresult = Scale * Value;
+
+                varying color   triple = Value;
+                if (PVNConversion == 1) {
+                    triple = _mix (-1, 1, Value);
+                }
+                triple *= Scale;
+
+                Presult = point triple;
+                Vresult = vector triple;
+                Nresult = normal triple;
+                Sresult = Scale;
+            }
+        }
+    }
+
+    set TemplatePrototype {
+        templateV multiple %Name 2 {
+            description {
+                Outputs the %Type Value as any number of types.
+            }
+
+            parameter %Type Value {
+                description {
+                    Use this as a common Value for any number of other parameters.
+                }
+                provider variable
+                detail varying
+                default {1 1 1}
+            }
+
+            slimattribute string FConversion {
+                label {Float Conversion}
+                description {
+                    Select what type of float conversion to use for the float output.
+                }
+                subtype selector
+                range {
+                    "Length" 3
+                    "Average" 4
+                    "Max" 5
+                    "Min" 6
+                    "Value(0)" 0
+                    "Value(1)" 1
+                    "Value(2)" 2
+                }
+                default 3
+            }
+
+            slimattribute string PVNConversion {
+                label {Triple Conversion}
+                description {
+                    Selects how the Value range is converted into the Color, Point, Vector,
+                    or Normal output range.
+                    "None" just does a direct copy.
+                    "0,1 -> -1,1" remaps 0 to 1 values into -1 to 1 in the result.
+                    "-1,1 -> 0,1" remaps -1 to 1 values into 0 to 1 in the result.
+                }
+                subtype selector
+                range {
+                    "None" 0
+                    " 0,1 -> -1,1" 1
+                    "-1,1 ->  0,1" 2
+                }
+                default 0
+            }
+
+            parameter float Scale {
+                label {Scale}
+                description {
+                    Multiply the Conversion result by this amount.
+                }
+                detail varying
+                subtype slider
+                range {0 5}
+                default 1
+            }
+
+            parameter color Fresult {
+                label {float}
+                display hidden
+                access output
+            }
+            parameter color Cresult {
+                label {color}
+                display hidden
+                access output
+            }
+            parameter point Presult {
+                label {point}
+                display hidden
+                access output
+            }
+            parameter vector Vresult {
+                label {vector}
+                display hidden
+                access output
+            }
+            parameter normal Nresult {
+                label {normal}
+                display hidden
+                access output
+            }
+            parameter float Sresult {
+                label {Scale}
+                display hidden
+                access output
+            }
+
+            RSLInclude {sl.h}
+
+            RSLSource DynamicFunction {
+                proc primvars {} {}
+                proc function {} {
+                    generateBody {
+output "
+                        varying vector  value;
+"
+                        set provider [getpropertyinfo Value provider]
+                        if {$provider == "variable" || $provider == "expression"} {
+                            output "value = vector (%Type %transform (\"shader\", [getvar Value]));"
+                        } else {
+                            output "value = vector [getvar Value];"
+                        }
+
+                        switch [getval FConversion] {
+                            0 - 2 {
+                                output "Fresult = value\[[getval FConversion]\];"
+                            }
+                            4 {
+                                output "Fresult = (value\[0\] + value\[1\] + value\[2\]) / 3;"
+                            }
+                            5 {
+                                output "Fresult = max (value\[0\], value\[1\], value\[2\]);"
+                            }
+                            6 {
+                                output "Fresult = min (value\[0\], value\[1\], value\[2\]);"
+                            }
+                            default {
+                                output "Fresult = length(value);"
+                            }
+                        }
+output "
+                        Fresult *= [getvar Scale];
+"
+                        switch [getval PVNConversion] {
+                            1 {
+                                output "value = _mix (-1, 1, value);"
+                            }
+                            2 {
+                                output "value = linear (-1, 1, value);"
+                            }
+                        }
+output "
+                        value *= [getvar Scale];
+
+                        Cresult = color value;
+                        Presult = point value;
+                        Vresult = vector value;
+                        Nresult = normal value;
+                        Sresult = [getvar Scale];
+"
+                    }
+                }
+            }
+        }
+    }
+
+    #
+    # Generate the various types of template.
+    #
+    foreach  {type xform name} {point transform Point vector vtransform Vector normal ntransform Normal} {
+        regsub -all %Type $TemplatePrototype $type result
+        regsub -all %Name $result $name result
+        regsub -all %transform $result $xform result
+        if [catch $result msg] {
+            ::RAT::LogMsg ERROR $msg
+        }
+    }
+
+  }
+}

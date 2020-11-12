@@ -1,0 +1,235 @@
+##
+##  Copyright(c) 2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    set TemplatePrototype {
+        templateV %Type %TypeFit 0 {
+            description {
+                Fit converts the Input value's range to a new range of values.
+                Uses two values from the Input and two from the Output to define the mapping.
+                There are also various controls for adjusting how the mapping occurs.
+            }
+
+            parameter %Type Input {
+                description {
+                    Alter this value's range.
+                }
+                defaultinput 1
+                detail varying
+                default %Default
+            }
+
+            collection void Original {
+                label {Original Values}
+                description {
+                    These are the values of Input that will be re-mapped to the New Values.
+                }
+                state open
+
+                parameter %Type OrigA {
+                    label {Input A}
+                    description {
+                        This value from the Input will be re-mapped to the Output A parameter's value.
+                    }
+                    detail varying
+                    range {0 1}
+                    default %A
+                }
+
+                parameter %Type OrigB {
+                    label {Input B}
+                    description {
+                        This value from the Input will be re-mapped to the Output B parameter's value.
+                    }
+                    detail varying
+                    range {0 1}
+                    default %B
+                }
+            }
+
+            collection void New {
+                label {New Values}
+                description {
+                    These are the new values the Original A and B values from the Input will become.
+                }
+                state open
+
+                parameter %Type NewA {
+                    label {Output A}
+                    description {
+                        The new value Input A will have.
+                    }
+                    detail varying
+                    range {0 1}
+                    default %A
+                }
+
+                parameter %Type NewB {
+                    label {Output B}
+                    description {
+                        The new value Input B will have.
+                    }
+                    detail varying
+                    range {0 1}
+                    default %B
+                }
+            }
+
+            slimattribute string Conversion {
+                label {Conversion}
+                description {
+                    Selects the type of Conversion to perform: the function mapping from
+                    the Original values to the New values.
+                }
+                subtype selector
+                range {
+                    "Linear" Linear
+                    "Linear Step" LinearStep
+                    "Smoothstep" Smoothstep
+                    "Clamp" Clamp
+                }
+                default Linear
+
+                msghandler {
+                    SetValue - RevertValue {
+                        set value [%obj GetValue]
+                        set app [%obj GetAppearance]
+
+                        switch $value {
+                            LinearStep {
+                                [$app GetProperties -name Width] SetDisplayLevel ""
+                            }
+                            default {
+                                [$app GetProperties -name Width] SetDisplayLevel "hidden"
+                            }
+                        }
+
+                        $app UpdateEditor
+                    }
+                }
+            }
+
+            parameter float Width {
+                display hidden
+                label {Transition Width}
+                description {
+                    The width (as a percentage of the A to B range) the rounded transitions
+                    from linear to flat the function will have.
+                }
+                detail varying
+                subtype slider
+                range {0 .5}
+                default .15
+            }
+
+            parameter float Exponent {
+                label {Exponent}
+                description {
+                    Raise the function-segment between A and B to this power.
+                    Values above 1 will "flatten" the result near A and "steepen" it near B.
+                    Values less than 1 will have the opposite effect.
+                }
+                detail varying
+                subtype slider
+                range {.25 4}
+                default 1
+            }
+
+            slimattribute float Invert {
+                label {Invert}
+                description {
+                    Inverts the result.
+                }
+                subtype switch
+                default 0
+            }
+
+            parameter %Type result {
+                display hidden
+                access output
+            }
+
+            RSLInclude {sl.h}
+            RSLInclude {math.h}
+
+            RSLSource DynamicFunction {
+                proc primvars {} {}
+                proc function {} {
+                    generateBody {
+                        switch [getval Conversion] {
+                            Linear {
+output "                        result = linear ([getvar OrigA], [getvar OrigB], [getvar Input]);"
+                            }
+                            LinearStep {
+output "
+                                result = linear ([getvar OrigA], [getvar OrigB], [getvar Input]);
+                                result = mathLinearSpline ([getvar Width], [getvar Width], result);
+"
+                            }
+                            Smoothstep {
+output "                        result = _smoothstep ([getvar OrigA], [getvar OrigB], [getvar Input]);"
+                            }
+                            Clamp {
+output "                        result = linearstep ([getvar OrigA], [getvar OrigB], [getvar Input]);"
+                            }
+                        }
+output "
+                        varying %Type   absResult = _abs(result);
+                        varying %Type   signResult = _sign(result);
+
+                        result = _pow (absResult, [getvar Exponent]);
+                        result *= signResult;
+                        result = _mix ([getvar NewA], [getvar NewB], result);
+"
+                        if {[getval Invert]} {
+                            switch %Type {
+                                float - color {
+                                    output "result = %Type(1) - result;"
+                                }
+                                point - vector {
+                                    output "result = -result;"
+                                }
+                            }
+                            
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #
+    # Generate the various types of template.
+    #
+    foreach  {Type Name A B Default} {
+        float  Float  0 1 .5
+        color  Color  {{0 0 0}} {{1 1 1}} {{.5 .5 .5}}
+        point  Point  {{0 0 0}} {{1 1 1}} {{.5 .5 .5}}
+        vector Vector {{0 0 0}} {{1 1 1}} {{.5 .5 .5}}
+    } {
+        regsub -all %Type $TemplatePrototype $Type result
+        regsub -all %Name $result $Name result
+        regsub -all %A $result $A result
+        regsub -all %B $result $B result
+        regsub -all %Default $result $Default result
+        if [catch $result msg] {
+            ::RAT::LogMsg ERROR $msg
+        }
+    }
+
+  }
+}

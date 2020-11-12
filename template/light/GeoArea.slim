@@ -1,0 +1,947 @@
+##
+##  Copyright(c) 2014-2015 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV arealight GeoArea 1 {
+        lighttype geoAreaLight
+        description {
+            A Geometric Area light.
+        }
+
+        eval [::__categoryParam "stdrsl_plausible,ikaGeolight"]
+
+        parameter string __group {
+            label {__group}
+            description {
+                Designate what __group this light belongs to.
+                The effect of all lights in a given group can be output as AOV's by the Material shader.
+                While a light may belong to many categories, it can only be assigned a single __group.
+            }
+            provider parameterlist
+            detail uniform
+            default ""
+        }
+
+        parameter string shape {
+            label {Shape}
+            description {
+                Selects the Shape of the light source geometry.
+            }
+            provider parameterlist
+            subtype selector
+            range {
+                "Rectangle (non-map)" rect
+                "Rectangle" texrect
+                "Disk" disk
+                "Sphere (non-map)" sphere
+                "Sphere" texsphere
+                "Cylinder" cylinder
+                "Distant (non-map)" distant
+                "Spot" spot
+            }
+            default rect
+        }
+
+        parameter float angularVisibility {
+            label {Distant Angle}
+            description {
+                A Distant geometric light is not represented by a physical object,
+                but is specified by the angle (in degrees) the light subtends.
+                For example, the sun and moon subtend approximately 0.525 degrees.
+            }
+            provider parameterlist
+            subtype slider
+            range {0 45}
+            default 10
+        }
+
+        parameter float Enable {
+            label {Enable}
+            description {
+                Determines how much effect this will have.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        parameter float Intensity {
+            label {Intensity}
+            description {
+                The sRGB intensity of the light.
+            }
+            detail varying
+            subtype slider
+            range {0 10}
+            default 1
+        }
+
+        parameter float Exposure {
+            label {Exposure}
+            description {
+                Exposure compensation. 0 produces no change in light intensity.
+                Positive values increase the intensity, negative ones decrease it.
+                +1 increases the intensity by one stop. -1 decreases it by one stop.
+            }
+            detail varying
+            subtype slider
+            range {-2 2}
+            default 0
+        }
+
+       parameter color Color {
+            label {Color}
+            description {
+                The color of the light. You can connect a pattern generator here
+                or simply use a constant color.
+                If a Map is provided, this will be used to tint it.
+            }
+            detail varying
+            default {1 1 1}
+        }
+
+        parameter string ColorMode {
+            label {Color Mode}
+            description {
+                Selects whether the Color parameter is an sRGB or light-linear value.
+            }
+            detail uniform
+            subtype selector
+            range {
+                "sRGB"   sRGB
+                "Linear" Linear
+            }
+            default Linear
+        }
+
+        collection void MapControls {
+            label {Map Controls}
+            description {
+                These controls will map a texture onto the light's surface using st space,
+                modulating its radiance.
+            }
+
+            parameter string ColorMap {
+                label {Map}
+                description {
+                    This texture Map will be used to vary the color of the light source's surface,
+                    mapped to the st space of the light geometry.
+                    If blank, the Color parameter is used as the light's color.
+                    Be sure the Map Mode matches the type of data!
+                }
+                detail varying
+                subtype texture
+                default ""
+            }
+
+            parameter string ColorMapMode {
+                label {Map Mode}
+                description {
+                    Selects whether the Map contains sRGB or light-linear values.
+                }
+                detail uniform
+                subtype selector
+                range {
+                    "sRGB"   sRGB
+                    "Linear" Linear
+                }
+                default Linear
+            }
+
+            parameter float MapBlur {
+                label {Map Blur}
+                description {
+                    Add this amount to the texture access footprint.
+                    Expressed as a percentage of the entire texture.
+                    When using HDR textures with small bright spots, this may need to be very large
+                    in order to remove noise. However, large blur values will produce less accurate results.
+                }
+                detail varying
+                subtype slider
+                range {0 .1 .001}
+                default 0
+            }
+        }
+
+        parameter color DiffuseTint {
+            label {Diffuse Tint}
+            description {
+                A multiplier applied to the diffuse illumination.
+                sRGB space.
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter float DiffuseIntensity {
+            label {Diffuse Intensity}
+            description {
+                A multiplier applied to the diffuse illumination.
+                sRGB space.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter color SpecularTint {
+            label {Specular Tint}
+            description {
+                A multiplier applied to the specular illumination.
+                sRGB space.
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter float SpecularIntensity {
+            label {Specular Intensity}
+            description {
+                A multiplier applied to the specular illumination.
+                sRGB space.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float ConstantOutput {
+            label {Constant Output}
+            description {
+                If on, changing the size of the light source will have no effect on the
+                amount of light energy it produces: if you increase its size, it won't
+                get brighter, just bigger.
+                Turn this on to effect the shadow softness without changing the illumination
+                as the size is varied.
+            }
+            subtype switch
+            default 0
+        }
+
+        parameter float Focus {
+            label {Focus}
+            description {
+                Determines how focused the light is in the direction perpendicular to the light's surface.
+                This is an exponent value which works similarly to a surface response Exponent.
+            }
+            detail varying
+            subtype slider
+            range {1 10}
+            default 1
+        }
+
+        parameter float FocusEC {
+            label {Focus Energy Conservation}
+            description {
+                When 1, as the light is Focused, it will become more intense
+                as its energy is concentrated into a narrower beam.
+                Setting this to 0 will cause Focus to simply narrow the range
+                of emitted light without concentrating its energy:
+                the light will emit less total energy the narrower is it Focused.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        parameter float Visibility {
+            label {Visibility}
+            description {
+                Determines whether the light's surface is visible in the scene or not.
+                Only works if the surface's camera visibility attribute is 1.
+            }
+            detail varying
+            subtype switch
+            default 0
+        }
+
+        collection void ShadowControls {
+            label {Shadow Controls}
+            description {
+                These control the shadow computation.
+            }
+
+            parameter float ShadowEnable {
+                label {Enable}
+                description {
+                    Determines how much effect shadows will have: the shadow density.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 1
+            }
+
+            parameter color ShadowColor {
+                label {Color}
+                description {
+                    Sets the (linear) color of the shadow.
+                }
+                detail varying
+                default {0 0 0}
+            }
+
+            parameter string ShadowMethod {
+                label {Method}
+                description {
+                    Selects whether to use Ray Tracing, deep Area Shadow maps,
+                    or Both to compute the shadows.
+                }
+                subtype selector
+                range {
+                    "Ray Traced"  RayTrace
+                    "Area Shadow" AreaShadow
+                    "Both" Both
+                }
+                default RayTrace
+
+                msghandler {
+                    SetValue - RevertValue {
+                        set app [%obj GetAppearance]
+                        set paramValue [%obj GetValue]
+
+                        set displayList [$app GetProperties -name "dtexFile_*"]
+                        foreach param $displayList {
+                            $param SetDisplayLevel "hidden"
+                        }
+                        [$app GetProperties -name RayTraceControls] SetDisplayLevel "hidden"
+                        [$app GetProperties -name ShadowMapControls] SetDisplayLevel "hidden"
+                        [$app GetProperties -name ShdFiles] SetDisplayLevel "hidden"
+                        [$app GetProperties -name MapBias] SetDisplayLevel "hidden"
+                        [$app GetProperties -name LeakBias] SetDisplayLevel "hidden"
+                        [$app GetProperties -name TraceBias] SetDisplayLevel "hidden"
+                        [$app GetProperties -name Adaptive] SetDisplayLevel "hidden"
+                        [$app GetProperties -name IncludeSet] SetDisplayLevel "hidden"
+                        [$app GetProperties -name ExcludeSet] SetDisplayLevel "hidden"
+                        [$app GetProperties -name HitMode] SetDisplayLevel "hidden"
+                        [$app GetProperties -name HitSides] SetDisplayLevel "hidden"
+
+                        if {$paramValue == "RayTrace" || $paramValue == "Both"} {
+                            [$app GetProperties -name RayTraceControls] SetDisplayLevel ""
+                            [$app GetProperties -name TraceBias] SetDisplayLevel ""
+                            [$app GetProperties -name Adaptive] SetDisplayLevel ""
+                            [$app GetProperties -name IncludeSet] SetDisplayLevel ""
+                            [$app GetProperties -name ExcludeSet] SetDisplayLevel ""
+                            [$app GetProperties -name HitMode] SetDisplayLevel ""
+                            [$app GetProperties -name HitSides] SetDisplayLevel ""
+                        }
+
+                        if {$paramValue == "AreaShadow" || $paramValue == "Both"} {
+                            [$app GetProperties -name ShadowMapControls] SetDisplayLevel ""
+
+                            set displayList [$app GetProperties -name "dtexFile_*"]
+                            foreach param $displayList {
+                                $param SetDisplayLevel "removable"
+                            }
+                            [$app GetProperties -name ShdFiles] SetDisplayLevel ""
+                            [$app GetProperties -name MapBias] SetDisplayLevel ""
+                            [$app GetProperties -name LeakBias] SetDisplayLevel ""
+                            [$app GetProperties -name Adaptive] SetDisplayLevel ""
+                        }
+
+                        $app UpdateEditor
+                    }
+                }
+            }
+
+            parameter float Adaptive {
+                label {Adaptive}
+                description {
+                    Selects the level of adaptive sampling.
+                    When enabled, fewer samples are used in regions of low shadow variance.
+                }
+                detail varying
+                subtype selector
+                range {
+                    "Off" 0
+                    "Conservative" 1
+                    "Aggressive" 2
+                }
+                default 2
+            }
+
+            parameter float MaxDist {
+                label {Max Dist}
+                description {
+                    How far away from the light to look for shadowing surfaces.
+                    Used for traced shadows and AreaShadow Files.
+                    Smaller values produce a more localized effect, and may decrease render times.
+                    Larger distances will require more geometry to be tested,
+                    and so may result in longer render times.
+                    The value is dependent on your scene size and scale.
+                    Reverting it to -1 is equivalent to making it infinite.
+                }
+                detail varying
+                range {0 1e4}
+                default -1
+            }
+
+            parameter string ShadowAOV {
+                label {Shadow AOV}
+                description {
+                    If this is not blank, the shadow transmission value will be output
+                    to a color AOV with this name.
+                    Note that if two lights use the same AOV name, they will overwrite
+                    each other's results.
+                    Also note this will not work if Enable Gobos and Portals is on.
+                }
+                detail varying
+                default ""
+            }
+
+            collection void RayTraceControls {
+                label {Ray Trace Controls}
+
+                parameter string IncludeSet {
+                    label {Include Set}
+                    description {
+                        Specifies the set of objects that can cast shadows.
+                        If blank, all objects in the scene are used.
+                    }
+                    detail varying
+                    default ""
+                }
+
+                parameter string ExcludeSet {
+                    label {Exclude Set}
+                    description {
+                        Specifies the set of objects to specifically ignore when casting shadows.
+                        If blank, no objects will specifically be ignored.
+                    }
+                    detail varying
+                    default ""
+                }
+
+                parameter float TraceBias {
+                    label {Bias}
+                    description {
+                        Controls the surface offset to remove self-shadowing artifacts.
+                        When set to -1, the RiAttribute "user" "areashadowbias" value will be used,
+                        if it exists, or "trace" "bias" if it does not.
+                        When using RPS 19, just leave "trace" "autobias" at 1 and forget about setting bias values.
+                    }
+                    detail uniform
+                    subtype slider
+                    range {0 .1 .001}
+                    default -1
+                }
+
+                parameter string HitMode {
+                    label {Hit Mode}
+                    description {
+                        Determines the opacity of the hit surface by examining the surface's
+                        shade:transmissionhitmode attribute,
+                        the primitive's Os vertex variable or Opacity attribute,
+                        by running its shader to get the shaded opacity,
+                        or by looking up the opacity cached in the point data file
+                        specified by the shade:transmissionhitcache file attribute.
+                    }
+                    detail uniform
+                    subtype selector
+                    range {
+                        "transmissionhitmode" default
+                        "primitive"           primitive
+                        "shader"              shader
+                        "cache"               cache
+                    }
+                    default default
+                }
+
+                parameter string HitSides {
+                    label {Hit Sides}
+                    description {
+                        Specifies which side(s) of surfaces can be hit by the shadow rays.
+                    }
+                    detail uniform
+                    subtype selector
+                    range {
+                        "Front" front
+                        "Back" back
+                        "Front & Back" both
+                    }
+                    default front
+                }
+            }
+
+            collection void ShadowMapControls {
+                label {Shadow Map Controls}
+                display hidden
+
+                collection customuiFullWidth ShdFiles {
+                    display hidden
+                    customui laika AddParam
+                    subtype propertycreator
+                    drawmode children
+                    state open
+                    userdata {
+                        AddString "Add AreaShadow File"
+                        AddDescription "AreaShadow Deep Shadow Files added here will\nbe used to compute the shadow."
+                        ParamType string
+                        ParamSubtype file
+                        ParamPrefix dtexFile
+                        ParamLabel File
+                        ParamDescription "The name of an AreaShadow deep shadow file. You can also use a tcl command such as [PassFileName rmanPassName] to refer to the file generated by a render pass."
+                        ParamProvider variable
+                        ParamDetail varying
+                        ParamDefault {}
+                    }
+                }
+
+                parameter float MapBias {
+                    display hidden
+                    label {Map Bias}
+                    description {
+                        Scales an automatically computed bias value when using AreaShadow Files.
+                        In most cases the default value of 1 should be appropriate.
+                    }
+                    detail uniform
+                    subtype slider
+                    range {.5 2}
+                    default 1
+                }
+
+                parameter float LeakBias {
+                    display hidden
+                    label {Leak Bias}
+                    description {
+                        Helps to control light leaks from AreaShadow Files.
+                        With values above 0, each texel in the map will contribute
+                        to the total shadowing using a slightly broader depth interval.
+                        This can mitigate cases of aliasing on geometry seen obliquely
+                        from the shadow generation camera. Typical values are 1 to 5.
+                    }
+                    detail uniform
+                    subtype slider
+                    range {0 5}
+                    default 3.5
+                }
+            }
+        }
+
+        parameter float EnableGP {
+            label {Enable Gobos and Portals}
+            description {
+                Enables the use of Gobo and Portal Geo Light Effectors.
+                Region Geo Light Effectors are not influenced by this setting.
+                Note that setting this will disable standard Light Effectors; and the
+                shadows when Shadow Controls : Enable < 1, will not be clearly defined.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        parameter float Samples {
+            label {Samples}
+            description {
+                Sets the number of samples to use.
+                When Default (-1), use the automatic sample balancing mechanism of prman.
+            }
+            detail uniform
+            subtype slider
+            range {-1 100 1}
+            default -1
+        }
+
+        collection shader(0) __boundcoshaders {
+            display hidden
+            label {Bound Coshaders}
+            description {
+                Coshaders entered here will become known to the light so it can process them.
+                These can be Geo Light Effectors or Light Effectors.
+            }
+            provider primitive
+
+            parameter shader __boundcoshaders:0 {
+                provider primitive
+                default {}
+                index 0
+            }
+        }
+
+        collection customuiFullWidth AOVs {
+            customui laika AddParam
+            subtype propertycreator
+            drawmode children
+            state open
+            userdata {
+                AddString   "Add AOV"
+                AddDescription "Allows you to add an Arbitrary Output Variable."
+                ParamType   AOV
+                ParamPrefix AOV
+                ParamDetail {mustvary "laika,AOV" inline}
+            }
+        }
+
+        RSLInclude {coreV7/light.h}
+        RSLInclude {coreV7/radianceSample.h}
+
+        RSLInclude {sl.h}
+        RSLInclude {math.h}
+        RSLInclude {color.h}
+
+        RSLClass {
+output "
+            private light_s         _light;
+
+            // Global variables.
+            private varying color   lightCI;    // color*intensity
+
+            private uniform shader  radianceEffectors\[\], shadowEffectors\[\];
+            private uniform shader  ikaGeoLightGobo\[\], ikaGeoLightPortal\[\], ikaGeoLightRegion\[\];
+            private uniform float   ikaGeoLightGoboNum, ikaGeoLightPortalNum, ikaGeoLightRegionNum;
+
+            private constant string _dtexFiles\[\] = {};
+            private constant float  _raytrace = 0;
+            private varying float   focusScale;
+            private varying float   _Visibility;
+            private uniform float   _EnableGP;
+            private varying float   _Enable;
+            private varying color   _DiffuseTint;
+            private varying float   _DiffuseIntensity;
+            private uniform color   _diffusecontribution;
+            private varying color   _SpecularTint;
+            private varying float   _SpecularIntensity;
+            private uniform color   _specularcontribution;
+            private varying float   _Intensity;
+            private varying float   _Exposure;
+            private varying float   _Focus;
+            private varying float   _FocusEC;
+            private varying color   _Color;
+            private uniform float   _ConstantOutput;
+            private varying float   _ShadowEnable;
+            private varying color   _ShadowColor;
+            private uniform float   _TraceBias;
+            private uniform float   _MapBias;
+            private uniform float   _LeakBias;
+            private varying float   _MaxDist;
+            private uniform float   _Adaptive;
+            private uniform string  _IncludeSet;
+            private uniform string  _ExcludeSet;
+            private uniform string  _HitMode;
+            private uniform string  _HitSides;
+            private uniform float   _Samples;
+"
+
+            generateMethod "public void construct()" {
+                generate ShadowMethod
+output "
+                if ([getvar ShadowMethod] != \"AreaShadow\") {
+                   _raytrace = 1;
+                }
+
+                if ([getvar ShadowMethod] != \"Raytrace\") {
+"
+                    set dtexFileList [getproperties -name dtexFile_* -access input]
+                    foreach dtexFile $dtexFileList {
+                        generate $dtexFile
+output "
+                        if ([getvar $dtexFile] != \"\") {
+                            push( _dtexFiles, [getvar $dtexFile] );
+                        }
+" 
+                    }
+output "
+                }
+"
+            }
+
+            generateMethod "public void begin()" {
+
+                generate -dtexFile_* -ShadowMethod
+output "
+                _Enable = [getvar Enable];
+
+                // Get the lighteffector coshaders.
+                uniform string  categoryUser\[\] = split( __categoryUser, \",\" );
+
+                getEffectorList( \"ikaRadianceEffector\", categoryUser, __boundcoshaders, radianceEffectors );
+                getEffectorList( \"ikaShadowEffector\", categoryUser, __boundcoshaders, shadowEffectors );
+
+                // Get the geolighteffector coshaders.
+                getEffectorList( \"ikaGeoLightGobo\", categoryUser, __boundcoshaders, ikaGeoLightGobo );
+                getEffectorList( \"ikaGeoLightPortal\", categoryUser, __boundcoshaders, ikaGeoLightPortal );
+                getEffectorList( \"ikaGeoLightRegion\", categoryUser, __boundcoshaders, ikaGeoLightRegion );
+
+                ikaGeoLightGoboNum = arraylength( ikaGeoLightGobo );
+                ikaGeoLightPortalNum = arraylength( ikaGeoLightPortal );
+                ikaGeoLightRegionNum = arraylength( ikaGeoLightRegion );
+
+                // Initialize parameter variables.
+                _Visibility = [getvar Visibility];
+                _EnableGP = [getvar EnableGP];
+                _DiffuseTint = [getvar DiffuseTint];
+                _DiffuseIntensity = [getvar DiffuseIntensity];
+                _SpecularTint = [getvar SpecularTint];
+                _SpecularIntensity = [getvar SpecularIntensity];
+                _Color = [getvar Color];
+                _Intensity = [getvar Intensity];
+                _Exposure = [getvar Exposure];
+                _Focus = [getvar Focus];
+                _FocusEC = [getvar FocusEC];
+                _ConstantOutput = [getvar ConstantOutput];
+                _ShadowEnable = [getvar ShadowEnable];
+                _ShadowColor = [getvar ShadowColor];
+                _MapBias = [getvar MapBias];
+                _LeakBias = [getvar LeakBias];
+                _Adaptive = gridmin( [getvar Adaptive] );
+                _IncludeSet = [getvar IncludeSet];
+                _ExcludeSet = [getvar ExcludeSet];
+                _HitMode = [getvar HitMode];
+                _HitSides = [getvar HitSides];
+                _Samples = [getvar Samples];
+
+
+                if ([getvar TraceBias] != -1)
+                {
+                    _TraceBias = [getvar TraceBias];
+                }
+                else
+                {
+                    uniform float   tracebias = 0.01;
+                    attribute( \"trace:bias\", tracebias );
+
+                    if (attribute (\"user:areashadowbias\", _TraceBias) == 0) _TraceBias = tracebias;
+                }
+
+                // Determine the MaxDist.
+                // -1 signifies infinity.
+                _MaxDist = [getvar MaxDist];
+                if (_MaxDist == -1) _MaxDist = MAXDIST;
+
+
+                _diffusecontribution = gridavg( colorSRGBToLinear( _DiffuseTint * _DiffuseIntensity ));
+                _specularcontribution = gridavg( colorSRGBToLinear( _SpecularTint * _SpecularIntensity ));
+
+
+                // Set the light colorintensity.
+                extern varying color    lightCI;
+                {
+                    if ([getvar ColorMode] == \"sRGB\") _Color = colorSRGBToLinear( _Color );
+
+                    varying float   lightIntensity = colorSRGBToLinear( _Intensity*_Enable ) * pow( 2,_Exposure );
+
+                    lightCI = lightIntensity * _Color;
+
+                    if ([getvar ColorMap] != \"\") {
+                        varying color   colorMap;
+
+                        colorMap = texture( [getvar ColorMap], s, 1-t, \"blur\", [getvar MapBlur] );
+
+                        if ([getvar ColorMapMode] == \"sRGB\") colorMap = colorSRGBToLinear( colorMap );
+
+                        lightCI *= colorMap;
+                    }
+                }
+
+                focusScale = mix( mathNormalizedCosineLobeVolume(_Focus), 1, _FocusEC );
+
+                // Accumulate the light radiance modifiers.
+                lightCI *= focusScale;
+"
+            }
+
+            generateMethod "public void prelighting( output color Ci, Oi )" {
+output "
+                uniform float   i, j;
+
+                // Process gobos.
+                uniform string  goboFile\[ikaGeoLightGoboNum\];
+                uniform matrix  goboMatrix\[ikaGeoLightGoboNum\];
+
+                j = 0;
+                for (i=0; i < ikaGeoLightGoboNum; i+=1)
+                {
+                    ikaGeoLightGobo\[i\]->begin();
+                    goboFile\[j\] = ikaGeoLightGobo\[i\]->File;
+                    goboMatrix\[j\] = ikaGeoLightGobo\[i\]->Matrix;
+
+                    if (goboFile\[j\] != \"\") j += 1;
+                }
+                resize( goboFile, j );
+                resize( goboMatrix, j );
+                ikaGeoLightGoboNum = j;
+
+                // Process portals.
+                uniform matrix  portalMatrix\[ikaGeoLightPortalNum\];
+
+                for (i=0; i < ikaGeoLightPortalNum; i+=1)
+                {
+                    ikaGeoLightPortal\[i\]->begin();
+                    portalMatrix\[i\] = ikaGeoLightPortal\[i\]->Matrix;
+                }
+
+                // XXX prman seg fault bug workaround.
+                if (_EnableGP == 0) resize( portalMatrix,0 );
+
+                // Process blockers.
+                uniform matrix  blockerMatrix\[ikaGeoLightRegionNum\];
+                uniform vector  blockerShape\[ikaGeoLightRegionNum\];
+                uniform color   blockerTint\[ikaGeoLightRegionNum\],
+                                blockerDiffuseTint\[ikaGeoLightRegionNum\],
+                                blockerSpecularTint\[ikaGeoLightRegionNum\];
+
+                for (i=0; i < ikaGeoLightRegionNum; i+=1)
+                {
+                    blockerMatrix\[i\] = ikaGeoLightRegion\[i\]->Matrix;
+                    blockerShape\[i\] = ikaGeoLightRegion\[i\]->Shape;
+                    blockerTint\[i\] = ikaGeoLightRegion\[i\]->Tint;
+                    blockerDiffuseTint\[i\] = ikaGeoLightRegion\[i\]->DiffuseTint;
+                    blockerSpecularTint\[i\] = ikaGeoLightRegion\[i\]->SpecularTint;
+                }
+
+                // Set shadow color.
+                uniform color   shadowtint = gridavg( mix( _Color, _ShadowColor, _ShadowEnable ));
+
+                // Geometry light emission.
+#if __PRMAN_RELEASE__ >= 2000
+                if (_Samples > -1)
+                {
+                    emit( lightCI,
+/*                         \"direction\", N, */
+                        \"cosinepower\", _Focus,
+                        \"areanormalized\", _ConstantOutput,
+                        \"diffusecontribution\", _diffusecontribution,
+                        \"specularcontribution\", _specularcontribution,
+                        \"blockers\", blockerMatrix,
+                        \"blockershape\", blockerShape,
+                        \"blockermultipliers\", blockerTint,
+                        \"blockerdiffusemultipliers\", blockerDiffuseTint,
+                        \"blockerspecularmultipliers\", blockerSpecularTint,
+                        \"useshadowmethod\", 1-_EnableGP,
+                        \"fixedsamplecount\", _Samples,
+
+/*             These are unused when useshadowmethod is set. */
+                        \"gobos\", goboMatrix,
+                        \"gobomaps\", goboFile,
+                        \"portals\", portalMatrix,
+                        \"raytraceshadows\", _raytrace,
+                        \"adaptiveshadow\", _Adaptive,
+                        \"subset\", _IncludeSet,
+                        \"excludesubset\", _ExcludeSet,
+                        \"shadowbias\", _TraceBias,
+                        \"shadowmaxdist\", _MaxDist,
+                        \"shadowhitmode\", _HitMode,
+                        \"shadowhitsides\", _HitSides,
+                        \"shadowmaps\", _dtexFiles,
+                        \"shadowmapbias\", _MapBias,
+                        \"shadowmapbias2\", _LeakBias,
+                        \"shadowtint\", shadowtint
+                    );
+                }
+                else
+#endif
+                {
+                    emit( lightCI,
+/*                         \"direction\", N, */
+                        \"cosinepower\", _Focus,
+                        \"areanormalized\", _ConstantOutput,
+                        \"diffusecontribution\", _diffusecontribution,
+                        \"specularcontribution\", _specularcontribution,
+                        \"blockers\", blockerMatrix,
+                        \"blockershape\", blockerShape,
+                        \"blockermultipliers\", blockerTint,
+                        \"blockerdiffusemultipliers\", blockerDiffuseTint,
+                        \"blockerspecularmultipliers\", blockerSpecularTint,
+                        \"useshadowmethod\", 1-_EnableGP,
+
+/*             These are unused when useshadowmethod is set. */
+                        \"gobos\", goboMatrix,
+                        \"gobomaps\", goboFile,
+                        \"portals\", portalMatrix,
+                        \"raytraceshadows\", _raytrace,
+                        \"adaptiveshadow\", _Adaptive,
+                        \"subset\", _IncludeSet,
+                        \"excludesubset\", _ExcludeSet,
+                        \"shadowbias\", _TraceBias,
+                        \"shadowmaxdist\", _MaxDist,
+                        \"shadowhitmode\", _HitMode,
+                        \"shadowhitsides\", _HitSides,
+                        \"shadowmaps\", _dtexFiles,
+                        \"shadowmapbias\", _MapBias,
+                        \"shadowmapbias2\", _LeakBias,
+                        \"shadowtint\", shadowtint
+                    );
+                }
+"
+            }
+
+            generateMethod "public void surface( output varying color Ci, Oi )" {
+output "
+                Ci = lightCI;   // XXX focusScale, etc?
+                Oi = color( _Visibility );
+
+                Ci *= Oi;
+"
+            }
+
+            generateMethod "public void shadowSamples( output __radiancesample samples\[\] )" {
+output "
+                filterregion    fr;
+                fr->calculate3d( Ps );
+
+                varying color   lightVisibility;
+                varying color   lightTransmission;
+
+                _light->begin();
+
+                // Determine light-surface visibility.
+                if (gridever(_ShadowEnable > 0))
+                {
+                    lightTransmission = color 1 - areashadow( _dtexFiles, fr, samples,
+                        \"raytrace\", _raytrace,
+                        \"adaptive\", _Adaptive,
+                        \"subset\", _IncludeSet,
+                        \"excludesubset\", _ExcludeSet,
+                        \"bias\", _TraceBias,
+                        \"maxdist\", _MaxDist,
+                        \"hitmode\", _HitMode,
+                        \"hitsides\", _HitSides,
+                        \"mapbias\", _MapBias,
+                        \"mapbias2\", _LeakBias
+                    );
+"
+                    set shadowAOV [getproperties -name ShadowAOV]
+output "
+                    if ([getvar $shadowAOV] != \"\") writeaov( [getvar $shadowAOV], lightTransmission );
+
+                    // Accumulate radiance effects onto the light color.
+                    varying color   lightColor = accumulateRadianceEffects( radianceEffectors, _light );
+
+                    uniform float   i, alen = arraylength( samples );
+                    for (i=0; i < alen; i+=1)
+                    {
+                        lightVisibility = mix( color 1, samples\[i\]->lightVisibility, _ShadowEnable );
+                        samples\[i\]->lightVisibility = mix( _ShadowColor, color 1, lightVisibility ) * lightColor;
+                    }
+                }
+                else
+                {
+                    setLightVisibility( color 1, samples );
+                }
+
+                // Accumulate light shadow effects.
+                applyShadowEffects( shadowEffectors, _light, samples );
+"
+            }
+        }
+    }
+
+  }
+}

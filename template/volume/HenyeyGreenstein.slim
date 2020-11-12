@@ -1,0 +1,245 @@
+##
+##  Copyright(c) 2012-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV volumematerial HenyeyGreenstein 2 {
+        description {
+            Henyey-Greenstein volume scattering.
+        }
+
+        eval [::__categoryParam "bxdfMaterial"]
+
+        parameter float __computesOpacity {
+            label {Computes Density}
+            description {
+                Sets the prman opacity caching behavior.
+                Set this based on the Density parameter value: whether it varies with the
+                camera view or not.
+                Note: you don't want to use a view-dependent Density.
+            }
+            provider primitive
+            detail uniform
+            subtype selector
+            range {
+                "View Independent Density" 1
+                "View Dependent Density" 2
+            }
+            default 1
+        }
+
+        parameter float Density {
+            label {Density}
+            description {
+                The density of the scattering medium.
+                This would usually be a constant, or a value that varies three dimensionally
+                relative to the scene (and perhaps time).
+                This directly sets the shaded opacity, so be sure to set Computes Density accordingly.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default .5
+        }
+
+        parameter float Intensity {
+            description {
+                The Intensity of the response.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter color Color {
+            label {Color}
+            description {
+                The color of the response.
+            }
+            detail varying
+            default {1 1 1}
+        }
+
+        parameter float ColorMix {
+            label {Use Color}
+            description {
+                Determines how much of the Color is used in the response.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        parameter float G {
+            label {Scatter Direction}
+            description {
+                The Henyey-Greenstein phase function asymmetry parameter (g).
+                This controls the degree of forward to backward scattering.
+                Negative values produce back scattering (brighter when viewed from the same side as the light).
+                Positive values produce forward scattering (brighter when looking toward the light).
+                When 0, scattering is isotropic.
+            }
+            detail varying
+            subtype slider
+            range {-1 1}
+            default 0
+        }
+
+        parameter color Incandescence {
+            label {Incandescence}
+            description {
+                Does the volume produce it's own light?
+                This is the (sRGB) illumination that the volume will emit.
+            }
+            detail varying
+            default {0 0 0}
+        }
+
+
+        RSLInclude {stdrsl/Math.h}
+        RSLInclude {stdrsl/RadianceSample.h}
+
+        RSLInclude {sl.h}
+        RSLInclude {color.h}
+
+        RSLClass {
+output "
+            /*
+             *  Global variables and include files that need to be declared in a particular order.
+             */
+            private varying float   _Intensity;
+            private varying color   _Color;
+            private varying float   _ColorMix;
+            private varying float   _Density;
+            private varying float   _G;
+            private varying color   _Incandescence;
+
+            private varying color   Calbedo;
+
+            private varying float   absG = 0;
+            private varying float   onePlusGG = 1.0;
+            private varying float   oneMinusGG = 1.0;
+            private varying float   oneOver2G = 1.0;
+
+            private uniform shader  plausibleLights\[\];
+
+
+            private varying float pdf (varying float costheta)
+            {
+                return (M_INVFOURPI*oneMinusGG / pow (onePlusGG - 2*_G*costheta, 1.5));
+            }
+
+            // Assumes G is not close to zero, since it divides by G
+            private varying float invertcdf (varying float x)
+            {
+                varying float   sqrterm = oneMinusGG / (1 - _G + 2*_G*x);
+                return (oneOver2G * (onePlusGG - sqrterm * sqrterm));
+            }
+"
+
+            generateMethod "public void begin()" {
+
+                generate Intensity Color ColorMix Density G Incandescence
+output "
+                _Intensity = [getvar Intensity];
+                _Color = [getvar Color];
+                _ColorMix = [getvar ColorMix];
+                _Density = [getvar Density];
+                _G = [getvar G];
+                _Incandescence = colorSRGBToLinear( [getvar Incandescence] );
+
+                _G *= 0.999;    // Keep G from reaching +/-1.
+
+                Calbedo = colorSRGBToLinear (_Intensity * mix (color 1, _Color, _ColorMix));
+"
+            }
+
+            generateMethod "public void opacity (output varying color O)" {
+output "
+                O = _Density * Os;
+"
+            }
+
+            generateMethod "public void prelighting (output varying color C, O)" {
+output "
+                absG = abs(_G);
+
+                onePlusGG = 1 + _G*_G;
+                oneMinusGG = 1 - _G*_G;
+
+                if (absG >= 0.0001) {
+                    oneOver2G = .5 / _G;
+                }
+
+                // Get the lights and initialize any coshader Material layers.
+                plausibleLights = getlights (\"category\", \"stdrsl_plausible\");
+"
+            }
+
+            generateMethod "public void lighting (output varying color C, O)" {
+output "
+                varying color   directResponse;
+
+                // Direct response.
+                directResponse = directlighting (surface, plausibleLights,
+                    \"integrationdomain\", \"sphere\"
+                );
+
+                // opacity(O)
+                O = _Density * Os;
+
+                // Done.
+                C = (directResponse + _Incandescence) * O;
+"
+            }
+
+            generateMethod "public void evaluateSamples (string context; output __radiancesample samples\[\])" {
+output "
+                varying vector  Ic = normalize(I);
+
+                uniform float   i, alen = arraylength(samples);
+                varying float   costheta, mdf;
+
+                if (context != \"diffuse\") {
+                    if (absG < 0.0001) {
+                        for (i=0; i < alen; i+=1) {
+                            samples\[i\]->setMaterialResponse (Calbedo * M_INVFOURPI, M_INVFOURPI);
+                        }
+                    }
+                    else {
+                        for (i=0; i < alen; i+=1) {
+                            costheta = Ic.samples\[i\]->direction;
+                            mdf = pdf(costheta);
+                            samples\[i\]->setMaterialResponse (Calbedo * mdf, mdf);
+                        }
+                    }
+                }
+
+                // No view-independent response.
+                else {
+                    for (i=0; i < alen; i+=1) {
+                        samples\[i\]->setMaterialResponse (color 0, 0);
+                    }
+                }
+"
+            }
+        }
+    }
+
+  }
+}

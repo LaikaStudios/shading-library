@@ -1,0 +1,425 @@
+##
+##  Copyright(c) 2010-2015 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vxf {
+
+    templateV multiple HerringWorley 0 {
+        description {
+            Produces various herringbone basis Worley/Voronoi patterns.
+            These are all based on the distances between random points.
+        }
+
+        collection manifold Manifold {
+            label {Manifold}
+            description {
+                Defines the space in which the pattern will be generated.
+            }
+            parameter point M { detail mustvary }
+            parameter vector dMu { detail mustvary }
+            parameter vector dMv { detail mustvary }
+            detail mustvary "laika,UV" inline
+        }
+
+        parameter float Frequency {
+            label {Frequency}
+            description {
+                Sets the scale of the resulting pattern.
+            }
+            detail uniform
+            subtype slider
+            range {.1 10}
+            default 5
+        }
+
+        slimattribute string Type {
+            label {Distance Measure}
+            description {
+                Selects how to measure the distance between points.
+            }
+            subtype selector
+            range {
+                Euclidean Euclidean
+                Minkovsky Minkovsky
+                Manhattan Manhattan
+                Chebyshev Chebyshev
+            }
+            default Euclidean
+
+            msghandler {
+                SetValue {
+                    set typeParam %obj
+                    set typeValue [$typeParam GetValue]
+                    set app [$typeParam GetAppearance]
+
+                    switch $typeValue {
+                        Minkovsky {
+                            [$app GetProperties -name Exponent] SetDisplayLevel ""
+                        }
+                        default {
+                            [$app GetProperties -name Exponent] SetDisplayLevel "hidden"
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        parameter float Exponent {
+            display hidden
+            label {Minkovsky Exponent}
+            description {
+                The Minkovsky distance measure Exponent.
+            }
+            detail varying
+            subtype slider
+            range {1 8}
+            default 4
+        }
+
+        parameter float Jitter {
+            label {Jitter}
+            description {
+                Determines how much to randomize the points.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        parameter float Variation {
+            label {Variation}
+            description {
+                Varies the resulting pattern.
+                Useful for animating the effect.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        collection void Modifiers {
+            state open
+            label {Transition Modifiers}
+            description {
+                These modify the transition characteristics of the various output
+                patterns they relate to.
+            }
+
+            parameter float LineWidth {
+                label {Line Width}
+                description {
+                    Controls the width of the Lines.
+                }
+                detail varying
+                subtype slider
+                range {.01 .5}
+                default .05
+            }
+
+            parameter float LineBlur {
+                label {Line Blur}
+                description {
+                    Controls the blurriness of the edges of the Lines.
+                }
+                detail varying
+                subtype slider
+                range {0 .5}
+                default 0
+            }
+
+            parameter float VoronoiBlur {
+                label {Voronoi Blur}
+                description {
+                    Determines the blurriness of the transition between the
+                    cells in the Voronoi output.
+                }
+                detail varying
+                subtype slider
+                range {0 .5}
+                default 0
+            }
+
+            parameter float CellWidth {
+                label {Cell Width}
+                description {
+                    Determines the width of the transition region
+                    between cells in the Cell outputs.
+                }
+                detail varying
+                subtype slider
+                range {0 .5}
+                default 0
+            }
+        }
+
+        parameter float Invert {
+            label {Invert}
+            description {
+                Invert the Worley (float) output values.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        parameter float F1 {
+            display hidden
+            access output
+        }
+        parameter float F2 {
+            display hidden
+            access output
+        }
+        parameter float F2minusF1 {
+            label {F2 - F1}
+            display hidden
+            access output
+        }
+        parameter float Line {
+            label {Lines}
+            display hidden
+            access output
+        }
+        parameter color Voronoi {
+            display hidden
+            access output
+        }
+        collection manifold CellMap {
+            label {Cell Map}
+            display hidden
+            access output
+            parameter point QCellMap {access output}
+            parameter vector dQuCellMap {access output}
+            parameter vector dQvCellMap {access output}
+        }
+        collection manifold CellPoint {
+            label {Cell Point}
+            display hidden
+            access output
+            parameter point QCellPoint {access output}
+            parameter vector dQuCellPoint {access output}
+            parameter vector dQvCellPoint {access output}
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {filter.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {} 
+            proc function {} {
+                generateBody {
+output "
+                    varying point   Q;
+                    varying float   _Frequency = 1.414 * [getvar Frequency];    // Roughly same feature size as Worley.
+                    varying float   _EdgeBlur = [getvar LineBlur];
+
+                    Q = [getvar M] * _Frequency;
+
+                    //
+                    // Generate dQ and others.
+                    //
+                    varying float   dQ;
+                    varying float   dVoronoi;
+                    {
+                        filterregion    Qfilt;
+
+                        Qfilt->calculate2d( Q\[0\], Q\[1\] );
+                        dQ = sqrt(Qfilt->minsize() * Qfilt->maxsize());
+
+                        dVoronoi = max (dQ, [getvar VoronoiBlur]);
+
+                        dQuCellPoint = dQuCellMap = [getvar dMu];
+                        dQvCellPoint = dQvCellMap = [getvar dMv];
+                    }
+
+                    // Divide Q into squares.
+                    varying point   Qfloor = _floor( Q );
+
+                    // Herringbone pattern.
+                    // A square cell is in one of four locations of a rectangular herringbone tile:
+                    //      Bottom=0; Top=1; Left=2; Right=3.
+                    varying float   Loc;
+                    {
+                        float   cellx = mod( xcomp(Qfloor), 4.0 );
+                        float   celly = mod( ycomp(Qfloor), 4.0 );
+
+                        Loc = _floor( mod( cellx + celly, 4.0 ));
+                    }
+
+                    //
+                    // Q's herringbone cell noise location (which determines the random offset value
+                    // along the cell's center segment). The cell noise space for Top and Right squares
+                    // is the same as their associated Bottom and Left cells.
+                    //
+                    uniform vector  Ocn\[4\] = { vector(0,0,0), vector(0,-1,0), vector(0,0,0), vector(-1,0,0) };
+                    varying vector  Qcn = vector( Qfloor + Ocn\[Loc\] );
+
+                    //
+                    // The relevant herringbone cell noise location centers (Oc) and offset directions (Od)
+                    // that affect the current location.
+                    //
+                    uniform vector  BotOc\[7\] = {
+                        vector(0,0,0), vector(-1,1,0), vector(1,1,0), vector(-1,-1,0), vector(1,-1,0), vector(0,2,0), vector(-2,0,0)
+                    };
+                    uniform vector  LefOc\[7\] = {
+                        vector(0,0,0), vector(-1,1,0), vector(1,1,0), vector(-1,-1,0), vector(1,-1,0), vector(2,0,0), vector(0,-2,0)
+                    };
+                    uniform vector TopOc\[7\] = BotOc;
+                    uniform vector RitOc\[7\] = LefOc;
+
+                    uniform vector BotOd\[7\] = {
+                        vector(0,1,0), vector(0,1,0), vector(1,0,0), vector(1,0,0), vector(0,1,0), vector(1,0,0), vector(1,0,0)
+                    };
+                    uniform vector LefOd\[7\] = {
+                        vector(1,0,0), vector(1,0,0), vector(0,1,0), vector(0,1,0), vector(1,0,0), vector(0,1,0), vector(0,1,0)
+                    };
+                    uniform vector TopOd\[7\] = BotOd;
+                    uniform vector RitOd\[7\] = LefOd;
+
+                    //
+                    // Randomly place a point along the center segment of each herringbone cell.
+                    // Then measure the distances to all the points:
+                    //      F1 is the distance to the nearest point.
+                    //      F2 is the distance to the second nearest point.
+                    //
+                    varying color   celln;
+                    varying point   cellq, q;
+                    varying float   offset, dist, F1step, F2step;
+
+                    varying point   cellpoint, cellmap;
+
+                    Voronoi = color( 0.5 );
+                    QCellPoint = vector( 0.0 );
+                    QCellMap = vector( 0.0 );
+                    F1 = F2 = 10.0;     // Anything over sqrt(5).
+
+                    uniform float   i;
+                    for (i=0; i < 7; i+=1)
+                    {
+                        cellq = Qcn + vector( 0.5 );
+
+                        if (Loc == 0)
+                        {
+                            cellq += BotOc\[i\];
+                            offset = cellnoisevariation( cellq, [getvar Variation] );
+                            q = cellq + vector( [getvar Jitter]*offset )*BotOd\[i\];
+                            celln = cellnoisevariation( cellq + vector(3,13,23), [getvar Variation] );
+                        }
+                        else if (Loc == 1)
+                        {
+                            cellq += TopOc\[i\];
+                            offset = cellnoisevariation( cellq, [getvar Variation] );
+                            q = cellq + vector( [getvar Jitter]*offset )*TopOd\[i\];
+                            celln = cellnoisevariation( cellq + vector(3,13,23), [getvar Variation] );
+                        }
+                        else if (Loc == 2)
+                        {
+                            cellq += LefOc\[i\];
+                            offset = cellnoisevariation( cellq, [getvar Variation] );
+                            q = cellq + vector( [getvar Jitter]*offset )*LefOd\[i\];
+                            celln = cellnoisevariation( cellq + vector(3,13,23), [getvar Variation] );
+                        }
+                        else if (Loc == 3)
+                        {
+                            cellq += RitOc\[i\];
+                            offset = cellnoisevariation( cellq, [getvar Variation] );
+                            q = cellq + vector( [getvar Jitter]*offset )*RitOd\[i\];
+                            celln = cellnoisevariation( cellq + vector(3,13,23), [getvar Variation] );
+                        }
+
+                        cellpoint = q / _Frequency;
+                        cellmap = (q - Q) / 1.414;
+
+                        // Generate the selected distance measurement.
+"
+                        switch [getval Type] {
+                            Euclidean { output "
+                                q -= Q;
+                                dist = length( q );
+                            " }
+                            Minkovsky { output "
+                                q -= Q;
+                                q = _abs( q );
+                                q = _pow( q, vector([getvar Exponent]) );
+                                dist = _pow( q\[0\] + q\[1\], 1.0/[getvar Exponent] );
+                            " }
+                            Manhattan { output "
+                                q -= Q;
+                                q = _abs( q );
+                                dist = q\[0\] + q\[1\];
+                                dist /= 2.0;
+                            " }
+                            Chebyshev { output "
+                                q -= Q;
+                                q = _abs( q );
+                                dist = _max( q\[0\], q\[1\] );
+                            " }
+                        }
+output "
+                        // Voronoi patterns.
+                        Voronoi = mix (color celln, Voronoi, filterstep (F1, dist, dist+dVoronoi));
+
+                        varying float   cellEdge;
+                        cellEdge = filterstep (F1, dist, dist + [getvar CellWidth]);
+
+                        QCellPoint = mix (cellpoint, QCellPoint, cellEdge);
+                        QCellMap = mix (cellmap, QCellMap, cellEdge);
+
+                        // Generate conditional step functions (in lieu of if statements).
+                        F1step = step( dist, F1 );
+                        F2step = _mix( step( dist, F2 ), 0, F1step );
+
+                        F2 = _mix( F2, F1, F1step );
+
+                        // If there's a new F1.
+                        F1 = _mix( F1, dist, F1step );
+
+                        // If there's a new F2.
+                        F2 = _mix( F2, dist, F2step );
+                    }
+
+                    F2minusF1 = F2 - F1;
+
+                    // Generate the Line output.
+                    {
+                        filterregion    Lfilt;
+                        varying float   dL;
+
+                        Lfilt->calculate1d(F2minusF1);
+                        dL = sqrt(Lfilt->minsize() * Lfilt->maxsize());
+
+                        dL = max (dL, [getvar LineBlur]);
+                        Line = filterstep (LineWidth, F2minusF1, F2minusF1+dL);
+                    }
+
+                    if ([getvar Invert]) {
+                        F1 = 1 - F1;
+                        F2 = 1 - F2;
+                        F2minusF1 = 1 - F2minusF1;
+                        Line = 1 - Line;
+                    }
+"
+                }
+            }
+        }
+    }
+
+  }
+}

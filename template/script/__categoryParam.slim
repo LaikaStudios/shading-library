@@ -1,0 +1,77 @@
+##
+##  Copyright(c) 2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+ extensions laika vfx {
+
+#
+#	Creates a UserCategory parameter the user can change to add their
+#   own categories to the hidden __category parameter.
+#
+	proc ::__categoryParam {categoryDefault} {
+		set userParam {
+            parameter string __categoryUser {
+                label "__category User"
+                description {
+                    A comma-separated list of categories this shader belongs to.
+                    Add your own categories here in order to identify this shader
+                    as being part of a category or set of categories.
+                }
+                provider parameterlist
+                detail uniform
+                default ""
+
+                msghandler {
+                    SetValue - RevertValue - SetConnection - CreateConnection - SetValueProvider {
+                        set app [%obj GetAppearance]
+                        set paramValue [%obj GetValue]
+
+                        set categoryParam [$app GetProperties -name "__category"]
+                        set categoryValue [$categoryParam GetDefaultValue]
+
+                        if {$paramValue != ""} {
+                            set categoryValue "$categoryValue,$paramValue"
+                        }
+
+                        $categoryParam SetValue $categoryValue
+                    }
+                }
+            }
+        }
+
+        set catParam "
+            parameter string __category {
+                display hidden
+                description {
+                    A comma separated list of categories this shader belongs to.
+                    The pxc-prefixed categories are part of the RMS functionality.
+                    ika-prefixed categories are used for Laika functionality.
+                }
+                provider parameterlist
+                detail uniform
+                default \"$categoryDefault\"
+            }
+        "
+
+        set val "
+            $userParam
+            $catParam
+        "
+
+		return $val
+	}
+
+  }
+}

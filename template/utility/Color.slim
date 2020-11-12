@@ -1,0 +1,844 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV multiple FromColor 0 {
+        description {
+            Outputs the three components of the Input color as floats.
+        }
+
+        parameter color Input {
+            label {Input}
+            description {
+            }
+            provider variable
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter float R {
+            label {Input(0)}
+            description {
+                The first component of the Input color.
+            }
+            display hidden
+            access output
+        }
+        parameter float G {
+            label {Input(1)}
+            description {
+                The second component of the Input color.
+            }
+            display hidden
+            access output
+        }
+        parameter float B {
+            label {Input(2)}
+            description {
+                The third component of the Input color.
+            }
+            display hidden
+            access output
+        }
+
+        RSLFunction {
+            void vfxFromColor (
+                varying color   Input;
+
+                output float    R;
+                output float    G;
+                output float    B;
+            ) {
+                R = Input[0];
+                G = Input[1];
+                B = Input[2];
+            }
+        }
+    }
+
+    templateV color ToColor 0 {
+        description {
+            Outputs the three Input values as a Color.
+        }
+
+        parameter float R {
+            label {Color[0]}
+            provider variable
+            detail varying
+            range {0 1}
+            default 0
+        }
+        parameter float G {
+            label {Color[1]}
+            provider variable
+            detail varying
+            range {0 1}
+            default 0
+        }
+        parameter float B {
+            label {Color[2]}
+            provider variable
+            detail varying
+            range {0 1}
+            default 0
+        }
+
+        parameter color Output {
+            display hidden
+            access output
+        }
+
+        RSLFunction {
+            void vfxToColor (
+                varying float   R;
+                varying float   G;
+                varying float   B;
+
+                output varying color    Output;
+
+            ) {
+                Output = color (R, G, B);
+            }
+        }
+    }
+
+    templateV multiple XformColor 0 {
+        description {
+            Transforms the Input color from one space to another.
+            "This to That" transforms define a color alteration that
+            transforms one color to another.
+        }
+
+        parameter color Input {
+            label {Input}
+            description {
+            }
+            defaultinput 1
+            provider variable
+            detail varying
+            default {0 0 0}
+        }
+
+        slimattribute string InputConversion {
+            label {Input Conversion}
+            description {
+                Selects what conversion to perform on the Input
+                and Input Average values before processing.
+            }
+            subtype selector
+            range {
+                None None
+                "Linear -> sRGB" LinearTosRGB
+                "sRGB -> Linear" sRGBToLinear
+            }
+            default None
+        }
+
+        slimattribute string Type {
+            label {Transformation}
+            description {
+                Selects which type of color Transformation to apply.
+            }
+            subtype selector
+            range {
+                None None
+                sRGB->Linear sRGBToLinear
+                Linear->sRGB LinearTosRGB
+                "This -> That" ThisToThat
+                rgb->hsl rgbhsl
+                rgb->hsv rgbhsv
+                rgb->HSY rgbHSY
+                rgb->HsY rgbHsY
+                rgb->HSy rgbHSy
+                rgb->YIQ rgbYIQ
+                rgb->xyz rgbxyz
+                rgb->XYZ rgbXYZ
+                rgb->Lab rgbLab
+                rgb->Luv rgbLuv
+                rgb->LabCh rgbLabCh
+                rgb->LuvCh rgbLuvCh
+                hsl->rgb hslrgb
+                hsv->rgb hsvrgb
+                HSY->rgb HSYrgb
+                HsY->rgb HsYrgb
+                HSy->rgb HSyrgb
+                YIQ->rgb YIQrgb
+                xyz->rgb xyzrgb
+                XYZ->rgb XYZrgb
+                Lab->rgb Labrgb
+                Luv->rgb Luvrgb
+                LabCh->rgb LabChrgb
+                LuvCh->rgb LuvChrgb
+                rgb->cmy rgbcmy
+                cmy->rgb cmyrgb
+            }
+            default rgbHSY
+
+            msghandler {
+                SetValue {
+                    set typeParam %obj
+                    set typeValue [$typeParam GetValue]
+                    set app [$typeParam GetAppearance]
+
+                    switch $typeValue {
+                        ThisToThat {
+                            [$app GetProperties -name This] SetDisplayLevel ""
+                            [$app GetProperties -name That] SetDisplayLevel ""
+                            [$app GetProperties -name InterpSpace] SetDisplayLevel ""
+                        }
+                        default {
+                            [$app GetProperties -name This] SetDisplayLevel "hidden"
+                            [$app GetProperties -name That] SetDisplayLevel "hidden"
+                            [$app GetProperties -name InterpSpace] SetDisplayLevel "hidden"
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        parameter color This {
+            display hidden
+            label {This}
+            description {
+                This color will become That color in the Output.
+                Must be an rgb color.
+            }
+            provider variable
+            detail varying
+            default {1 1 1}
+        }
+
+        parameter color That {
+            display hidden
+            label {That}
+            description {
+                The color This color will become in the Output.
+                Must be an rgb color.
+            }
+            provider variable
+            detail varying
+            default {1 1 1}
+        }
+
+        slimattribute string InterpSpace {
+            display hidden
+            label {Type}
+            description {
+                The color space and type of conversion in which This to That transformation takes place.
+                The color is altered such that This color becomes That color by offsetting, scaling,
+                or shearing the color space's components.
+            }
+            subtype selector
+            range {
+                "RGB Shear" rgbShear
+                "+H+S*Y" +H+S*Y
+                "+H+S+Y" +H+S+Y
+                "+H*S*Y" +H*S*Y
+                "HSY Shear" HSYShear
+            }
+            default rgbShear
+        }
+
+        slimattribute string OutputConversion {
+            label {Output Conversion}
+            description {
+                Selects what conversion to perform on the final result.
+            }
+            subtype selector
+            range {
+                None None
+                "Linear -> sRGB" LinearTosRGB
+                "sRGB -> Linear" sRGBToLinear
+            }
+            default None
+        }
+
+        parameter color Output {
+            label {Output}
+            display hidden
+            access output
+        }
+        parameter float R {
+            label {Output[0]}
+            display hidden
+            access output
+        }
+        parameter float G {
+            label {Output[1]}
+            display hidden
+            access output
+        }
+        parameter float B {
+            label {Output[2]}
+            display hidden
+            access output
+        }
+
+        RSLInclude {sl.h}
+        RSLInclude {color.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "            Output = [getvar Input];"
+
+                    switch [getval InputConversion] {
+                        LinearTosRGB {
+                            output "Output = colorSRGBEncode (Output);"
+                        }
+                        sRGBToLinear {
+                            output "Output = colorSRGBDecode (Output);"
+                        }
+                    }
+
+                    switch [getval Type] {
+                        sRGBToLinear { output "Output = colorSRGBDecode (Output);" }
+                        LinearTosRGB { output "Output = colorSRGBEncode (Output);" }
+                        ThisToThat {
+                            switch [getval InterpSpace] {
+                                rgbShear { output "
+                                    Output = mix (color 0, [getvar That], linear (color 0, [getvar This], Output));
+                                " }
+                                +H+S*Y { output "
+                                    color   this, that, input;
+                                    float   hoffset, soffset, yscale;
+
+                                    this = ctransform (\"rgb\", \"HSY\", [getvar This]);
+                                    that = ctransform (\"rgb\", \"HSY\", [getvar That]);
+                                    input = ctransform (\"rgb\", \"HSY\", Output);
+
+                                    hoffset = that\[0\] - this\[0\];
+                                    soffset = that\[1\] - this\[1\];
+                                    yscale = that\[2\] / this\[2\];
+
+                                    Output = color (
+                                        input\[0\] + hoffset,
+                                        input\[1\] + soffset,
+                                        input\[2\] * yscale
+                                    );
+
+                                    Output = ctransform (\"HSY\", \"rgb\", Output);
+                                " }
+                                +H+S+Y { output "
+                                    color   this, that, input;
+                                    float   hoffset, soffset, yoffset;
+
+                                    this = ctransform (\"rgb\", \"HSY\", [getvar This]);
+                                    that = ctransform (\"rgb\", \"HSY\", [getvar That]);
+                                    input = ctransform (\"rgb\", \"HSY\", Output);
+
+                                    hoffset = that\[0\] - this\[0\];
+                                    soffset = that\[1\] - this\[1\];
+                                    yoffset = that\[2\] - this\[2\];
+
+                                    Output = color (
+                                        input\[0\] + hoffset,
+                                        input\[1\] + soffset,
+                                        input\[2\] + yoffset
+                                    );
+
+                                    Output = ctransform (\"HSY\", \"rgb\", Output);
+                                " }
+                                +H*S*Y { output "
+                                    color   this, that, input;
+                                    float   hoffset, sscale, yscale;
+
+                                    this = ctransform (\"rgb\", \"HSY\", [getvar This]);
+                                    that = ctransform (\"rgb\", \"HSY\", [getvar That]);
+                                    input = ctransform (\"rgb\", \"HSY\", Output);
+
+                                    hoffset = that\[0\] - this\[0\];
+                                    sscale = that\[1\] / this\[1\];
+                                    yscale = that\[2\] / this\[2\];
+
+                                    Output = color (
+                                        input\[0\] + hoffset,
+                                        input\[1\] * sscale,
+                                        input\[2\] * yscale
+                                    );
+
+                                    Output = ctransform (\"HSY\", \"rgb\", Output);
+                                " }
+                                HSYShear { output "
+                                    color   this, that, input;
+
+                                    this = ctransform (\"rgb\", \"HSY\", [getvar This]);
+                                    that = ctransform (\"rgb\", \"HSY\", [getvar That]);
+                                    input = ctransform (\"rgb\", \"HSY\", Output);
+
+                                    Output = mix (color 0, that, linear (color 0, this, input));
+
+                                    Output = ctransform (\"HSY\", \"rgb\", Output);
+                                " }
+                            }
+                        }
+                        rgbhsl { output "Output = ctransform (\"rgb\", \"hsl\", Output);" }
+                        rgbhsv { output "Output = ctransform (\"rgb\", \"hsv\", Output);" }
+                        rgbHSY { output "Output = ctransform (\"rgb\", \"HSY\", Output);" }
+                        rgbHsY { output "Output = ctransform (\"rgb\", \"HsY\", Output);" }
+                        rgbHSy { output "Output = ctransform (\"rgb\", \"HSy\", Output);" }
+                        rgbYIQ { output "Output = ctransform (\"rgb\", \"YIQ\", Output);" }
+                        rgbxyz { output "Output = ctransform (\"rgb\", \"xyz\", Output);" }
+                        rgbXYZ { output "Output = colorRGBToXYZ(Output);" }
+                        rgbLab { output "Output = colorXYZToLab(colorRGBToXYZ(Output));" }
+                        rgbLuv { output "Output = colorXYZToLuv(colorRGBToXYZ(Output));" }
+                        rgbLabCh { output "Output = colorLxxToLCh(colorXYZToLab(colorRGBToXYZ(Output)));" }
+                        rgbLuvCh { output "Output = colorLxxToLCh(colorXYZToLuv(colorRGBToXYZ(Output)));" }
+                        hslrgb { output "Output = ctransform (\"hsl\", \"rgb\", Output);" }
+                        hsvrgb { output "Output = ctransform (\"hsv\", \"rgb\", Output);" }
+                        HSYrgb { output "Output = ctransform (\"HSY\", \"rgb\", Output);" }
+                        HsYrgb { output "Output = ctransform (\"HsY\", \"rgb\", Output);" }
+                        HSyrgb { output "Output = ctransform (\"HSy\", \"rgb\", Output);" }
+                        YIQrgb { output "Output = ctransform (\"YIQ\", \"rgb\", Output);" }
+                        xyzrgb { output "Output = ctransform (\"xyz\", \"rgb\", Output);" }
+                        XYZrgb { output "Output = colorXYZToRGB(Output);" }
+                        Labrgb { output "Output = colorXYZToRGB(colorLabToXYZ(Output));" }
+                        Luvrgb { output "Output = colorXYZToRGB(colorLuvToXYZ(Output));" }
+                        LabChrgb { output "Output = colorXYZToRGB(colorLabToXYZ(colorLChToLxx(Output)));" }
+                        LuvChrgb { output "Output = colorXYZToRGB(colorLuvToXYZ(colorLChToLxx(Output)));" }
+                        rgbcmy -
+                        cmyrgb { output "Output = color 1 - Output;" }
+                    }
+
+                    switch [getval OutputConversion] {
+                        LinearTosRGB {
+                            output "Output = colorSRGBEncode (Output);"
+                        }
+                        sRGBToLinear {
+                            output "Output = colorSRGBDecode (Output);"
+                        }
+                    }
+output "
+                    R = Output\[0\];
+                    G = Output\[1\];
+                    B = Output\[2\];
+"
+                }
+            }
+        }
+    }
+
+    templateV multiple ColorCorrect 0 {
+        description {
+            Alters the Input and Input Average colors using the various controls.
+            The inputs are assumed to be RGB colors.
+            Corrections are applied in the order they're shown.
+        }
+
+        parameter float Enable {
+            label {Enable}
+            description {
+                Determines how much effect the color corrections have on the results.
+            }
+            provider variable
+            detail varying
+            range {0 1}
+            default 1
+        }
+
+        parameter color Input {
+            label {Input}
+            description {
+                The color to correct.
+            }
+            defaultinput 1
+            provider variable
+            detail varying
+            default {1 1 1}
+        }
+
+        parameter color InputAvg {
+            label {Input Average}
+            description {
+                This should be the average color of the Input.
+            }
+            provider variable
+            detail varying
+            default {.5 .5 .5}
+        }
+
+        slimattribute string InputConversion {
+            label {Input Conversion}
+            description {
+                Selects what conversion to perform on the Input
+                and Input Average values before processing.
+            }
+            subtype selector
+            range {
+                None None
+                "Linear -> sRGB" LinearTosRGB
+                "sRGB -> Linear" sRGBToLinear
+            }
+            default None
+        }
+
+        parameter float Contrast {
+            label {Contrast}
+            description {
+                Adjusts the mix between the Input color and the Input Average color.
+                When Contrast=0, the Input Average color is produced.
+                When Contrast=1, the Input color is produced.
+            }
+            provider variable
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float HueOffset {
+            label {Hue}
+            description {
+                Shift the Hue by this amount.
+                Hue is cyclical, so shifting by an integer amount causes no change.
+                To invert the Hue, shift it by +/- .5.
+            }
+            provider variable
+            detail varying
+            subtype slider
+            range {-.5 .5 .01}
+            default 0
+        }
+
+        parameter float SatScale {
+            label {Saturation}
+            description {
+                Scale the Saturation by this amount.
+            }
+            provider variable
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float LumScale {
+            label {Luminance}
+            description {
+                Scale the Luminance by this amount.
+            }
+            provider variable
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter color Tint {
+            label {Tint}
+            description {
+                Multiply the color by Tint.
+            }
+            provider variable
+            detail varying
+            default {1 1 1}
+        }
+
+        parameter float colorSense {
+            label {Color Balance}
+            description {
+                Selects whether the White and Black Points define the input or output colors:
+                does color 1 in the Input become the White Point color,
+                or does the White Point color in the Input become color 1?
+            }
+            provider variable
+            detail uniform
+            subtype selector
+            range {
+                "color 1 -> White Point" 0
+                "White Point -> color 1" 1
+            }
+            default 0
+        }
+
+        parameter color whitePoint {
+            label {White Point}
+            description {
+                Sets the White Point for color balance correction.
+            }
+            provider variable
+            detail varying
+            default {1 1 1}
+        }
+
+        parameter color blackPoint {
+            label {Black Point}
+            description {
+                Sets the Black Point for color balance correction.
+            }
+            provider variable
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter float exponent {
+            label {Exponent}
+            description {
+                Raise the color to this power.
+            }
+            provider variable
+            detail varying
+            subtype slider
+            range {.25 4}
+            default 1
+        }
+
+        collection void ToneMapControls {
+            label {Tone Mapping}
+            description {
+                These provide Tone Mapping functionality.
+                Tone Mapping is generally used for converting HDR data
+                to low dynamic range values.
+            }
+            state closed
+
+            parameter float levelCurve {
+                label {Transfer Curve}
+                description {
+                    Selects the remapping curve.
+                    The functions all limit the output range between (0,0,0) and (1,1,1),
+                    except Linear.
+                }
+                provider variable
+                detail uniform
+                subtype selector
+                range {
+                    "Linear" 0
+                    "Clamp"  5
+                    "Linearstep 7.5%" 3
+                    "Linearstep 15%"  4
+                    "Smoothstep"   1
+                    "Rationalstep" 2
+                }
+                default 0
+            }
+
+            parameter color whiteLevel {
+                label {White Level}
+                description {
+                    Sets the White Level for remapping.
+                    When the Input color is this value, (1,1,1) will be output.
+                }
+                provider variable
+                detail varying
+                default {1 1 1}
+            }
+
+            parameter color blackLevel {
+                label {Black Level}
+                description {
+                    Sets the Black Level for remapping.
+                    When the Input color is this value, (0,0,0) will be output.
+                }
+                provider variable
+                detail varying
+                default {0 0 0}
+            }
+        }
+
+        slimattribute string OutputConversion {
+            label {Output Conversion}
+            description {
+                Selects what conversion to perform on the final result.
+            }
+            subtype selector
+            range {
+                None None
+                "Linear -> sRGB" LinearTosRGB
+                "sRGB -> Linear" sRGBToLinear
+            }
+            default None
+        }
+
+
+        parameter color Output {
+            label {Color}
+            display hidden
+            access output
+        }
+
+        parameter color OutputAvg {
+            label {Average}
+            display hidden
+            access output
+        }
+
+        RSLInclude {sl.h}
+        RSLInclude {math.h}
+        RSLInclude {color.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                    varying float   _Enable = [getvar Enable];
+                    varying color   _Input = [getvar Input];
+                    varying color   _InputAvg = [getvar InputAvg];
+                    varying float   _Contrast = [getvar Contrast];
+                    varying float   _Hue = [getvar HueOffset];
+                    varying float   _Saturation = [getvar SatScale];
+                    varying float   _Luminance = [getvar LumScale];
+                    varying color   _Tint = [getvar Tint];
+                    uniform float   _ColorBalance = [getvar colorSense];
+                    varying color   _WhitePoint = [getvar whitePoint];
+                    varying color   _BlackPoint = [getvar blackPoint];
+                    varying float   _Exponent = [getvar exponent];
+                    uniform float   _TransferCurve = [getvar levelCurve];
+                    varying color   _WhiteLevel = [getvar whiteLevel];
+                    varying color   _BlackLevel = [getvar blackLevel];
+"
+                    switch [getval InputConversion] {
+                        None {
+output "                    Output = _Input;"
+output "                    OutputAvg = _InputAvg;"
+                        }
+                        LinearTosRGB {
+output "                    Output = colorSRGBEncode (_Input);"
+output "                    OutputAvg = colorSRGBEncode (_InputAvg);"
+                        }
+                        sRGBToLinear {
+output "                    Output = colorSRGBDecode (_Input);"
+output "                    OutputAvg = colorSRGBDecode (_InputAvg);"
+                        }
+                    }
+output "
+                    // Contrast
+                    Output = mix (OutputAvg, Output, _Contrast);
+
+                    //
+                    // Do HSY space manipulations.
+                    //
+                    varying color   hsy, hsyavg;
+
+                    hsy = ctransform (\"rgb\", \"HSY\", Output);
+                    hsyavg = ctransform (\"rgb\", \"HSY\", OutputAvg);
+
+                    hsy += color (_Hue, 0, 0);
+                    hsy *= color (1, _Saturation, _Luminance);
+                    hsyavg += color (_Hue, 0, 0);
+                    hsyavg *= color (1, _Saturation, _Luminance);
+
+                    // Fix up hue to circumvent prman HSY space bug.
+                    hsy = color (mod(hsy\[0\],1), hsy\[1\], hsy\[2\]);
+                    hsyavg = color (mod(hsyavg\[0\],1), hsyavg\[1\], hsyavg\[2\]);
+
+                    Output = ctransform (\"HSY\", \"rgb\", hsy);
+                    OutputAvg = ctransform (\"HSY\", \"rgb\", hsyavg);
+
+                    // Tint
+                    Output *= _Tint;
+                    OutputAvg *= _Tint;
+
+                    // Color Balance
+                    if (_ColorBalance) {
+                        Output = linear (_BlackPoint, _WhitePoint, Output);
+                        OutputAvg = linear (_BlackPoint, _WhitePoint, OutputAvg);
+                    }
+                    else {
+                        Output = mix (_BlackPoint, _WhitePoint, Output);
+                        OutputAvg = mix (_BlackPoint, _WhitePoint, OutputAvg);
+                    }
+
+                    // Gamma correction
+                    Output = _pow (Output, _Exponent);
+                    OutputAvg = _pow (OutputAvg, _Exponent);
+
+                    //
+                    // Tone Mapping
+                    //
+                    if (_TransferCurve == 0) {
+                        Output = linear (_BlackLevel, _WhiteLevel, Output);
+                        OutputAvg = linear (_BlackLevel, _WhiteLevel, OutputAvg);
+                    }
+                    else if (_TransferCurve == 1) {
+                        Output = _smoothstep (_BlackLevel, _WhiteLevel, Output);
+                        OutputAvg = _smoothstep (_BlackLevel, _WhiteLevel, OutputAvg);
+                    }
+                    else if (_TransferCurve == 2) {
+                        Output = linear (_BlackLevel, _WhiteLevel, Output);
+                        Output = color (
+                            mathRationalSpline (.5, Output\[0\]),
+                            mathRationalSpline (.5, Output\[1\]),
+                            mathRationalSpline (.5, Output\[2\])
+                        );
+                        OutputAvg = linear (_BlackLevel, _WhiteLevel, OutputAvg);
+                        OutputAvg = color (
+                            mathRationalSpline (.5, OutputAvg\[0\]),
+                            mathRationalSpline (.5, OutputAvg\[1\]),
+                            mathRationalSpline (.5, OutputAvg\[2\])
+                        );
+                    }
+                    else if (_TransferCurve == 3) {
+                        Output = linear (_BlackLevel, _WhiteLevel, Output);
+                        Output = color (
+                            mathLinearSpline (.075, .075, Output\[0\]),
+                            mathLinearSpline (.075, .075, Output\[1\]),
+                            mathLinearSpline (.075, .075, Output\[2\])
+                        );
+                        OutputAvg = linear (_BlackLevel, _WhiteLevel, OutputAvg);
+                        OutputAvg = color (
+                            mathLinearSpline (.075, .075, OutputAvg\[0\]),
+                            mathLinearSpline (.075, .075, OutputAvg\[1\]),
+                            mathLinearSpline (.075, .075, OutputAvg\[2\])
+                        );
+                    }
+                    else if (_TransferCurve == 4) {
+                        Output = linear (_BlackLevel, _WhiteLevel, Output);
+                        Output = color (
+                            mathLinearSpline (.15, .15, Output\[0\]),
+                            mathLinearSpline (.15, .15, Output\[1\]),
+                            mathLinearSpline (.15, .15, Output\[2\])
+                        );
+                        OutputAvg = linear (_BlackLevel, _WhiteLevel, OutputAvg);
+                        OutputAvg = color (
+                            mathLinearSpline (.15, .15, OutputAvg\[0\]),
+                            mathLinearSpline (.15, .15, OutputAvg\[1\]),
+                            mathLinearSpline (.15, .15, OutputAvg\[2\])
+                        );
+                    }
+                    else if (_TransferCurve == 5) {
+                        Output = linear( _BlackLevel, _WhiteLevel, Output );
+                        Output = _clamp( Output, 0, 1 );
+                        OutputAvg = linear( _BlackLevel, _WhiteLevel, OutputAvg );
+                        OutputAvg = _clamp( OutputAvg, 0, 1 );
+                    }
+"
+                    switch [getval OutputConversion] {
+                        LinearTosRGB {
+                            output "Output = colorSRGBEncode (Output);"
+                            output "OutputAvg = colorSRGBEncode (OutputAvg);"
+                        }
+                        sRGBToLinear {
+                            output "Output = colorSRGBDecode (Output);"
+                            output "OutputAvg = colorSRGBDecode (OutputAvg);"
+                        }
+                    }
+output "
+                    Output = mix (_Input, Output, _Enable);
+                    OutputAvg = mix (_Input, OutputAvg, _Enable);
+"
+                }
+            }
+        }
+    }
+
+  }
+}

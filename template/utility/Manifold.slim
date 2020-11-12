@@ -1,0 +1,208 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV multiple FromManifold 0 {
+        description {
+            Outputs the three components of the Input manifold.
+        }
+
+        collection manifold Input {
+            label {Input}
+            description {
+            }
+            detail varying
+            parameter point M {detail varying}
+            parameter vector dMu {detail varying}
+            parameter vector dMv {detail varying}
+        }
+
+        parameter point Q {
+            label {Q}
+            description {
+                The Input manifold point Q.
+            }
+            display hidden
+            access output
+        }
+        parameter vector dQu {
+            label {dQu}
+            description {
+                The dQu component of the Input manifold.
+            }
+            display hidden
+            access output
+        }
+        parameter vector dQv {
+            label {dQv}
+            description {
+                The dQv component of the Input manifold.
+            }
+            display hidden
+            access output
+        }
+        parameter float Qx {
+            label {Qx}
+            display hidden
+            access output
+        }
+        parameter float Qy {
+            label {Qy}
+            display hidden
+            access output
+        }
+        parameter float Qz {
+            label {Qz}
+            display hidden
+            access output
+        }
+
+        RSLFunction {
+            void vfxFromManifold (
+                varying point   M;
+                varying vector  dMu;
+                varying vector  dMv;
+
+                output varying point    Q;
+                output varying vector   dQu;
+                output varying vector   dQv;
+                output varying float    Qx;
+                output varying float    Qy;
+                output varying float    Qz;
+            ) {
+                Q = M;
+                dQu = dMu;
+                dQv = dMv;
+                Qx = Q[0];
+                Qy = Q[1];
+                Qz = Q[2];
+            }
+        }
+    }
+
+    templateV manifold ToManifold 0 {
+        description {
+            Outputs the three Input values as a Manifold.
+        }
+
+        parameter point Q {
+            label {Q}
+            provider variable
+            detail varying
+            default {0 0 0}
+        }
+        parameter vector dQu {
+            label {dQu}
+            provider variable
+            detail varying
+            default {0 0 0}
+        }
+        parameter vector dQv {
+            label {dQv}
+            provider variable
+            detail varying
+            default {0 0 0}
+        }
+
+        collection manifold Output {
+            label {Output}
+            display hidden
+            access output
+            parameter point M {access output}
+            parameter vector dMu {access output}
+            parameter vector dMv {access output}
+        }
+
+        RSLFunction {
+            void vfxToManifold (
+                varying point   Q;
+                varying vector  dQu;
+                varying vector  dQv;
+
+                output varying point    M;
+                output varying vector   dMu;
+                output varying vector   dMv;
+            ) {
+                M = Q;
+                dMu = dQu;
+                dMv = dQv;
+            }
+        }
+    }
+
+    templateV manifoldn ToManifoldN 0 {
+        description {
+            Outputs the four Input values as a ManifoldN.
+        }
+
+        collection manifold Input {
+            label {Input}
+            description {
+            }
+            detail varying
+            parameter point Q {
+                detail varying
+                default {0 0 0}
+            }
+            parameter vector dQu {
+                detail varying
+                default {0 0 0}
+            }
+            parameter vector dQv {
+                detail varying
+                default {0 0 0}
+            }
+        }
+        parameter vector Ni {
+            label {N}
+            provider variable
+            detail varying
+            default {0 0 0}
+        }
+
+        collection manifoldn Output {
+            label {Output}
+            display hidden
+            access output
+            parameter point M {access output}
+            parameter normal No {access output}
+            parameter vector dMu {access output}
+            parameter vector dMv {access output}
+        }
+
+        RSLFunction {
+            void vfxToManifoldN (
+                varying point   Q;
+                varying vector  dQu;
+                varying vector  dQv;
+                varying vector  Ni;
+
+                output varying point    M;
+                output varying vector   dMu;
+                output varying vector   dMv;
+                output varying normal   No;
+            ) {
+                M = Q;
+                dMu = dQu;
+                dMv = dQv;
+                No = normal Ni;
+            }
+        }
+    }
+
+  }
+}

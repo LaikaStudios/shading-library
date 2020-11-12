@@ -1,0 +1,225 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    set TemplatePrototype {
+        templateV %Type %TypeStep 0 {
+            label {Step}
+            description {
+                Produces various step and filtered step functions.
+            }
+
+            slimattribute string Type {
+                label {Type}
+                description {
+                    Selects the Type of step function to apply.
+                    Step produces a simple, aliased step function.
+                    Width lets you directly control the width of the transition.
+                    Blur is a simple scale on the ShadingRate-based size of the
+                    filterstep function.
+                }
+                subtype selector
+                range {
+                    "None" none
+                    "Step" step
+                    "filterstep Width" width
+                    "filterstep Blur" blur
+                }
+                default blur
+
+                msghandler {
+                    SetValue - RevertValue {
+                        set typeParam %obj
+                        set app [$typeParam GetAppearance]
+
+                        set typeValue [$typeParam GetValue]
+                        switch $typeValue {
+                            step - none {
+                                [$app GetProperties -name Blur] SetDisplayLevel "hidden"
+                                [$app GetProperties -name Width] SetDisplayLevel "hidden"
+                            }
+                            width {
+                                [$app GetProperties -name Blur] SetDisplayLevel "hidden"
+                                [$app GetProperties -name Width] SetDisplayLevel ""
+                            }
+                            blur {
+                                [$app GetProperties -name Blur] SetDisplayLevel ""
+                                [$app GetProperties -name Width] SetDisplayLevel "hidden"
+                            }
+                        }
+
+                        $app UpdateEditor
+                    }
+                }
+            }
+
+            parameter %Type Input {
+                label {Input}
+                description {
+                    The function to be stepped.
+                }
+                defaultinput 1
+                detail varying
+                %SubType
+                %Range
+                %Default
+            }
+
+            parameter %Type Step {
+                label {Step}
+                description {
+                    The transition point applied to the Input.
+                }
+                detail varying
+                %SubType
+                %Range
+                %Default
+            }
+
+            parameter float Blur {
+                label {Blur}
+                description {
+                    Scales the default filterstep width determined by the ShadingRate.
+                }
+                detail varying
+                subtype slider
+                range {1 5}
+                default 1
+            }
+
+            parameter float Width {
+                display hidden
+                label {Width}
+                description {
+                    Directly sets the Width of the step so it's never smaller than this.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default .1
+            }
+
+            slimattribute float Invert {
+                label {Invert}
+                description {
+                    If checked, invert the result.
+                }
+                subtype switch
+                default 0
+            }
+
+            slimattribute float Clamp {
+                label {Clamp}
+                description {
+                    If checked, clamp the result between 0 and 1.
+                }
+                subtype switch
+                default 0
+            }
+
+            parameter %Type Output {
+                display hidden
+                access output
+            }
+
+            RSLInclude {sl.h}
+
+            RSLSource DynamicFunction {
+                proc primvars {} {}
+                proc function {} {
+                    generateBody {
+                        switch [getval Type] {
+                            step {
+                                output "[getvar Output] = _step ([getvar Step], [getvar Input]);"
+                            }
+                            width {
+                                output "
+                                    filterregion    InputFilt;
+                                    varying float   dInput;
+
+                                    InputFilt->%RegCalc ([getvar Input]);
+                                    dInput = sqrt (InputFilt->minsize() * InputFilt->maxsize());
+                                    dInput = max ([getvar Width], dInput);
+
+                                    [getvar Output] = %WidthFunc;
+                                "
+                            }
+                            blur {
+                                output "[getvar Output] = %BlurFunc;"
+                            }
+                            none {
+                                output "[getvar Output] = [getvar Input];"
+                            }
+                        }
+
+                        if {[getval Invert]} {
+                            output "[getvar Output] = %Type(1) - [getvar Output];"
+                        }
+
+                        if {[getval Clamp]} {
+                            output "[getvar Output] = _clamp ([getvar Output], 0, 1);"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    foreach {type subtype range default regcalc widthfunc blurfunc} {
+        float
+            "subtype slider"
+            "range {0 1}"
+            "default .5"
+            "calculate1d"
+            "filterstep ([getvar Step], [getvar Input], [getvar Input] + dInput)"
+            "filterstep ([getvar Step], [getvar Input], \\\"width\\\", [getvar Blur])"
+        color
+            ""
+            ""
+            "default {.5 .5 .5}"
+            "calculate3d"
+            "color (filterstep ([getvar Step]\\\[0\\\], [getvar Input]\\\[0\\\], [getvar Input]\\\[0\\\]+dInput), filterstep ([getvar Step]\\\[1\\\], [getvar Input]\\\[1\\\], [getvar Input]\\\[1\\\]+dInput), filterstep ([getvar Step]\\\[2\\\], [getvar Input]\\\[2\\\], [getvar Input]\\\[2\\\]+dInput))"
+            "color (filterstep ([getvar Step]\\\[0\\\], [getvar Input]\\\[0\\\], \\\"width\\\", [getvar Blur]), filterstep ([getvar Step]\\\[1\\\], [getvar Input]\\\[1\\\], \\\"width\\\", [getvar Blur]), filterstep ([getvar Step]\\\[2\\\], [getvar Input]\\\[2\\\], \\\"width\\\", [getvar Blur]))"
+        point
+            ""
+            ""
+            "default {.5 .5 .5}"
+            "calculate3d"
+            "point (filterstep ([getvar Step]\\\[0\\\], [getvar Input]\\\[0\\\], [getvar Input]\\\[0\\\]+dInput), filterstep ([getvar Step]\\\[1\\\], [getvar Input]\\\[1\\\], [getvar Input]\\\[1\\\]+dInput), filterstep ([getvar Step]\\\[2\\\], [getvar Input]\\\[2\\\], [getvar Input]\\\[2\\\]+dInput))"
+            "point (filterstep ([getvar Step]\\\[0\\\], [getvar Input]\\\[0\\\], \\\"width\\\", [getvar Blur]), filterstep ([getvar Step]\\\[1\\\], [getvar Input]\\\[1\\\], \\\"width\\\", [getvar Blur]), filterstep ([getvar Step]\\\[2\\\], [getvar Input]\\\[2\\\], \\\"width\\\", [getvar Blur]))"
+        vector
+            ""
+            ""
+            "default {.5 .5 .5}"
+            "calculate3d"
+            "vector (filterstep ([getvar Step]\\\[0\\\], [getvar Input]\\\[0\\\], [getvar Input]\\\[0\\\]+dInput), filterstep ([getvar Step]\\\[1\\\], [getvar Input]\\\[1\\\], [getvar Input]\\\[1\\\]+dInput), filterstep ([getvar Step]\\\[2\\\], [getvar Input]\\\[2\\\], [getvar Input]\\\[2\\\]+dInput))"
+            "vector (filterstep ([getvar Step]\\\[0\\\], [getvar Input]\\\[0\\\], \\\"width\\\", [getvar Blur]), filterstep ([getvar Step]\\\[1\\\], [getvar Input]\\\[1\\\], \\\"width\\\", [getvar Blur]), filterstep ([getvar Step]\\\[2\\\], [getvar Input]\\\[2\\\], \\\"width\\\", [getvar Blur]))"
+    } {
+        regsub -all %Type $TemplatePrototype $type result
+        regsub -all %SubType   $result $subtype   result
+        regsub -all %Range     $result $range     result
+        regsub -all %Default   $result $default   result
+        regsub -all %RegCalc   $result $regcalc   result
+        regsub -all %WidthFunc $result $widthfunc result
+        regsub -all %BlurFunc  $result $blurfunc  result
+        if [catch $result msg] {
+            ::RAT::LogMsg ERROR $msg
+        }
+    }
+
+  }
+}

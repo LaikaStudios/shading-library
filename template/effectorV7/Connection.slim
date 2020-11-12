@@ -1,0 +1,194 @@
+##
+##  Copyright(c) 2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+
+#
+#   This implements the Katana PrmanShadingNode input/output connection mechanism.
+#
+
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    # Input templates: A Katana PrmanShadingNode can connect its output to these.
+    set TemplatePrototype {
+        templateV %Type %TypeKatanaInput 0 {
+            description {
+                Takes a %Type Input value, and outputs that value to another Slim template's
+                parameter, but allows a Katana PrmanShadingNode (a Katana Connection coshader)
+                to override it in Katana: %NameOutput -> %NameInput.
+            }
+
+            parameter %Type Input {
+                label {Input}
+                description {
+                    If there is no Katana PrmanShadingNode connected, this is the value that
+                    will be passed to the parameter it's connected to in the Slim network.
+                    Katana Connection templates connect in Katana like this: %NameOutput -> %NameInput.
+                    Note that Output templates are attachable coshaders.
+                }
+                provider variable
+                detail %Detail
+                subtype file
+                default "%Default"
+            }
+            parameter coshader Input_Co_ {
+                display hidden
+                provider connection
+                default {}
+                value {}
+            }
+
+            parameter %Type result {
+                display hidden
+                access output
+            }
+
+            RSLInclude {coreV7/override.h}
+
+            RSLSource DynamicFunction {
+                proc primvars {} {}
+                proc function {} {
+                    generateBody {
+                        set overrideParam "Input"
+                        set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                        output "result = override( $coParam, [getvar $overrideParam] );"
+output "
+"
+                    }
+                }
+            }
+        }
+    }
+
+    #
+    # Generate the various types of Input template.
+    #
+    foreach {type detail name default} {
+        float  varying Float  {0}
+        color  varying Color  {0 0 0}
+        point  varying Point  {0 0 0}
+        vector varying Vector {0 0 0}
+        string varying String {}
+        manifold_s {mustvary "laika,UV"} Manifold {}
+    } {
+        regsub -all %Type $TemplatePrototype $type result
+        regsub -all %Detail $result $detail result
+        regsub -all %Name $result $name result
+        regsub -all %Default $result $default result
+        if [catch $result msg] {
+            ::RAT::LogMsg ERROR $msg
+        }
+    }
+
+
+    # Output templates: These become Katana PrmanShadingNode coshaders that
+    # output their value to another PrmanShadingNode's input connection.
+    set TemplatePrototype {
+        templateV coshader %TypeKatanaOutput 0 {
+            description {
+                This coshader's Output value can be connected to a PrmanShadingNode input
+                parameter in Katana: %NameOutput -> %NameInput.
+            }
+
+            parameter %Type __kcooutput {
+                label {-Output}
+                description {
+                    This value is output by the Katana PrmanShadingNode when it's connected to
+                    another PrmanShadingNode's input parameter.
+                    Katana Connection templates connect in Katana like this: %NameOutput -> %NameInput.
+                    Note that Input connections are shader parameters.
+                }
+                provider parameterlist
+                userdata {
+                    __kcotype %Type
+                }
+                detail varying
+                subtype file
+                default "%Default"
+            }
+
+            RSLInclude {color.h}
+            RSLInclude {manifold.h}
+
+            RSLClass {
+                generateMethod "public void begin()" {
+                    generate __kcooutput
+                }
+
+                generateMethod "public %Class %Type Get%Name()" {
+output "
+                    return [getvar __kcooutput];
+"
+                }
+
+                if {"%Type" == "float"} {
+                    generateMethod "public %Class color GetColor()" {
+output "
+                        return color( [getvar __kcooutput] );
+"
+                    }
+                }
+
+                if {"%Type" == "color"} {
+                    generateMethod "public %Class float GetFloat()" {
+output "
+                        return colorRGBToAvg( [getvar __kcooutput] );
+"
+                    }
+                }
+
+                if {"%Type" == "point"} {
+                    generateMethod "public manifold_s GetManifold()" {
+output "
+                        manifold_s  m;
+                        m->Set( [getvar __kcooutput] );
+                        return m;
+"
+                    }
+                }
+
+                if {"%Type" == "manifold_s"} {
+                    generateMethod "public %Class point GetPoint()" {
+output "
+                        return point( [getvar __kcooutput]->GetQ() );
+"
+                    }
+                }
+            }
+        }
+    }
+
+    #
+    # Generate the various types of template.
+    #
+    foreach {class type name default} {
+        varying float  Float  {0}
+        varying color  Color  {0 0 0}
+        varying point  Point  {0 0 0}
+        varying vector Vector {0 0 0}
+        uniform string String {}
+        ""  manifold_s Manifold {}
+    } {
+        regsub -all %Class $TemplatePrototype $class result
+        regsub -all %Type $result $type result
+        regsub -all %Name $result $name result
+        regsub -all %Default $result $default result
+        if [catch $result msg] {
+            ::RAT::LogMsg ERROR $msg
+        }
+    }
+
+  }
+}

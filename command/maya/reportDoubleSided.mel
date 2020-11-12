@@ -1,0 +1,58 @@
+/*
+ *  Copyright(c) 2009 Laika, developed under contract by mitchpraterLLC.
+ *  All rights reserved unless otherwise granted. This program or documentation
+ *  contains proprietary, confidential information and trade secrets of Laika
+ *  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+ *  
+ *  By possessing this software, you agree to the following terms and conditions.
+ *  You may not resell this software, but you may freely distribute it to others.
+ *  You may use it for whatever purposes you wish. There are no warranties of any
+ *  kind. You may make modifications, however any derivation may only be distributed
+ *  to others under the same freedoms granted to you herein, it must retain this
+ *  notice and agreement, and the modifications noted. We also ask that you make
+ *  such modifications available to Laika, mitchpraterLLC, or to the computer
+ *  graphics community as a whole through a public forum.
+ */
+//
+//  Select and print a list of double sided objects.
+//
+//  Works on only the selected objects,
+//  or the whole scene if nothing is selected.
+//
+global proc reportDoubleSided()
+{
+    string $currentSelection[] = `ls -selection`;
+
+    string $doubleSidedNodes[];
+    string $geoNodes[];
+
+    if (size($currentSelection) > 0) {
+        select -hierarchy;
+        $geoNodes = `ls -selection -geometry`;
+    }
+    else
+        $geoNodes = `ls -geometry`;
+
+    string $geoNode;
+    for ($geoNode in $geoNodes) {
+        if (`getAttr ($geoNode + ".doubleSided")`)
+        $doubleSidedNodes[size($doubleSidedNodes)] = $geoNode;
+    }
+
+    if (size($doubleSidedNodes) > 0) {
+        print ("Objects should NEVER be Double Sided (\"Sides 2\" in prman).\n");
+        print ("If there are non-closed objects among these, please convert them to Double Shaded instead:\n");
+        print ($doubleSidedNodes);
+        print ("\n");
+
+        select -replace $doubleSidedNodes;
+    }
+    else {
+        select -replace $currentSelection;
+
+        if (size($currentSelection) == 0)
+            print ("Found no objects that were Double Sided.\n\n");
+        else
+            print ("No selected objects are Double Sided.\n\n");
+    }
+}

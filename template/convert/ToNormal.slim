@@ -1,0 +1,156 @@
+##
+##  Copyright(c) 2010 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+
+#   
+#   Requirements for conversion templates
+#
+#   - No extra parameters other than input and output may be declared
+#   - input parameters MUST be declared with "provider connection"
+#   - input collections must ALSO be declared with "provider connection"
+#   - output parameters MUST be declared "access output"
+#
+slim 1 extensions mprater {
+    extensions laika vfx {
+
+    template normal ColorToNormal {
+        display hidden
+        description {
+            Color to Normal.
+        }
+
+        parameter color in {
+            provider connection
+        }
+
+        parameter normal out {
+            access output
+        }
+
+        RSLFunction {
+            void vfxColorToNormal (
+                color   in;
+                output normal    out;
+            ) {
+                out = normal in;
+            }
+        }
+    }
+
+    template normal PointToNormal {
+        display hidden
+        description {
+            Point to Normal.
+        }
+
+        parameter point in {
+            provider connection
+        }
+
+        parameter normal out {
+            access output
+        }
+
+        RSLFunction {
+            void vfxPointToNormal (
+                point  in;
+                output normal    out;
+            ) {
+                out = normal in;
+            }
+        }
+    }
+
+    template normal VectorToNormal {
+        display hidden
+        description {
+            Vector to Normal.
+        }
+
+        parameter vector in {
+            provider connection
+        }
+
+        parameter normal out {
+            access output
+        }
+
+        RSLFunction {
+            void vfxVectorToNormal (
+                vector  in;
+                output normal    out;
+            ) {
+                out = normal in;
+            }
+        }
+    }
+
+    template normal ManifoldToNormal {
+        display hidden
+        description {
+            Manifold to Normal.
+        }
+
+        collection manifold in {
+            provider connection
+            parameter point Q { provider connection }
+            parameter vector dQu { provider connection }
+            parameter vector dQv { provider connection }
+        }
+
+        parameter normal out {
+            access output
+        }
+
+        RSLFunction {
+            void vfxManifoldToNormal (
+                point   Q;
+                vector  dQu;
+                vector  dQv;
+                output normal    out;
+            ) {
+                out = normal Q;
+            }
+        }
+    }
+
+    template point Manifold_sToNormal {
+        display hidden
+        description {
+            Manifold_s to Normal.
+        }
+
+        parameter manifold_s in {
+            provider connection
+        }
+
+        parameter normal out {
+            access output
+        }
+
+        RSLInclude {manifold.h}
+
+        RSLFunction {
+            void vfxManifold_sToNormal (
+                output manifold_s   in;
+                output normal       out;
+            ) {
+                out = normal (in->GetQ());
+            }
+        }
+    }
+
+  }
+}

@@ -1,0 +1,76 @@
+##
+##  Copyright(c) 2012 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+ extensions laika vfx {
+
+    namespace eval ::Slim::Laika {
+
+        proc ::ShaderEnableParam {} {
+            set result {
+                collection customuiFullWidth void {
+                    customui laika AddParam
+                    subtype propertycreator
+                    drawmode children
+                    state open
+                    userdata {
+                        AddString   "Add Appearance Override"
+                        AddDescription "Allows you to specify a surface shader's Appearance Name\nso you can adjust how much effect this will have on it."
+                        ParamPrefix ShaderEnable
+                        ParamType   coreV6ShaderEnable_s
+                        ParamDetail {mustvary "laika,coreV6ShaderEnable" inline}
+                    }
+                }
+            }
+
+            return $result
+        }
+
+        proc ::ShaderEnableSet {enableVar} {
+            set result "
+output \"
+                // What's the surface shader's appearance name?
+                // If it matches one of the patterns, set $enableVar to the match's value.
+                uniform string  appearanceName = \\\"\\\";
+                if (hasmethod (surface, \\\"_SlimAppLabel\\\") == 1) {
+                    appearanceName = surface->_SlimAppLabel;
+                }
+
+                uniform string  appearancePattern;
+                uniform float   i;
+                // Dummy loop so we can use break to stop checking once a match is found.
+                for (i=0; i < 1; i=1) {
+\"
+                    set shaderEnableList \[getproperties -name ShaderEnable_* -access input\]
+                    foreach shaderEnable $shaderEnableList {
+                        generate $shaderEnable
+output \"
+                        appearancePattern = \[getvar $shaderEnable\]->AppearancePattern;
+                        if (appearancePattern != \\\"\\\" && match (appearancePattern, appearanceName) != \[getvar $shaderEnable\]->Invert) {
+                            $enableVar = \[getvar $shaderEnable\]->Enable;
+                            break;
+                        }
+\"
+                    }
+                }
+            "
+
+            return $result
+        }
+
+    }
+
+  }
+}

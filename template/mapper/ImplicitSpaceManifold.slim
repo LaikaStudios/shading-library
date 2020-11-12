@@ -1,0 +1,64 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV ImplicitManifold_s ImplicitSpaceManifold 0 {
+        description {
+            Used in conjunction with the ImplicitSurface template.
+            Defines the space in which the Implicit Surface is generated.
+            Must also be used as the manifold of the pattern generator
+            connected to the ImplictSurface's Field parameter.
+        }
+
+        slimattribute string Space {
+            label {Space}
+            description {
+                ImplicitSurface requires a 3D coordinate system to define the implicit surface it
+                generates. This is the name of a Maya place3dTexture or other Coordinate System to use
+                for that purpose.
+            }
+            default "shader"
+        }
+
+        parameter ImplicitManifold_s out {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {slim.h}
+        RSLInclude {mapper/ImplicitManifold.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                set param [safeeval %c GetProperties -name "Space"]
+                set spaceName [safeeval $param GetValue]
+
+                generateBody {
+                    if {$spaceName != ""} {
+output "                out->Set(transform (\"[getval Space]\", SLIM_P), \"[getval Space]\");"
+                    } else {
+output "                out->Set(SLIM_P, \"current\");"
+                    }
+                }
+            }
+        }
+    }
+
+  }
+}

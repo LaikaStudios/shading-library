@@ -1,0 +1,208 @@
+##
+##  Copyright(c) 2010-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    set TemplatePrototype {
+    templateV %type %typeCombine 1 {
+        description {
+            Combines any number of %type values using the selected operators.
+        }
+
+        parameter float Invert {
+            label {Invert}
+            description {
+                Invert the result.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        collection customuiFullWidth Combine {
+            customui pixar ListUI3
+            label {+Combine}
+            userdata {
+                -buttonlabel {Add %Type Connection}
+                -elementdesc {
+                    {-label Mode -type string -subtype combineOp -default plus}     
+                    {-label Amount -type float -default 1 -subtype vslider -range {0 1}} 
+                    {-label Value -type %type -detail {mustvary laika,%typeFractal}}
+                }
+                -inputLabel %Type
+                -inputPrefix InputParams
+            }
+            subtype propertycreator
+            drawmode children
+            state open
+        }
+
+        parameter %type out {
+            label {%Type}
+            display hidden
+            access output
+        }
+
+        RSLInclude {sl.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                    out = %type 0;
+"
+                    #
+                    # Combine the input set of values.
+                    #
+                    foreach {op en val} [getproperties -name InputParams_* -access input] {
+output "
+                        if ([getvar $op] == \"plus\") {
+                            out += [getvar $en]*[getvar $val];
+                        }
+                        else if ([getvar $op] == \"minus\") {
+                            out -= [getvar $en]*[getvar $val];
+                        }
+                        else if ([getvar $op] == \"plusminus\") {
+                            out += [getvar $en]*_mix (%type -1, %type 1, [getvar $val]);
+                        }
+                        else if ([getvar $op] == \"times\") {
+                            out *= _mix (%type 1, [getvar $val], [getvar $en]);
+                        }
+"
+                    }
+output "
+                    if ([getvar Invert])
+                        out = %invertFunc;
+"
+                }
+            }
+        }
+    }
+    }
+
+    #
+    # Generate the float, color, and point Combine templates.
+    #
+    foreach {type Type invertFunc} {
+        float  Float "1 - out"
+        color  Color "color 1 - out"
+        point  Point "-out"
+    } {
+        regsub -all %Type $TemplatePrototype $type result
+        regsub -all %type $result $type result
+        regsub -all %invertFunc $result $invertFunc result
+        if [catch $result msg] {
+            ::RAT::LogMsg ERROR $msg
+        }
+    }
+
+
+    templateV vector vectorCombine 1 {
+        description {
+            Combines any number of vector values using the selected operators.
+        }
+
+        parameter float Normalize {
+            label {Normalize}
+            description {
+                Normalize the result.
+                Note that the vector visualizer normalizes the vector value for display,
+                but the output of this template is not normalized unless you've chosen
+                it to be.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        parameter float Invert {
+            label {Invert}
+            description {
+                Invert the result.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        collection customuiFullWidth Combine {
+            customui pixar ListUI3
+            label {+Combine}
+            userdata {
+                -buttonlabel {Add Vector Connection}
+                -elementdesc {
+                    {-label Mode -type string -subtype combineOp -default plus}     
+                    {-label Amount -type float -default 1 -subtype vslider -range {0 1}} 
+                    {-label Value -type vector -detail {mustvary laika,vectorFractal}}
+                }
+                -inputLabel Vector
+                -inputPrefix VParams
+            }
+            subtype propertycreator
+            drawmode children
+            state open
+        }
+
+        parameter vector Vout {
+            label {Vector}
+            display hidden
+            access output
+        }
+
+        RSLInclude {sl.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                    Vout = vector 0;
+"
+                    #
+                    # Combine the input set of vectors.
+                    #
+                    foreach {op en vec} [getproperties -name VParams_* -access input] {
+output "
+                        if ([getvar $op] == \"plus\") {
+                            Vout += [getvar $en]*[getvar $vec];
+                        }
+                        else if ([getvar $op] == \"minus\") {
+                            Vout -= [getvar $en]*[getvar $vec];
+                        }
+                        else if ([getvar $op] == \"plusminus\") {
+                            Vout += [getvar $en]*_mix (vector -1, vector 1, [getvar $vec]);
+                        }
+                        else if ([getvar $op] == \"times\") {
+                            Vout *= _mix (vector 1, [getvar $vec], [getvar $en]);
+                        }
+"
+                    }
+output "
+                    if ([getvar Normalize])
+                        Vout = normalize(Vout);
+
+                    if ([getvar Invert])
+                        Vout = -Vout;
+"
+                }
+            }
+        }
+    }
+
+
+  }
+}

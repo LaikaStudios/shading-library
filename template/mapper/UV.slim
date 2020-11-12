@@ -1,0 +1,214 @@
+##
+##  Copyright(c) 2020-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+	templateV manifold_s UV 0 {
+		description {
+            Returns st or Maya UV Set data with various manipluations applied to the result.
+		}
+
+        slimattribute float Index {
+            label {Index}
+            description {
+                The index of a Maya UV Set array that contains the desired uv data.
+                If -1, or if the selected set does not exist, returns s and t.
+                Note that RMS puts the default (first) Maya UV Set data into s and t.
+            }
+            detail uniform
+            range {-1 5 1}
+            default -1
+        }
+
+        slimattribute string UVSet {
+            label {Maya UV Set}
+			description {
+                The base name the desired Maya UV Set.
+                A Maya UV Set can contain more than one set of uv values, so
+                the Index parameter is used to select which uv data from the set is returned.
+                Ignored if Index = -1.
+			}
+            detail uniform
+            default {uvSet}
+		}
+
+        slimattribute float Swap {
+            label {Swap}
+            description {
+                Swap u and v (s and t).
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute float XInvert {
+            label {U Flip}
+            description {
+                Flip u (s).
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute float YInvert {
+            label {V Flip}
+            description {
+                Flip v (t).
+            }
+            subtype switch
+            default 0
+        }
+
+        slimattribute float Center {
+            label {Center}
+            description {
+                Is the result manipulated around (0,0) or (.5,.5)?
+            }
+            subtype selector
+            range {
+                "(0,0)" 0
+                "(.5,.5)" 1
+            }
+            default 1
+        }
+
+        parameter float XFreq {
+            label {U Frequency}
+            description {
+                Scale u (s) by this amount.
+            }
+            detail varying
+            subtype slider
+            range {0 10}
+            default 1
+        }
+
+        parameter float YFreq {
+            label {V Frequency}
+            description {
+                Scale v (t) by this amount.
+            }
+            detail varying
+            subtype slider
+            range {0 10}
+            default 1
+        }
+
+        parameter float XOffset {
+            label {U Offset}
+            description {
+                Offset the u (s) value by this amount.
+            }
+            detail varying
+            subtype slider
+            range {-1 1}
+            default 0
+        }
+
+        parameter float YOffset {
+            label {V Offset}
+            description {
+                Offset the v (t) value by this amount.
+            }
+            detail varying
+            subtype slider
+            range {-1 1}
+            default 0
+        }
+
+        parameter float Rotation {
+            label {Rotation}
+			description {
+                Rotate the result.
+			}
+            detail varying
+            subtype slider
+            range {-180 180 1}
+            default 0
+		}
+
+        parameter manifold_s out {
+            display hidden
+            access output
+        }
+
+        RSLInclude {manifold.h}
+        RSLInclude {sl.h}
+
+		RSLSource DynamicFunction {
+            proc primvars {} {
+                declare {} varying float u_[getval UVSet]\[\] \{\}
+                declare {} varying float v_[getval UVSet]\[\] \{\}
+            }
+            proc function {} {
+output "
+                void [getFunctionName] (
+                    varying float   XFreq;
+                    varying float   YFreq;
+                    varying float   XOffset;
+                    varying float   YOffset;
+                    varying float   Rotation;
+
+                    output manifold_s   out;
+                ) {
+                    varying float   uu, vv;
+                    varying point   Q;
+
+
+                    if ([getval Index] > -1 && arraylength(u_[getval UVSet]) > [getval Index]) {
+                        uu = u_[getval UVSet]\[[getval Index]\];
+                        vv = v_[getval UVSet]\[[getval Index]\];
+                    }
+                    else {
+                        uu = s;
+                        vv = t;
+                    }
+
+                    Q = point(uu,vv,0);
+"
+                    if {[getval Center]} {
+output "                Q -= vector (.5,.5,0);"
+                    }
+output "
+                    Q = rotate (Q, radians(Rotation), point(0,0,0), point(0,0,1));
+                    Q *= point (XFreq, YFreq, 1);
+                    Q -= vector (XOffset, YOffset, 0);
+"
+                    if {[getval Center]} {
+output "                Q += vector (.5,.5,0);"
+                    }
+
+                    if {[getval XInvert]} {
+output "                Q = point(-Q\[0\],Q\[1\],Q\[2\]);"
+                    }
+
+                    if {[getval YInvert]} {
+output "                Q = point(Q\[0\],-Q\[1\],Q\[2\]);"
+                    }
+
+                    if {[getval Swap]} {
+output "                Q = point(Q\[1\],Q\[0\],Q\[2\]);"
+                    }
+output "
+                    out->Set(Q);
+                }
+"
+            }
+		}
+	}
+
+  }
+}

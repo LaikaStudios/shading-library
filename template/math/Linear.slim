@@ -1,0 +1,266 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+#
+#   float and color templates.
+#
+    set TemplatePrototype {
+	templateV %Type %TypeLinear 0 {
+		description {
+            Linear interpolation.
+            Produces a 0 to 1 range of values between the Zero and One parameter settings
+            based on the value of Input.
+		}
+
+		parameter %Type Input {
+			description {
+                When this equals the Zero parameter's value, 0 will result.
+                When this equals the One parameter's value, 1 will result.
+			}
+            defaultinput 1
+			provider variable
+            detail varying
+			default %DefaultInput
+		}
+
+        parameter %Type Zero {
+            label {Zero}
+            description {
+                When the Input is this value, 0 will result.
+            }
+            provider variable
+            detail varying
+            default %DefaultZero
+        }
+
+        parameter %Type One {
+            label {One}
+            description {
+                When the Input is this value, 1 will result.
+            }
+            provider variable
+            detail varying
+            default %DefaultOne
+        }
+
+		parameter float Invert {
+			label {Invert}
+			description {
+				If checked, Invert the result.
+                One produces 0, and Zero produces 1.
+			}
+			provider variable
+            detail uniform
+			subtype switch
+			default 0
+		}
+
+		parameter float Limit {
+			label {Limit}
+			description {
+                Limits the output range by clamping or smoothstepping the result between 0 and 1.
+			}
+			provider variable
+            detail uniform
+            subtype selector
+            range {
+                "None" 0
+                "Clamp" 1
+                "Smoothstep" 2
+            }
+            default 0
+		}
+
+        parameter %Type result {
+            display hidden
+            access output
+        }
+
+        RSLInclude {sl.h}
+
+		RSLFunction {
+		    void vfx%TypeLinear (
+                %Type   Input;
+                %Type   Zero;
+                %Type   One;
+                float   Invert;
+                float   Limit;
+
+                output %Type    result;
+            ) {
+                result = linear (Zero, One, Input);
+                result = mix (result, %Type 1-result, Invert);
+
+                if (Limit == 1)
+                    result = _clamp (result, 0, 1);
+                else if (Limit == 2)
+                    result = _smoothstep (0, 1, result);
+            }
+		}
+	}
+    }
+
+    foreach {type defIn defZero defOne} {
+        float .5 0 1
+        color {{.5 .5 .5}} {{0 0 0}} {{1 1 1}}
+    } {
+        regsub -all %Type $TemplatePrototype $type result
+        regsub -all %DefaultInput $result $defIn result
+        regsub -all %DefaultZero $result $defZero result
+        regsub -all %DefaultOne $result $defOne result
+        if [catch $result msg] {
+            ::RAT::LogMsg ERROR $msg
+        }
+    }
+
+
+#
+#   point and vector.
+#
+    set TemplatePrototype {
+	templateV %Type %TypeLinear 0 {
+		description {
+            Linear interpolation.
+            Produces a 0 to 1 range of values between the Zero and One parameter settings
+            based on the value of Input.
+		}
+
+		parameter %Type Input {
+			description {
+                When this equals the Zero parameter's value, 0 will result.
+                When this equals the One parameter's value, 1 will result.
+			}
+            defaultinput 1
+			provider variable
+            detail varying
+			default %DefaultInput
+		}
+
+        parameter %Type Zero {
+            label {Zero}
+            description {
+                When the Input is this value, 0 will result.
+            }
+            provider variable
+            detail varying
+            default %DefaultZero
+        }
+
+        parameter %Type One {
+            label {One}
+            description {
+                When the Input is this value, 1 will result.
+            }
+            provider variable
+            detail varying
+            default %DefaultOne
+        }
+
+		parameter float Invert {
+			label {Invert}
+			description {
+				If checked, Invert the result.
+                One produces 0, and Zero produces 1.
+			}
+			provider variable
+            detail uniform
+			subtype switch
+			default 0
+		}
+
+		parameter float Limit {
+			label {Limit}
+			description {
+                Limits the output range by clamping or smoothstepping the result between 0 and 1.
+			}
+			provider variable
+            detail uniform
+            subtype selector
+            range {
+                "None" 0
+                "Clamp" 1
+                "Smoothstep" 2
+            }
+            default 0
+		}
+
+        parameter %Type result {
+            display hidden
+            access output
+        }
+
+        RSLInclude {sl.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    output "varying %Type   in;"
+                    set InputProvider [getpropertyinfo Input provider]
+                    if {$InputProvider == "variable" || $InputProvider == "expression"} {
+                        output "in = %transform (\"shader\", [getvar Input]);"
+                    } else {
+                        output "in = [getvar Input];"
+                    }
+
+                    output "varying %Type   zero;"
+                    set ZeroProvider [getpropertyinfo Zero provider]
+                    if {$ZeroProvider == "variable" || $ZeroProvider == "expression"} {
+                        output "zero = %transform (\"shader\", [getvar Zero]);"
+                    } else {
+                        output "zero = [getvar Zero];"
+                    }
+
+                    output "varying %Type   one;"
+                    set OneProvider [getpropertyinfo One provider]
+                    if {$OneProvider == "variable" || $OneProvider == "expression"} {
+                        output "one = %transform (\"shader\", [getvar One]);"
+                    } else {
+                        output "one = [getvar One];"
+                    }
+output "
+                result = linear (zero, one, in);
+                result = mix (result, %Type 1-result, [getvar Invert]);
+
+                if ([getvar Limit] == 1)
+                    result = _clamp (result, 0, 1);
+                else if ([getvar Limit] == 2)
+                    result = _smoothstep (0, 1, result);
+"
+                }
+            }
+        }
+	}
+    }
+
+    foreach {type xform defIn defZero defOne} {
+        point  transform  {{.5 .5 .5}} {{0 0 0}} {{1 1 1}}
+        vector vtransform {{.5 .5 .5}} {{0 0 0}} {{1 1 1}}
+    } {
+        regsub -all %Type $TemplatePrototype $type result
+        regsub -all %DefaultInput $result $defIn result
+        regsub -all %DefaultZero $result $defZero result
+        regsub -all %DefaultOne $result $defOne result
+        regsub -all %transform $result $xform result
+        if [catch $result msg] {
+            ::RAT::LogMsg ERROR $msg
+        }
+    }
+
+  }
+}

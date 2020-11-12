@@ -1,0 +1,55 @@
+##
+##  Copyright(c) 2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV coshader BakeObj 0 {
+        description {
+            Will use bake3d() to write out the Material shader's uPolygons
+            to a Wavefront .obj format file.
+        }
+
+        eval [::__categoryParam "ikaBakeObj"]
+
+        parameter string File {
+            label {File}
+            description {
+                The .obj file to write to.
+            }
+            detail varying
+            subtype file
+            default ""
+        }
+
+        RSLClass {
+            generateMethod "public void bakeObj( varying point _P; varying normal _N; varying float _s, _t; )" {
+                generate File Interpolate
+output "
+                varying normal  Nn = normalize( _N );
+
+                bake3d( [getvar File], \"s,t\", _P, Nn,
+                    \"facevarying float s\", _s,
+                    \"facevarying float t\", _t,
+                    \"interpolate\", 0,
+                    \"driver\", \"wavefrontobj\"
+                );
+"
+            }
+        }
+    }
+
+  }
+}

@@ -1,0 +1,147 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV multiple Vectors 0 {
+        description {
+            Returns various vector values.
+            V = -I.
+            Nf = faceforward N.
+            Ns = shading normal.
+            R = reflected view.
+            T = transmitted (refracted) view.
+            Tu = tangent u.
+            Tv = tangent v.
+        }
+
+        parameter float RI {
+            label {Refractive Index}
+            description {
+                Used for calculating the transmitted vector T.
+            }
+            provider variable
+            detail varying
+            subtype slider
+            range {1 4}
+            default 1.5
+        }
+
+        parameter vector Iout {
+            label {I}
+            display hidden
+            access output
+        }
+
+        parameter vector V {
+            label {V}
+            display hidden
+            access output
+        }
+
+        parameter vector Nout {
+            label {N}
+            display hidden
+            access output
+        }
+
+        parameter vector Ngout {
+            label {Ng}
+            display hidden
+            access output
+        }
+
+        parameter vector Nf {
+            label {Nf}
+            display hidden
+            access output
+        }
+
+        parameter vector Ns {
+            label {Ns}
+            display hidden
+            access output
+        }
+
+        parameter vector R {
+            label {R}
+            display hidden
+            access output
+        }
+
+        parameter vector T {
+            label {T}
+            display hidden
+            access output
+        }
+
+        parameter vector Tu {
+            label {Tu}
+            display hidden
+            access output
+        }
+
+        parameter vector Tv {
+            label {Tv}
+            display hidden
+            access output
+        }
+
+        RSLInclude {prman.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+output "
+                void [getFunctionName] (
+                    varying float   RI;
+
+                    output varying vector   Iout; 
+                    output varying vector   V; 
+                    output varying vector   Nout; 
+                    output varying vector   Ngout; 
+                    output varying vector   Nf; 
+                    output varying vector   Ns; 
+                    output varying vector   R; 
+                    output varying vector   T; 
+                    output varying vector   Tu; 
+                    output varying vector   Tv; 
+                ) {
+                    Iout = normalize(I);
+                    V = -Iout;
+                    Nout = vector normalize(N);
+                    Ngout = vector normalize(Ng);
+                    Nf = faceforward(Nout,Iout,Nout);
+                    Ns = vector prmanShadingNormal(N);
+
+                    R = reflect(Iout,Nout);
+                    float   eta = (Iout.Nout)>0 ? RI: 1/RI;
+                    T = refract(Iout,Nf,eta);
+
+#if SLIM_SHADERTYPEID == SLIM_TYPEID_volume
+                    Tu = Tv = vector 0;
+#else
+                    Tu = normalize(dPdu);
+                    Tv = normalize(dPdv);
+#endif
+                }
+"
+            }
+        }
+    }
+
+  }
+}

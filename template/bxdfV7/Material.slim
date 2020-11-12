@@ -1,0 +1,3784 @@
+##
+##  Copyright(c) 2012-2015 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV material bxdfV7Material 0 {
+        description {
+            The foundation of Laika surface shading. Used as a shader or coshader. When
+            attached as a coshader, it becomes a physical layer of material applied over
+            the underlying shader. Any number of coshader layers may be used, in which
+            case they are applied in the order they're attached.
+            A Material is defined by its Opacity/Transparency, its Bump Disp, and its set
+            of Responses - which are organized into Upper, Middle, and Lower micro-strata
+            Layers. The base Material shader also defines the object's Shadowing behavior,
+            and controls the specular, diffuse, and subsurface computations.
+        }
+
+        parameter color Opacity {
+            label {Opacity}
+            description {
+                The Opacity matte determines where this Material is versus where it isn't.
+                Or it can be used to blend between this and an underlying Material:
+                animating Opacity would cause one layered Material to morph into another.
+                While this is a color value, Transparency should be used instead
+                to tint light passing through the Material.
+                The composition of all Material layers determines the final surface opacity.
+                Note: the surface's opacity behavior MUST be reflected in the Advanced Controls
+                __computesOpacity setting of the surface shader Material.
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter coshader Opacity_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter color Transparency {
+            label {Transparency}
+            description {
+                Simple, non-refractive, non-depth based (thin-film) transparency.
+                Sets the filtering color of the Material: the percentage of light
+                that can travel through and be colored by the Material.
+                (0,0,0) means light cannot pass through at all.
+                (1,1,1) means light will be completely unaltered as it passes through the Material.
+                The composition of all Material layers determines the final surface opacity.
+                Note: the surface's opacity behavior MUST be reflected in the Advanced Controls
+                __computesOpacity setting of the surface shader Material.
+            }
+            detail varying
+            default {0 0 0}
+        }
+        parameter coshader Transparency_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float TEC {
+            label {Transparency Energy Conservation}
+            description {
+                Transparency Energy Conservation determines whether the Transparency value affects
+                the responses or not.
+                Realistically, the percentage of light passing through the Material will not be available
+                to produce a response.
+                1 means fully conserve energy: the more transparent the Material is,
+                the less visible the responses will be.
+                When 0, the responses will not be effected at all by the Transparency value.
+                In this case, be careful that diffuse responses and indirect illumination don't cause glowing.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+        parameter coshader TEC_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        collection customuiFullWidth HR0 {
+            customui laika HR
+            drawmode children
+        }
+
+        parameter bumpdisp_s BumpDisp {
+            label {Bump Disp}
+            description {
+                Connect a BumpDisp template here to bump and/or displace the Material.
+                Material layer bump/displacements combine based on the Thickness and Replace controls.
+            }
+            detail varying
+        }
+
+        parameter float Thickness {
+            label {Thickness}
+            description {
+                Deterines how much of an underlying Material's Bump Disp will effect this one's.
+                Blends between applying this Bump Disp to the underlying Material's Bump Disp
+                surface, or to its Covered Height surface.
+                When 0, this BumpDisp will be applied directly to the BumpDisp surface of
+                the underlying Material.
+                When 1, it will be applied to the Covered Height of the underlying surface.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+        parameter coshader Thickness_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float Replace {
+            label {Replace}
+            description {
+                Blends between the result produced by the Thickness control
+                and simply applying this Bump Disp to the original geometric surface.
+                When 0, Thickness will determine how Material Bump Disps are combined.
+                When 1, ignore Thickness, and simply apply this Bump Disp to the original surface.
+                Between 0 and 1, use a blend of the those two behaviors.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+        parameter coshader Replace_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        collection customuiFullWidth HR1 {
+            customui laika HR
+            drawmode children
+        }
+
+        collection Upper UpperLayer {
+            state open
+            label {Upper Layer}
+            description {
+                This is the first layer of responses that incoming light will encounter.
+            }
+
+            parameter float UpperNormalize {
+                label {Normalize Intensities}
+                description {
+                    Normalize this layer's response intensities.
+                    When On, all the response Intensity values will internally sum to 1,
+                    while maintaining their relative Intensity ratios.
+                }
+                detail uniform
+                subtype slider
+                range {0 1}
+                default 1
+            }
+
+            collection customuiFullWidth UpperResponses {
+                customui laika AddSelector
+                subtype propertycreator
+                drawmode children
+                state open
+                userdata {
+                    AddString "Add Upper Response"
+                    AddDescription "Adds a Response."
+                    AddRange {
+                        "Ashikhmin-Shirley" bxdfV7AS_s
+                        "GCL*" bxdfV7GCL_s
+                        "Fuzz*" bxdfV7Fuzz_s
+                        "Scatter*" bxdfV7Scatter_s
+                        "Velvet" bxdfV7Velvet_s
+                        "Henyey-Greenstein*" bxdfV7HG_s
+                        "Hair Specular" bxdfV7HairSpecular_s
+                    }
+                    ParamPrefix {
+                        bxdfV7AS_s "bxdfRefl"
+                        bxdfV7GCL_s "bxdfRefl"
+                        bxdfV7Fuzz_s "bxdfTran"
+                        bxdfV7Scatter_s "bxdfTran"
+                        bxdfV7Velvet_s "bxdfTran"
+                        bxdfV7HG_s "bxdfTran"
+                        bxdfV7HairSpecular_s "bxdfTran"
+                    }
+                    ParamLabel {
+                        bxdfV7AS_s "Ashikhmin-Shirley"
+                        bxdfV7GCL_s "GCL"
+                        bxdfV7Fuzz_s "Fuzz"
+                        bxdfV7Scatter_s "Scatter"
+                        bxdfV7Velvet_s "Velvet"
+                        bxdfV7HG_s "Henyey-Greenstein"
+                        bxdfV7HairSpecular_s "Hair Specular"
+                    }
+                    ParamDescription {
+                        bxdfV7AS_s {Ashikhmin-Shirley reflection.}
+                        bxdfV7GCL_s {Generalized Cosine Lobe.}
+                        bxdfV7Fuzz_s {Pseudo scattering as if from fibers oriented in the shading normal direction.}
+                        bxdfV7Scatter_s {Isotropic pseudo scattering with forward/back scattering emphasis control.}
+                        bxdfV7Velvet_s {Velvet.}
+                        bxdfV7HG_s {Henyey-Greenstein scattering.}
+                        bxdfV7HairSpecular_s {Pixar Plausible hair specular.}
+                    }
+                    ParamProvider {
+                        bxdfV7AS_s "connection"
+                        bxdfV7GCL_s "connection"
+                        bxdfV7Fuzz_s "connection"
+                        bxdfV7Scatter_s "connection"
+                        bxdfV7Velvet_s "connection"
+                        bxdfV7HG_s "connection"
+                        bxdfV7HairSpecular_s "connection"
+                    }
+                    ParamDetail {
+                        bxdfV7AS_s {mustvary "laika,bxdfV7AS" inline}
+                        bxdfV7GCL_s {mustvary "laika,bxdfV7GCLSpec" inline}
+                        bxdfV7Fuzz_s {mustvary "laika,bxdfV7Fuzz" inline}
+                        bxdfV7Scatter_s {mustvary "laika,bxdfV7Scatter" inline}
+                        bxdfV7Velvet_s {mustvary "laika,bxdfV7Velvet" inline}
+                        bxdfV7HG_s {mustvary "laika,bxdfV7HG" inline}
+                        bxdfV7HairSpecular_s {mustvary "laika,bxdfV7HairSpecular" inline}
+                    }
+                }
+            }
+        }
+
+        collection customuiFullWidth HR2 {
+            customui laika HR
+            drawmode children
+        }
+
+        parameter coreV7fresnel_s Fresnel {
+            label {Fresnel Function}
+            description {
+                Controls the division of irradiance between the responses in the
+                Upper Layer and the Middle Layer.
+                This only has an effect if there are Upper Layer responses.
+                If not, all the irradiance is passed to the Middle/Lower Layer responses.
+            }
+            detail mustvary "laika,bxdfV7FresnelStd" inline
+        }
+
+        collection customuiFullWidth HR3 {
+            customui laika HR
+            drawmode children
+        }
+
+        collection Middle MiddleLayer {
+            state open
+            label {Middle Layer}
+            description {
+                This is the second layer of responses that incoming light will encounter.
+            }
+
+            parameter float MiddleNormalize {
+                label {Normalize Intensities}
+                description {
+                    Normalize this layer's response intensities.
+                    When On, all the response Intensity values will internally sum to 1,
+                    while maintaining their relative Intensity ratios.
+                }
+                detail uniform
+                subtype slider
+                range {0 1}
+                default 1
+            }
+
+            collection customuiFullWidth MiddleResponses {
+                customui laika AddSelector
+                subtype propertycreator
+                drawmode children
+                state open
+                userdata {
+                    AddString "Add Middle Response"
+                    AddDescription "Adds a Response."
+                    AddRange {
+                        "GCL" bxdfV7GCL_s
+                        "Fuzz" bxdfV7Fuzz_s
+                        "Scatter" bxdfV7Scatter_s
+                        "Velvet" bxdfV7Velvet_s
+                        "Backlit" bxdfV7Backlit_s
+                        "Henyey-Greenstein" bxdfV7HG_s
+                        "Ashikhmin-Shirley" bxdfV7AS_s
+                        "Refraction" bxdfV7Refraction_s
+                        "Ghost" bxdfV7Ghost_s
+                        "Translucence" bxdfV7Translucence_s
+                        "HairDiffuse" bxdfV7HairDiffuse_s
+                        "Lambert" bxdfV7Lambert_s
+                        "Radiance" bxdfV7Radiance_s
+                    }
+                    ParamPrefix {
+                        bxdfV7GCL_s "bxdfDiff"
+                        bxdfV7Fuzz_s "bxdfDiff"
+                        bxdfV7Scatter_s "bxdfDiff"
+                        bxdfV7Velvet_s "bxdfDiff"
+                        bxdfV7Backlit_s "bxdfBack"
+                        bxdfV7HG_s "bxdfDiff"
+                        bxdfV7AS_s "bxdfRefl"
+                        bxdfV7Refraction_s "bxdfTran"
+                        bxdfV7Ghost_s "bxdfTran"
+                        bxdfV7Translucence_s "bxdfTran"
+                        bxdfV7HairDiffuse_s "bxdfDiff"
+                        bxdfV7Lambert_s "bxdfDiff"
+                        bxdfV7Radiance_s "bxdfRad"
+                    }
+                    ParamLabel {
+                        bxdfV7GCL_s "GCL"
+                        bxdfV7Fuzz_s "Fuzz"
+                        bxdfV7Scatter_s "Scatter"
+                        bxdfV7Velvet_s "Velvet"
+                        bxdfV7Backlit_s "Backlit"
+                        bxdfV7HG_s "Henyey-Greenstein"
+                        bxdfV7AS_s "Ashikhmin-Shirley"
+                        bxdfV7Refraction_s "Refraction"
+                        bxdfV7Ghost_s "Ghost"
+                        bxdfV7Translucence_s "Translucence"
+                        bxdfV7HairDiffuse_s "Hair Diffuse"
+                        bxdfV7Lambert_s "Lambert"
+                        bxdfV7Radiance_s "Radiance"
+                    }
+                    ParamDescription {
+                        bxdfV7GCL_s {The Generalized Cosine Lobe response.}
+                        bxdfV7Fuzz_s {Pseudo scattering as if from fibers oriented in the shading normal direction.}
+                        bxdfV7Scatter_s {Isotropic pseudo scattering with forward/back scattering emphasis control.}
+                        bxdfV7Velvet_s {Velvet.}
+                        bxdfV7Backlit_s {A Backlit response. Responds only to direct illumination from the back-side of the surface. Combine with another diffuse response to produce a complete material. Only useful for non-closed surfaces: a closed surface will (self) shadow any back light from a light source and produce no response.}
+                        bxdfV7HG_s {Henyey-Greenstein scattering.}
+                        bxdfV7AS_s {Ashikhmin-Shirley reflection.}
+                        bxdfV7Refraction_s {Refraction. You must set Specular Computation Hit Mode to Shader to get the correct results. Also, rather than using Sides 1 and DoubleShaded, unintuitively, you must use Sides 2 and turn off DoubleShaded.}
+                        bxdfV7Ghost_s {Ghost. You must set Specular Computation Hit Mode to Shader to get the correct results. Also, rather than using Sides 1 and DoubleShaded, unintuitively, you must use Sides 2 and turn off DoubleShaded.}
+                        bxdfV7Translucence_s {Simulated forward scattering. You must set Specular Computation Hit Mode to Shader to get the correct results.}
+                        bxdfV7HairDiffuse_s {Pixar plausible hair diffuse response.}
+                        bxdfV7Lambert_s {The Lambert response.}
+                        bxdfV7Radiance_s {A simple radiant, light emitting material. This is computed in the diffuse pathway, so it will contribute to indirect illumination from the diffuse cache.}
+                    }
+                    ParamProvider {
+                        bxdfV7GCL_s "connection"
+                        bxdfV7Fuzz_s "connection"
+                        bxdfV7Scatter_s "connection"
+                        bxdfV7Velvet_s "connection"
+                        bxdfV7Backlit_s "connection"
+                        bxdfV7HG_s "connection"
+                        bxdfV7AS_s "connection"
+                        bxdfV7Refraction_s "connection"
+                        bxdfV7Ghost_s "connection"
+                        bxdfV7Translucence_s "connection"
+                        bxdfV7HairDiffuse_s "connection"
+                        bxdfV7Lambert_s "connection"
+                        bxdfV7Radiance_s "connection"
+                    }
+                    ParamDetail {
+                        bxdfV7GCL_s {mustvary "laika,bxdfV7GCLDiff" inline}
+                        bxdfV7Fuzz_s {mustvary "laika,bxdfV7Fuzz" inline}
+                        bxdfV7Scatter_s {mustvary "laika,bxdfV7Scatter" inline}
+                        bxdfV7Velvet_s {mustvary "laika,bxdfV7Velvet" inline}
+                        bxdfV7Backlit_s {mustvary "laika,bxdfV7Backlit" inline}
+                        bxdfV7HG_s {mustvary "laika,bxdfV7HG" inline}
+                        bxdfV7AS_s {mustvary "laika,bxdfV7AS" inline}
+                        bxdfV7Refraction_s {mustvary "laika,bxdfV7Refraction" inline}
+                        bxdfV7Ghost_s {mustvary "laika,bxdfV7Ghost" inline}
+                        bxdfV7Translucence_s {mustvary "laika,bxdfV7Translucence" inline}
+                        bxdfV7HairDiffuse_s {mustvary "laika,bxdfV7HairDiffuse" inline}
+                        bxdfV7Lambert_s {mustvary "laika,bxdfV7Lambert" inline}
+                        bxdfV7Radiance_s {mustvary "laika,bxdfV7Radiance" inline}
+                    }
+                }
+            }
+        }
+
+        collection customuiFullWidth HR4 {
+            customui laika HR
+            drawmode children
+        }
+
+        parameter coreV7blend_s Blend {
+            label {Blend Function}
+            description {
+                Controls the division of irradiance between the responses in the
+                Middle Layer and the Lower Layer.
+            }
+            detail mustvary "laika,bxdfV7BlendMix" inline
+        }
+
+        collection customuiFullWidth HR5 {
+            customui laika HR
+            drawmode children
+        }
+
+        collection Lower LowerLayer {
+            state open
+            label {Lower Layer}
+            description {
+                This is the third layer of responses that incoming light will encounter.
+            }
+
+            parameter float LowerNormalize {
+                label {Normalize Intensities}
+                description {
+                    Normalize this layer's response intensities.
+                    When On, all the response Intensity values will internally sum to 1,
+                    while maintaining their relative Intensity ratios.
+                }
+                detail uniform
+                subtype slider
+                range {0 1}
+                default 1
+            }
+
+            collection customuiFullWidth LowerResponses {
+                customui laika AddSelector
+                subtype propertycreator
+                drawmode children
+                state open
+                userdata {
+                    AddString "Add Lower Response"
+                    AddDescription "Adds a Response."
+                    AddRange {
+                        "Subsurface" bxdfV7Subsurface_s
+                        "Translucence" bxdfV7Translucence_s
+                    }
+                    ParamPrefix {
+                        bxdfV7Subsurface_s "bxdfSubs"
+                        bxdfV7Translucence_s "bxdfTran"
+                    }
+                    ParamLabel {
+                        bxdfV7Subsurface_s "Subsurface"
+                        bxdfV7Translucence_s "Translucence"
+                    }
+                    ParamDescription {
+                        bxdfV7Subsurface_s {The Subsurface response.}
+                        bxdfV7Translucence_s {Simulated forward scattering. You must set Specular Computation Hit Mode to Shader to get the correct results.}
+                    }
+                    ParamProvider {
+                        bxdfV7Subsurface_s "connection"
+                        bxdfV7Translucence_s "connection"
+                    }
+                    ParamDetail {
+                        bxdfV7Subsurface_s {mustvary "laika,bxdfV7Subsurface" inline}
+                        bxdfV7Translucence_s {mustvary "laika,bxdfV7Translucence" inline}
+                    }
+                }
+            }
+        }
+
+        collection customuiFullWidth HR6 {
+            customui laika HR
+            drawmode children
+        }
+
+        collection void AdvancedControls {
+            state closed
+            label {Advanced Controls}
+            description {
+                These control the prman Specular, Diffuse, and Subsurface
+                computation contexts and the results they produce, the Opacity
+                caching and Shadow computation behavior, and AOV's.
+            }
+
+            eval [::__categoryParam "bxdfV7Material"]
+
+            parameter float __computesOpacity {
+                label {__computesOpacity}
+                description {
+                    Sets the prman opacity caching behavior.
+                    Only the shader's setting will have any effect - not a coshader's.
+                    Be sure to set this correctly based on the Opacity, Transparency,
+                    and Shadow values.
+                }
+                provider parameterlist
+                detail uniform
+                subtype selector
+                range {
+                    "Always Opaque" 0
+                    "View Independent opacity" 1
+                    "View Dependent opacity" 2
+                    "View Independent; opaque to camera and specular rays" 3
+                    "View Dependent; opaque to camera and specular rays" 4
+                }
+                default 0
+            }
+
+            parameter float OpacityThreshold {
+                label {Opacity Threshold}
+                description {
+                    For optimization.
+                    When the value of the Material's Opacity, either directly from the Opacity
+                    parameter, or as modified by other material layers, becomes less than this,
+                    the Material computation will not be performed.
+                    Note that an entire grid must meet this criteria for it to have any effect
+                    on that grid.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 0
+            }
+            parameter coshader OpacityThreshold_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter coreV7shadow_s Shadowing {
+                label {Shadowing}
+                description {
+                    Connect a Shadowing template here to control how shadows are produced by this shader.
+                    Only the shader's Shadowing will have any effect - not a coshader's.
+                }
+                detail varying
+            }
+
+            collection void SpecControls {
+                state closed
+                label {Specular Computation}
+                description {
+                    These control the computation of the specular context responses.
+                    Only the shader's controls will have any effect - not a coshader's.
+                }
+
+                parameter float SpecIndirectOn {
+                    label {Compute Indirect}
+                    description {
+                        Controls whether indirect illumination is computed or not.
+                        Set by "user:SpecIndirectOn" attribute.
+                    }
+                    detail varying
+                    subtype selector
+                    range {
+                        "Attribute Setting" -1
+                        "On" 1
+                        "Off" 0
+                    }
+                    default -1
+                }
+                parameter coshader SpecIndirectOn_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter float SpecMIS {
+                    label {Sampling Strategy}
+                    description {
+                        Used by directlighting().
+                        Sets the sampling strategy used for integrating direct illumination.
+                        Use Light Only (0) to consider light samples only.
+                        Use Light & Surface (1) to perform multiple importance sampling, considering both light and material samples.
+                        Use Surface Only (2) to consider material samples only.
+                        Surface Only is suggested for very narrow specular distributions (i.e. chrome)
+                        and Light Only is suggested for very small light sources.
+                    }
+                    detail uniform
+                    subtype selector
+                    range {
+                        "Light Only" 0
+                        "Light & Surface" 1
+                        "Suface Only" 2
+                    }
+                    default 1
+                }
+
+                parameter float RightCamSpecular {
+                    label {Right Cam Specular}
+                    description {
+                        Determines how the shader will handle right camera specular computations.
+                        When "Option Setting"(-1), the "user:right_specular" option sets whether to
+                        compute(1) or not(0) the specular response (based on the "user:right_camera" option).
+                        "Reuse Left"(0) will re-use the left camera specular result.
+                        "Compute Right"(1) will result in a separate specular computation for the right_camera.
+                    }
+                    detail uniform
+                    subtype selector
+                    range {
+                        "Option Setting" -1
+                        "Reuse Left" 0
+                        "Compute Right" 1
+                    }
+                    default -1
+                }
+                parameter coshader RightCamSpecular_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter string SpecTraceSet {
+                    label {Trace Set}
+                    description {
+                        Specifies the set of objects that will participate in the indirect specular computation.
+                        If blank, all objects in the scene are used.
+                        If "-1", use the user:SpecTraceSet attribute value.
+                    }
+                    detail varying
+                    default "-1"
+                }
+                parameter coshader SpecTraceSet_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter string SpecExcludeSet {
+                    label {Exclude Set}
+                    description {
+                        Specifies the set of objects to specifically exclude in the indirect specular computation.
+                        If blank, no objects will specifically be ignored.
+                        If "-1", use the user:SpecExcludeSet attribute value.
+                    }
+                    detail varying
+                    default "-1"
+                }
+                parameter coshader SpecExcludeSet_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter string SpecHitMode {
+                    label {Hit Mode}
+                    description {
+                        Used by indirectspecular().
+                        Specifies how the color should be computed at ray hit points.
+                        Use Shader to perform full shader execution.
+                        Use Cache to use the color from the radiosity cache.
+                    }
+                    detail uniform
+                    subtype selector
+                    range {
+                        "Shader" "default"
+                        "Cache" "cache"
+                    }
+                    default "default"
+                }
+                parameter coshader SpecHitMode_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter string SpecHitSides {
+                    label {Hit Sides}
+                    description {
+                        Used by indirectspecular().
+                        Specifies which side(s) of surfaces can be hit by the rays.
+                    }
+                    detail uniform
+                    subtype selector
+                    range {
+                        "Front" "front"
+                        "Back" "back"
+                        "Front & Back" "both"
+                    }
+                    default "both"
+                }
+                parameter coshader SpecHitSides_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter float SpecMaxDist {
+                    label {Max Dist}
+                    description {
+                        Used by indirectspecular().
+                        Can significantly effect render times and the visual result.
+                        Determines the cutoff distance beyond which no illumination of the shaded point occurs.
+                        Smaller values produce a more localized effect. The value is dependent
+                        on your scene size and scale. Larger distances will require more geometry to be tested,
+                        and so may result in longer render times. Setting it to -1 is equivalent to making it
+                        infinite.
+                    }
+                    detail varying
+                    range {0 1e4}
+                    default -1
+                }
+                parameter coshader SpecMaxDist_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                collection void SpecDirectIllumination {
+                    label {Direct Illumination}
+                    description {
+                        Control the response to direct illumination.
+                    }
+
+                    parameter float SpecDirectIntensity {
+                        label {Intensity}
+                        description {
+                            Scales the response intensity.
+                            If -1, use the SpecDirectIntensity user attribute value.
+                        }
+                        detail varying
+                        range {0 2}
+                        default -1
+                    }
+                    parameter coshader SpecDirectIntensity_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+
+                    parameter float SpecDirectSaturation {
+                        label {Saturation}
+                        description {
+                            Adjusts the saturation of direct illumination.
+                            If -1, use the SpecDirectSaturation user attribute value.
+                        }
+                        detail varying
+                        range {0 2}
+                        default -1
+                    }
+                    parameter coshader SpecDirectSaturation_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+
+                    parameter color SpecDirectTint {
+                        label {Tint}
+                        description {
+                            Tints the direct illumination.
+                            If (-1,-1,-1), use the SpecDirectTint user attribute value.
+                        }
+                        detail varying
+                        default {-1 -1 -1}
+                    }
+                    parameter coshader SpecDirectTint_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+                }
+
+                collection void SpecIndirectIllumination {
+                    label {Indirect Illumination}
+                    description {
+                        Control the response to indirect illumination.
+                    }
+
+                    parameter float SpecIndirectIntensity {
+                        label {Intensity}
+                        description {
+                            Scales the response intensity.
+                            If -1, use the SpecIndirectIntensity user attribute value.
+                        }
+                        detail varying
+                        range {0 2}
+                        default -1
+                    }
+                    parameter coshader SpecIndirectIntensity_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+
+                    parameter float SpecIndirectSaturation {
+                        label {Saturation}
+                        description {
+                            Adjusts the saturation of indirect illumination.
+                            If -1, use the SpecIndirectSaturation user attribute value.
+                        }
+                        detail varying
+                        range {0 2}
+                        default -1
+                    }
+                    parameter coshader SpecIndirectSaturation_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+
+                    parameter color SpecIndirectTint {
+                        label {Tint}
+                        description {
+                            Tints the indirect illumination.
+                            If (-1,-1,-1), use the SpecIndirectTint user attribute value.
+                        }
+                        detail varying
+                        default {-1 -1 -1}
+                    }
+                    parameter coshader SpecIndirectTint_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+                }
+            }
+
+            collection void DiffControls {
+                state closed
+                label {Diffuse Computation}
+                description {
+                    These control the computation of the diffuse context responses.
+                    Only the shader's controls will have any effect - not a coshader's.
+                }
+
+                parameter float DiffIndirectOn {
+                    label {Compute Indirect}
+                    description {
+                        Controls whether indirect illumination is computed or not.
+                        Set by "user:DiffIndirectOn" attribute.
+                    }
+                    detail varying
+                    subtype selector
+                    range {
+                        "Attribute Setting" -1
+                        "On" 1
+                        "Off" 0
+                    }
+                    default -1
+                }
+                parameter coshader DiffIndirectOn_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter float DiffSampleDensity {
+                    label {Sample Density}
+                    description {
+                        Sets the indirectdiffuse() sample density.
+                        When Default (-1), use the Attribute user:sample_density value.
+                    }
+                    detail uniform
+                    subtype slider
+                    range {-1 100 1}
+                    default -1
+                }
+                parameter coshader DiffSampleDensity_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter float DiffMaxVariation {
+                    label {Max Variation}
+                    description {
+                        Used by indirectdiffuse().
+                        Controls interpolation across shading grids: how far the interpolated
+                        results can deviate from the true illumination. Smaller values are higher quality.
+                        At 0, there is no interpolation. Values such as .02 or .03 usually produce the
+                        same image as 0, but possibly up to twice as fast.
+                    }
+                    detail varying
+                    subtype slider
+                    range {0 .1 .001}
+                    default .02
+                }
+                parameter coshader DiffMaxVariation_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter float DiffAdaptive {
+                    label {Adaptive}
+                    description {
+                        Used by indirectdiffuse().
+                        A ray-trace sampling optimization useful in scenes
+                        with large objects and smoothly varying appearance.
+                        Not helpful in scenes with lots of small objects
+                        or high frequency brightness changes.
+                    }
+                    detail varying
+                    subtype switch
+                    default 1
+                }
+                parameter coshader DiffAdaptive_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter string DiffTraceSet {
+                    label {Trace Set}
+                    description {
+                        Specifies the set of objects that will participate in the indirect diffuse computation.
+                        If blank, all objects in the scene are used.
+                        If "-1", use the user:DiffTraceSet attribute value.
+                    }
+                    detail varying
+                    default "-1"
+                }
+                parameter coshader DiffTraceSet_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter string DiffExcludeSet {
+                    label {Exclude Set}
+                    description {
+                        Specifies the set of objects to specifically exclude in the indirect diffuse computation.
+                        If blank, no objects will specifically be ignored.
+                        If "-1", use the user:DiffExcludeSet attribute value.
+                    }
+                    detail varying
+                    default "-1"
+                }
+                parameter coshader DiffExcludeSet_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter float DiffMaxDist {
+                    label {Max Dist}
+                    description {
+                        Used by indirectdiffuse().
+                        Can significantly effect render times and the visual result.
+                        Determines the cutoff distance beyond which no illumination of the shaded point occurs.
+                        Smaller values produce a more localized effect. The value is dependent
+                        on your scene size and scale. Larger distances will require more geometry to be tested,
+                        and so may result in longer render times. Setting it to -1 is equivalent to making it
+                        infinite.
+                    }
+                    detail varying
+                    range {0 1e4}
+                    default -1
+                }
+                parameter coshader DiffMaxDist_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                collection void DiffDirectIllumination {
+                    label {Direct Illumination}
+                    description {
+                        Control the response to direct illumination.
+                    }
+
+                    parameter float DiffDirectIntensity {
+                        label {Intensity}
+                        description {
+                            Scales the response intensity.
+                            If -1, use the DiffDirectIntensity user attribute value.
+                        }
+                        detail varying
+                        range {0 2}
+                        default -1
+                    }
+                    parameter coshader DiffDirectIntensity_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+
+                    parameter float DiffDirectSaturation {
+                        label {Saturation}
+                        description {
+                            Adjusts the saturation of direct illumination.
+                            If -1, use the DiffDirectSaturation user attribute value.
+                        }
+                        detail varying
+                        range {0 2}
+                        default -1
+                    }
+                    parameter coshader DiffDirectSaturation_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+
+                    parameter color DiffDirectTint {
+                        label {Tint}
+                        description {
+                            Tints the direct illumination.
+                            If (-1,-1,-1), use the DiffDirectTint user attribute value.
+                        }
+                        detail varying
+                        default {-1 -1 -1}
+                    }
+                    parameter coshader DiffDirectTint_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+                }
+
+                collection void DiffIndirectIllumination {
+                    label {Indirect Illumination}
+                    description {
+                        Control the response to indirect illumination.
+                    }
+
+                    parameter float DiffIndirectIntensity {
+                        label {Intensity}
+                        description {
+                            Scales the response intensity.
+                            If -1, use the DiffIndirectIntensity user attribute value.
+                        }
+                        detail varying
+                        range {0 2}
+                        default -1
+                    }
+                    parameter coshader DiffIndirectIntensity_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+
+                    parameter float DiffIndirectSaturation {
+                        label {Saturation}
+                        description {
+                            Adjusts the saturation of indirect illumination.
+                            If -1, use the DiffIndirectSaturation user attribute value.
+                        }
+                        detail varying
+                        range {0 2}
+                        default -1
+                    }
+                    parameter coshader DiffIndirectSaturation_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+
+                    parameter color DiffIndirectTint {
+                        label {Tint}
+                        description {
+                            Tints the indirect illumination.
+                            If (-1,-1,-1), use the DiffIndirectTint user attribute value.
+                        }
+                        detail varying
+                        default {-1 -1 -1}
+                    }
+                    parameter coshader DiffIndirectTint_Co_ {
+                        display hidden
+                        default {}
+                        value {}
+                    }
+                }
+            }
+
+            collection void SubsControls {
+                state closed
+                label {Subsurface Computation}
+                description {
+                    These control the computation of the subsurface responses.
+                    Only the shader's controls will have any effect - not a coshader's.
+                }
+
+                parameter string SubsTraceSet {
+                    label {Trace Set}
+                    description {
+                        Specifies the set of objects that will participate in the subsurface computation.
+                        If blank, all objects the shader is attached to will be used.
+                        If "-1", use the user:SubsTraceSet attribute value.
+                    }
+                    detail varying
+                    default "-1"
+                }
+                parameter coshader SubsTraceSet_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+
+                parameter string SubsExcludeSet {
+                    label {Exclude Set}
+                    description {
+                        Specifies the set of objects to specifically exclude in the subsurface computation.
+                        If blank, no objects will specifically be ignored.
+                        If "-1", use the user:SubsExcludeSet attribute value.
+                    }
+                    detail varying
+                    default "-1"
+                }
+                parameter coshader SubsExcludeSet_Co_ {
+                    display hidden
+                    default {}
+                    value {}
+                }
+            }
+
+            parameter string __groupList {
+                label {Light __group List}
+                description {
+                    A comma-separated list of light __group parameter values.
+                    The direct lighting results will be output as a set of AOV's per light group.
+                    If left -1, all light groups will be output.
+                    Only the shader's setting will have any effect - not a coshader's.
+                }
+                detail varying
+                default "-1"
+            }
+
+            collection customuiFullWidth AOVs {
+                customui laika AddParam
+                subtype propertycreator
+                drawmode children
+                state open
+                userdata {
+                    AddString   "Add AOV"
+                    AddDescription "Allows you to add an Arbitrary Output Variable the shader will produce."
+                    ParamType   AOV
+                    ParamPrefix AOV
+                    ParamDetail {mustvary "laika,AOV" inline}
+                }
+            }
+        }
+
+
+        RSLInclude {stdrsl/RadianceSample.h}
+
+        RSLInclude {sl.h}
+        RSLInclude {color.h}
+        RSLInclude {bumpdisp.h}
+
+        RSLInclude {coreV7/shadow.h}
+        RSLInclude {coreV7/camera.h}
+        RSLInclude {coreV7/rayinfo.h}
+        RSLInclude {coreV7/surface.h}
+        RSLInclude {coreV7/response.h}
+        RSLInclude {coreV7/optsandattrs.h}
+        RSLInclude {coreV7/override.h}
+
+        RSLInclude {bxdfV7/matlattrs.h}
+
+
+        RSLClass {
+            # Get the Fresnel and Blend RSL variable names.
+            # These are needed so their result struct (the RSL variable)
+            # can be accessed prior to making their function calls (calling generate).
+            set parm [safeeval %c GetProperties -name "Fresnel"] 
+            set func [safeeval $parm GetConnectedFunction]
+            set result [safeeval $func GetProperties -access output]
+
+            set FresnelRSL [safeeval $result GetNameSL 1]
+
+            set parm [safeeval %c GetProperties -name "Blend"] 
+            set func [safeeval $parm GetConnectedFunction]
+            set result [safeeval $func GetProperties -access output]
+
+            set BlendRSL [safeeval $result GetNameSL 1]
+
+output " /* Response Info "
+
+            # What integration type is the response?
+            # This is specified in the bxdf parameter's prefix.
+            set computationtype {Refl Tran Diff Back Subs Rad Const}
+
+            # Responses are grouped into three layers.
+            set responselayers {Upper Middle Lower}
+
+            set layerNum(Upper)  0
+            set layerNum(Middle) 1
+            set layerNum(Lower)  2
+
+            # The list of all bxdfs.
+            set bxdfNames {}
+
+            # What bxdfs are in each layer.
+            foreach layer $responselayers {
+                set bxdfNamesByLayer($layer)  {}
+            }
+
+            # Double loop will find all bxdf responses.
+            foreach comptype $computationtype {
+
+                # The list of bxdf names and RSL result variables by computation type.
+                set bxdfNamesByType($comptype) {}
+                set bxdfRSLVarsByType($comptype) {}
+
+                foreach parm [safeeval %c GetProperties -name "bxdf${comptype}_*"] {
+                    set name [safeeval $parm GetName]
+                    set label [safeeval $parm GetLabel]
+
+                    # Save all the bxdf names, and the label given the name.
+                    lappend bxdfNames $name
+                    set bxdfLabel($name) $label
+
+                    # Save the list of bxdf names by the computation type: bxdfNamesByType
+                    lappend bxdfNamesByType($comptype) $name
+
+                    # Save the list of bxdf names by the (layer = parent collection) type.
+                    set coll [safeeval $parm GetParent]
+                    set layer [safeeval $coll GetType]
+
+                    lappend bxdfNamesByLayer($layer) $name
+
+                    # Save the layer number of this bxdf.
+                    set bxdfLayerFromName($name) $layerNum($layer)
+
+                    # Save the list of bxdf RSL result variables by the computation type.
+                    set bxdfFunc [safeeval $parm GetConnectedFunction]
+                    if {$bxdfFunc != {}} {
+                        set bxdfFuncParm [safeeval $bxdfFunc GetProperties -access output]
+                        set bxdfSLresult [safeeval $bxdfFuncParm GetNameSL 1]
+
+                        lappend bxdfRSLVarsByType($comptype) $bxdfSLresult
+                    } else {
+                        # Print a warning, because something is broken.
+                        # There should always be a connected function.
+                        # Can't use printf( "
+                        printf ("bxdfV7/Material.slim: broken %s %s bxdf template connection. %s %d", $parm, $name, __FILE__, __LINE__);
+                    }
+
+                    # Print each response's info.
+                    output "$name $label $layer $bxdfSLresult $parm $coll"
+                }
+
+                # How many responses of each computation type are there?
+                set bxdfNumByType($comptype) [llength $bxdfNamesByType($comptype)]
+            }
+
+            output ""
+
+            # List the responses in each computation type.
+            foreach comptype $computationtype {
+                output "$comptype $bxdfNumByType($comptype)"
+                foreach bxdf $bxdfNamesByType($comptype) {
+                    output "    $bxdf"
+                }
+            }
+
+            output ""
+
+            foreach layer {Upper Middle Lower} {
+                # And fill in the number of responses per layer.
+                set bxdfLayerNum($layer) [llength $bxdfNamesByLayer($layer)]
+
+                # List the responses in each layer.
+                output "$layer $bxdfLayerNum($layer)"
+                foreach bxdf $bxdfNamesByLayer($layer) {
+                    output "    $bxdf"
+                }
+            }
+
+output " */ "
+
+            # Back responses are included in the Diff comptype.
+            set bxdfNumByType(Diff) [expr $bxdfNumByType(Diff) + $bxdfNumByType(Back)]
+
+            # Get the template label for use with parameter override coshaders.
+            set templateLabel [safeeval %c GetLabel]
+
+            # Appearance Label.
+            set apParam [safeeval %c GetConnectionClients]
+            if {$apParam != ""} {
+                set apLabel [safeeval $apParam GetLabel]
+                if {$apLabel != "Shading Component"} {
+                    set templateLabel $apLabel
+                }
+            }
+
+include -within body -verbatim "
+            /*
+             *  Global variables.
+             */
+            private camera_s        cameraData;
+            private rayinfo_s       rayinfoData;
+            private surface_s       surfaceData;
+            private response_s      responseData;
+            private optsandattrs_s  optsandattrsData;
+
+            // Local co/shader fresnelData and blendData variables are in the Fresnel and Blend
+            // function results.
+
+            // Flag for all methods to access. Must be set in all co/shaders.
+            // bxdf/Response.h files rely on an extern Eye,
+            // used for identiying which camera to render.
+            // Left,ray=0; Right=1.
+            public  uniform float   Eye = 0;
+
+            // When coshader layers are used, we need the composited Fresnel values
+            // in specularlighting() so they can be applied to the accumulated (diffuse mostly)
+            // responses. These are used in the shader only and are kept separate from the
+            // individual co/shader Fresnel and Blend values.
+            private fresnel_s       compFresnel;
+            private blend_s         compBlend;
+
+        // XXX Not used?
+            // IntegrationDomain flags whether we're integrating responses over the
+            // reflected(0), transmitted(1), or both(2) hemispheres.
+            #define REFLECTION 0
+            #define TRANSMISSION 1
+            #define BOTH 2
+            public  uniform float   DiffIntegrationDomain = 2;
+            public  uniform float   SpecIntegrationDomain = 2;
+
+            // bxdf/Response.h files included -within body are here:
+            #include <coreV7/bxdf.h>
+
+            #include \"bxdfV7/AS.h\"
+            #include \"bxdfV7/Backlit.h\"
+            #include \"bxdfV7/Fuzz.h\"
+            #include \"bxdfV7/GCL.h\"
+            #include \"bxdfV7/HairDiffuse.h\"
+            #include \"bxdfV7/HairSpecular.h\"
+            #include \"bxdfV7/HG.h\"
+            #include \"bxdfV7/Lambert.h\"
+            #include \"bxdfV7/Radiance.h\"
+            #include \"bxdfV7/Refraction.h\"
+            #include \"bxdfV7/Ghost.h\"
+            #include \"bxdfV7/Translucence.h\"
+            #include \"bxdfV7/Scatter.h\"
+            #include \"bxdfV7/Subsurface.h\"
+            #include \"bxdfV7/Velvet.h\"
+"
+
+            # Calculate information about the bxdf's used in this Material.
+            if {$bxdfLayerNum(Upper) > 0} {
+                set local_has(Upper) 1
+            } else {
+                set local_has(Upper) 0
+            }
+
+            if {$bxdfLayerNum(Middle) > 0} {
+                set local_has(Middle) 1
+            } else {
+                set local_has(Middle) 0
+            }
+
+            if {$bxdfLayerNum(Lower) > 0} {
+                set local_has(Lower) 1
+            } else {
+                set local_has(Lower) 0
+            }
+
+            if {$bxdfNumByType(Refl) > 0} {
+                set local_has(Refl) 1
+            } else {
+                set local_has(Refl) 0
+            }
+
+            if {$bxdfNumByType(Tran) > 0} {
+                set local_has(Tran) 1
+            } else {
+                set local_has(Tran) 0
+            }
+
+            if {$bxdfNumByType(Diff) > 0} {
+                set local_has(Diff) 1
+            } else {
+                set local_has(Diff) 0
+            }
+
+            if {$bxdfNumByType(Back) > 0} {
+                set local_has(Back) 1
+            } else {
+                set local_has(Back) 0
+            }
+
+            if {$bxdfNumByType(Subs) > 0} {
+                set local_has(Subs) 1
+            } else {
+                set local_has(Subs) 0
+            }
+
+            if {$bxdfNumByType(Rad) > 0} {
+                set local_has(Rad) 1
+            } else {
+                set local_has(Rad) 0
+            }
+
+            if {$bxdfNumByType(Const) > 0} {
+                set local_has(Const) 1
+            } else {
+                set local_has(Const) 0
+            }
+
+            if {$local_has(Diff) > 0 || $local_has(Back) > 0} {
+                set local_has(DiffOrBack) 1
+            } else {
+                set local_has(DiffOrBack) 0
+            }
+
+            if {$local_has(Diff) > 0 || $local_has(Subs) > 0} {
+                set local_has(DiffOrSubs) 1
+            } else {
+                set local_has(DiffOrSubs) 0
+            }
+
+            if {$local_has(Diff) > 0 && $local_has(Subs) > 0} {
+                set local_has(DiffAndSubs) 1
+            } else {
+                set local_has(DiffAndSubs) 0
+            }
+
+            if {$local_has(Diff) > 0 && $local_has(Subs) == 0} {
+                set local_has(DiffNoSubs) 1
+            } else {
+                set local_has(DiffNoSubs) 0
+            }
+
+            if {$local_has(Diff) == 0 && $local_has(Subs) > 0} {
+                set local_has(SubsNoDiff) 1
+            } else {
+                set local_has(SubsNoDiff) 0
+            }
+
+output "
+            /*
+             *  Variables and methods to provide information, possibly to other shaders,
+             *  about this Material and its bxdf's.
+             */
+            public  uniform float   hasUpper  = $local_has(Upper);
+            public  uniform float   hasMiddle = $local_has(Middle);
+            public  uniform float   hasLower  = $local_has(Lower);
+            public  uniform float   hasRefl = $local_has(Refl);
+            public  uniform float   hasTran = $local_has(Tran);
+            public  uniform float   hasDiff = $local_has(Diff);
+            public  uniform float   hasBack = $local_has(Back);
+            public  uniform float   hasSubs = $local_has(Subs);
+            public  uniform float   hasRad  = $local_has(Rad);
+            public  uniform float   hasConst = $local_has(Const);
+
+            private uniform float   hasDiffOrBack  = $local_has(DiffOrBack);
+            private uniform float   hasDiffOrSubs  = $local_has(DiffOrSubs);
+            private uniform float   hasDiffAndSubs = $local_has(DiffAndSubs);
+            private uniform float   hasDiffNoSubs  = $local_has(DiffNoSubs);
+            private uniform float   hasSubsNoDiff  = $local_has(SubsNoDiff);
+
+            private uniform string  diff_integrationdomain = \"hemisphere\";
+            private uniform string  spec_integrationdomain = \"hemisphere\";
+            private uniform string  both_integrationdomain = \"hemisphere\";
+            private uniform float   diff_integrationconeangle = HALFPI;
+
+            public  varying color   Omatte = color 1;   // Material matte: presence. Determines compositing of layer values.
+            public  varying float   Dmatte = 1;         // Displacement matte: float, clamped version of Omatte.
+
+            private varying color   OiEC = color 1;     // Energy conserving opacity.
+            private varying color   OiNonEC = color 1;  // Non-energy conserving opacity.
+
+            private varying color   OiECComp = color 1; // The Energy Conserving portion of all Material layer opacities
+                                                        // composited together. Used only by the surface shader Material
+                                                        // for setting Oi.
+
+            // Composite this (coshader) Material's OiEC over the given value (the shader's OiECComp). 
+            public void OiEC_over (output color O)
+            {
+                extern varying color    OiEC;
+                O = mix (O, color 1, OiEC);
+            }
+
+            // Use local (coshader's) OiNonEC to composite over the given value (the shader's OiNonEC).
+            public void OiNonEC_over (output color O)
+            {
+                extern varying color    OiNonEC;
+                O = mix (O, color 1, OiNonEC);
+            }
+
+            public void ScaleOiEC (color O)
+            {
+                extern varying color    OiEC;
+                OiEC *= O;
+            }
+
+            // Use the coshader's Fresnel and Omatte to composite over the shader's _fresnel.
+            // Use mixed Kt and Kr values in specularlighting().
+            public void FresnelOver( output fresnel_s _fresnel )
+            {
+                extern fresnel_s        $FresnelRSL;
+                extern varying color    Omatte;
+
+                varying float   alpha = colorRGBToAvg(Omatte);
+
+                varying color   Kr, Kt;
+                varying vector  R, T;
+
+                if (gridever( alpha > 0 ))
+                {
+                    Kr = mix( _fresnel->GetLeftKr(), $FresnelRSL->GetLeftKr(), alpha );
+                    Kt = mix( _fresnel->GetLeftKt(), $FresnelRSL->GetLeftKt(), alpha );
+                    R = slerp( _fresnel->GetLeftT(), $FresnelRSL->GetLeftT(), alpha );
+                    T = slerp( _fresnel->GetLeftR(), $FresnelRSL->GetLeftR(), alpha );
+
+                    _fresnel->SetLeft( Kr, Kt, R, T );
+
+                    if ($FresnelRSL->ComputeRight())
+                    {
+                        Kr = mix( _fresnel->GetRightKr(), $FresnelRSL->GetRightKr(), alpha );
+                        Kt = mix( _fresnel->GetRightKt(), $FresnelRSL->GetRightKt(), alpha );
+                        R = slerp( _fresnel->GetRightT(), $FresnelRSL->GetRightT(), alpha );
+                        T = slerp( _fresnel->GetRightR(), $FresnelRSL->GetRightR(), alpha );
+
+                        _fresnel->SetRight( Kr, Kt, R, T );
+                    }
+                }
+            }
+
+            // Use local Blend and Omatte to composite over the given _blend.
+            public void BlendOver (output coreV7blend_s _blend)
+            {
+                extern varying color    Omatte; // local Omatte.
+                varying float           alpha = colorRGBToAvg(Omatte);
+
+                _blend->Set(
+                    mix( _blend->GetBr(), $BlendRSL->GetBr(), alpha ),
+                    mix( _blend->GetBt(), $BlendRSL->GetBt(), alpha )
+                );
+            }
+
+            // Scale (cut out) local variables by the given cut-out mask.
+            public void ScaleOmatte (color c)
+            {
+                extern varying color    Omatte;
+                Omatte *= c;
+            }
+
+            public void ScaleDmatte (float x)
+            {
+                extern varying float    Dmatte;
+                Dmatte *= x;
+            }
+
+            // For communicating which eye to process.
+            // LEFT=0, RIGHT=1.
+            public void SetEye( uniform float _Eye )
+            {
+                extern uniform float    Eye;
+                Eye = _Eye;
+            }
+
+            // For communicating which integration domain to process.
+            public void SetDiffIntegrationDomain( uniform float _domain )
+            {
+                extern uniform float    DiffIntegrationDomain;
+                DiffIntegrationDomain = _domain;
+            }
+            public void SetSpecIntegrationDomain( uniform float _domain )
+            {
+                extern uniform float    SpecIntegrationDomain;
+                SpecIntegrationDomain = _domain;
+            }
+
+            // Response modification function.
+            private void ModifyResponse
+            (
+                varying float   intensity;
+                varying float   saturation;
+                varying color   tint;
+
+                output varying color    response;
+            ) {
+                response *= intensity;
+                response = mix( color(colorRGBToLuma(response)), response, saturation );
+                response *= tint;
+            }
+
+            // For combining response samples generated by the shader and coshaders.
+            private uniform float   nsamplesPerComponent\[\] = {};
+
+            public uniform float Length_nsamplesPerComponent()
+            {
+                extern uniform float    nsamplesPerComponent\[\];
+                return arraylength(nsamplesPerComponent);
+            }
+            public uniform float Get_nsamplesPerComponent( uniform float i )
+            {
+                extern uniform float    nsamplesPerComponent\[\];
+                return nsamplesPerComponent\[i\];
+            }
+
+            // Access __category and __computesOpacity values.
+            private uniform string get__category()
+            {
+                extern uniform string   __category;
+                return __category;
+            }
+
+            private uniform float get__computesOpacity()
+            {
+                extern uniform float    __computesOpacity;
+                return __computesOpacity;
+            }
+
+
+            /*
+             *  Global variables for communicating data between methods.
+             */
+            public  uniform float   shortCircuit = 0;       // Is this Material visible or not.
+
+            private uniform float   isShader = 1;
+            private uniform float   isCoshader = 0;
+
+            private uniform shader  plausibleLights\[\] = {};
+            private uniform float   plausibleLightsNum = 0;
+
+            private uniform shader  coshaderMaterial\[\] = {};
+            private uniform float   coshaderMaterialNum = 0;
+
+            private uniform shader  coshaderDisplacement\[\] = {};
+            private uniform float   coshaderDisplacementNum = 0;
+
+            private uniform shader  colorEffect\[\] = {};
+            private uniform float   colorEffectNum = 0;
+
+            private uniform shader  opacityEffect\[\] = {};
+            private uniform float   opacityEffectNum = 0;
+
+            private uniform shader  bumpEffect\[\] = {};
+            private uniform float   bumpEffectNum = 0;
+
+            private uniform shader  dispEffect\[\] = {};
+            private uniform float   dispEffectNum = 0;
+
+            private uniform float   indiffSampleNum = 1;
+            private uniform float   subsurfSampleNum = 1;
+
+            // Overridable Material parameter values.
+            private varying color   _Opacity = color 1;
+            private varying float   _OpacityThreshold = 0;
+            private varying color   _Transparency = color 0;
+            private varying float   _TEC = 0;
+            private varying float   _Thickness = 0;
+            private varying float   _Replace = 0;
+
+            private uniform float   _RightCamSpecular = 0;
+            private varying float   _SpecMaxDist = 0;
+            private uniform string  _SpecHitMode = \"\";
+            private uniform string  _SpecHitSides = \"\";
+            private uniform string  _SpecTraceSet = \"\";
+            private uniform string  _SpecExcludeSet = \"\";
+            private varying float   _SpecDirectIntensity = 0;
+            private varying float   _SpecDirectSaturation = 0;
+            private varying color   _SpecDirectTint = color 0;
+            private uniform float   _SpecIndirectOn = 0;
+            private varying float   _SpecIndirectIntensity = 0;
+            private varying float   _SpecIndirectSaturation = 0;
+            private varying color   _SpecIndirectTint = color 0;
+            private uniform float   _DiffSampleDensity = 0;
+            private varying float   _DiffMaxVariation = 0;
+            private varying float   _DiffAdaptive = 0;
+            private uniform string  _DiffTraceSet = \"\";
+            private uniform string  _DiffExcludeSet = \"\";
+            private varying float   _DiffMaxDist = 0;
+            private uniform float   _DiffIndirectOn = 0;
+            private varying float   _DiffDirectIntensity = 0;
+            private varying float   _DiffDirectSaturation = 0;
+            private varying color   _DiffDirectTint = color 0;
+            private varying float   _DiffIndirectIntensity = 0;
+            private varying float   _DiffIndirectSaturation = 0;
+            private varying color   _DiffIndirectTint = color 0;
+            private uniform string  _SubsTraceSet = \"\";
+            private uniform string  _SubsExcludeSet = \"\";
+
+            private uniform string  _lightgroups\[\] = {};
+            private uniform float   _lightgroupsnum = 0;
+"
+
+            # Compute methods used in diffuselighting().
+            generateMethod "public varying color ComputeRadiance()" {
+output "
+                varying color   result = color 0;
+"
+                foreach bxdf $bxdfRSLVarsByType(Rad) {
+output "            result += $bxdf->Cbxdf;"
+                }
+output "
+                return result;
+"
+            }
+
+            generateMethod "public varying color ComputeIndirectLambert( varying color indirectIrradiance )" {
+output "
+                varying color   result = color 0;
+"
+                foreach bxdf $bxdfRSLVarsByType(Diff) {
+output "            result += $bxdf->IndirectCbxdf;"
+                }
+
+                foreach bxdf $bxdfRSLVarsByType(Back) {
+output "            result += $bxdf->IndirectCbxdf;"
+                }
+output "
+                return result*indirectIrradiance;
+"
+            }
+
+            generateMethod "public varying color ComputeSubsurface( varying color AvgKt )" {
+output "
+                varying color   K, subsurfaceRadiance, result = color 0;
+"
+                foreach bxdf $bxdfRSLVarsByType(Subs) {
+output "
+                    if ($bxdf->shortCircuit == 0)
+                    {
+                        K = mix( color 1, $bxdf->FresnelValue / AvgKt, $bxdf->FresnelInfluence );
+
+                        subsurfaceRadiance = subsurface (\"raytraced\", $bxdf->Pbxdf, $bxdf->Nbxdf,
+                            \"type\", $bxdf->Type,
+                            \"samples\", $bxdf->SampleNum,
+                            \"albedo\", $bxdf->Albedo,
+                            \"diffusemeanfreepath\", $bxdf->DMFP,
+                            \"ior\", $bxdf->IOR,
+                            \"unitlength\", 1,
+                            \"followtopology\", $bxdf->FollowTopology,
+                            \"smooth\", $bxdf->Smooth,
+                            \"offset\", $bxdf->Offset,
+                            \"continuationrays\", $bxdf->IgnoreOcclusion,
+                            \"switchtobrdf\", $bxdf->LambertSize,
+                            \"maxdist\", $bxdf->MaxDist,
+                            \"subset\", _SubsTraceSet,
+                            \"excludesubset\", _SubsExcludeSet
+                        );
+
+                        // Catch nans in subsurface() result.
+                        if (subsurfaceRadiance == subsurfaceRadiance)
+                        {
+                            result += K * $bxdf->Cbxdf * subsurfaceRadiance;
+                        }
+                    }
+"
+                }
+output "
+                return result;
+"
+            }
+
+
+            #
+            # begin methods.
+            #
+            generateMethod "private void beginCommon( optsandattrs_s _optsandattrs )" {
+output "
+                //
+                // Generate/override parameter values.
+                //
+"
+                generate AOV_*
+
+                # Generate this co/shader Material's parameter values and handle any coshader connections.
+                set overrideParams {Opacity OpacityThreshold Transparency TEC Thickness Replace}
+
+                foreach overrideParam $overrideParams {
+                    generate $overrideParam
+                    
+                    set coParam [safeeval %c GetProperties -name "${overrideParam}_Co_"]
+                    if {$coParam != ""} {
+                        set coParam [safeeval $coParam GetNameSL 0]
+                        output "_$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+                    }
+                }
+
+output "
+                if (isShader)
+                {
+"
+                    set uniformParams {RightCamSpecular SpecHitMode SpecHitSides SpecTraceSet SpecExcludeSet SpecIndirectOn DiffTraceSet DiffExcludeSet DiffIndirectOn DiffSampleDensity SubsTraceSet SubsExcludeSet}
+
+                    set varyingParams {SpecMaxDist DiffMaxVariation DiffMaxDist DiffDirectIntensity DiffDirectSaturation DiffDirectTint DiffIndirectIntensity DiffIndirectSaturation DiffIndirectTint SpecDirectIntensity SpecDirectSaturation SpecDirectTint SpecIndirectIntensity SpecIndirectSaturation SpecIndirectTint}
+
+                    foreach overrideParam $uniformParams {
+                        generate $overrideParam
+                        set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 0]
+                        output "_$overrideParam = overrideU( $coParam, [getvar $overrideParam] );"
+                    }
+
+                    foreach overrideParam $varyingParams {
+                        generate $overrideParam
+                        set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 0]
+                        output "_$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+                    }
+output "
+                }
+
+                _Transparency = color 1 - _Transparency;    // Convert transparency to an opacity value.
+
+                if (isShader)
+                {
+                    // indirectdiffuse() number of samples.
+                    if (_DiffSampleDensity < 0) _DiffSampleDensity = _optsandattrs->surf_density;
+                    _DiffSampleDensity *= _DiffSampleDensity;   // samples per hemisphere.
+
+                    indiffSampleNum = _DiffSampleDensity;
+
+                    if (_RightCamSpecular < 0) _RightCamSpecular = _optsandattrs->right_specular;
+
+                    // Set material parameter values.
+                    matlattrs_s matlattrsData;
+
+                    matlattrsData->Init();
+
+                    if (_SpecIndirectOn < 0) _SpecIndirectOn = matlattrsData->SpecIndirectOn;
+                    if (_SpecMaxDist < 0) _SpecMaxDist = matlattrsData->SpecMaxDist;
+                    if (_SpecTraceSet == \"-1\") _SpecTraceSet = matlattrsData->SpecTraceSet;
+                    if (_SpecExcludeSet == \"-1\") _SpecExcludeSet = matlattrsData->SpecExcludeSet;
+                    if (gridalways(_SpecDirectIntensity  == -1)) _SpecDirectIntensity = matlattrsData->SpecDirectIntensity;
+                    if (gridalways(_SpecDirectSaturation == -1)) _SpecDirectSaturation = matlattrsData->SpecDirectSaturation;
+                    if (gridalways(_SpecDirectTint == color -1)) _SpecDirectTint = matlattrsData->SpecDirectTint;
+                    if (gridalways(_SpecIndirectIntensity  == -1)) _SpecIndirectIntensity = matlattrsData->SpecIndirectIntensity;
+                    if (gridalways(_SpecIndirectSaturation == -1)) _SpecIndirectSaturation = matlattrsData->SpecIndirectSaturation;
+                    if (gridalways(_SpecIndirectTint == color -1)) _SpecIndirectTint = matlattrsData->SpecIndirectTint;
+
+                    if (_DiffIndirectOn < 0) _DiffIndirectOn = matlattrsData->DiffIndirectOn;
+                    if (_DiffMaxDist < 0) _DiffMaxDist = matlattrsData->DiffMaxDist;
+                    if (_DiffTraceSet == \"-1\") _DiffTraceSet = matlattrsData->DiffTraceSet;
+                    if (_DiffExcludeSet == \"-1\") _DiffExcludeSet = matlattrsData->DiffExcludeSet;
+                    if (gridalways(_DiffDirectIntensity  == -1)) _DiffDirectIntensity = matlattrsData->DiffDirectIntensity;
+                    if (gridalways(_DiffDirectSaturation == -1)) _DiffDirectSaturation = matlattrsData->DiffDirectSaturation;
+                    if (gridalways(_DiffDirectTint == color -1)) _DiffDirectTint = matlattrsData->DiffDirectTint;
+                    if (gridalways(_DiffIndirectIntensity  == -1)) _DiffIndirectIntensity = matlattrsData->DiffIndirectIntensity;
+                    if (gridalways(_DiffIndirectSaturation == -1)) _DiffIndirectSaturation = matlattrsData->DiffIndirectSaturation;
+                    if (gridalways(_DiffIndirectTint == color -1)) _DiffIndirectTint = matlattrsData->DiffIndirectTint;
+                    if (_SubsTraceSet == \"-1\") _SubsTraceSet = matlattrsData->SubsTraceSet;
+                    if (_SubsExcludeSet == \"-1\") _SubsExcludeSet = matlattrsData->SubsExcludeSet;
+
+                    _SpecDirectIntensity = colorSRGBToLinear( _SpecDirectIntensity );
+                    _SpecDirectTint = colorSRGBToLinear( _SpecDirectTint );
+                    _SpecIndirectIntensity = colorSRGBToLinear( _SpecIndirectIntensity );
+                    _SpecIndirectTint = colorSRGBToLinear( _SpecIndirectTint );
+                    _DiffDirectIntensity = colorSRGBToLinear( _DiffDirectIntensity );
+                    _DiffDirectTint = colorSRGBToLinear( _DiffDirectTint );
+                    _DiffIndirectIntensity = colorSRGBToLinear( _DiffIndirectIntensity );
+                    _DiffIndirectTint = colorSRGBToLinear( _DiffIndirectTint );
+                }
+
+
+                //
+                //  Generate opacities for compositing.
+                //
+                Omatte = Os * _Opacity;
+                Dmatte = clamp( colorRGBToAvg( Omatte ), 0, 1 );
+
+                // Use Transparency as an inverse opacity value for coshaders.
+                // XXX Not sure this interacts properly with OiEC values,
+                // but it works okay for simple bxdf layering cases.
+                if (isCoshader) Omatte *= _Transparency;
+
+                // Initialize this co/shader's opacity values.
+                OiEC = Omatte * mix (color 1, _Transparency, _TEC);
+                OiNonEC = Omatte * mix (_Transparency, color 1, _TEC);
+
+                // Initialize the composited opacities (used by the surface shader).
+                OiECComp = OiEC;
+"
+            }
+
+
+            generateMethod "public void cs_begin( optsandattrs_s _optsandattrsData )" {
+output "
+                beginCommon( _optsandattrsData );
+"
+            }
+
+
+            #
+            # prman calls begin() methods of all co/shaders.
+            #
+            generateMethod "public void begin()" {
+output "
+                extern uniform float    isShader, isCoshader;
+
+                isShader = (this == surface) ? 1 : 0;
+                isCoshader = 1 - isShader;
+
+                if (isShader)
+                {
+                    extern camera_s         cameraData;
+                    extern rayinfo_s        rayinfoData;
+                    extern surface_s        surfaceData;
+                    extern response_s       responseData;
+                    extern optsandattrs_s   optsandattrsData;
+
+                    rayinfoData->Init();
+                    surfaceData->Init( P, normalize(N), normalize(Ng) );
+                    cameraData->Init( rayinfoData->depth, _RightCamSpecular );
+                    optsandattrsData->Init();
+
+                    // Initialize responseData: packages camera, ray, and surface data.
+                    responseData->Init( cameraData, rayinfoData, surfaceData, optsandattrsData );
+
+                    // Get any coshader Displacements.
+                    coshaderDisplacement = getshaders( \"category\", \"ikaDispV0\" );
+                    coshaderDisplacementNum = arraylength( coshaderDisplacement );
+
+                    // Get any coshader Material layers.
+                    coshaderMaterial = getshaders( \"category\", \"bxdfV7Material\" );
+                    coshaderMaterialNum = arraylength( coshaderMaterial );
+
+                    // Get the lights.
+                    uniform string  light_category = \"stdrsl_plausible\";
+                    attribute( \"user:light_category\", light_category );
+                    if (light_category != \"-1\")
+                    {
+                        plausibleLights = getlights( \"category\", light_category );
+                    }
+                    else
+                    {
+                        plausibleLights = getlights();
+                    }
+
+                    plausibleLightsNum = arraylength( plausibleLights );
+                }
+
+                // Get co/shader Material Effector coshaders.
+                colorEffect = getshaders( \"category\", \"ika_meV7Color\" );
+                colorEffectNum = arraylength( colorEffect );
+
+                opacityEffect = getshaders( \"category\", \"ika_meV7Opacity\" );
+                opacityEffectNum = arraylength( opacityEffect );
+
+                bumpEffect = getshaders( \"category\", \"ika_meV7Bump,ika_meV7BumpDisp\" );
+                bumpEffectNum = arraylength( bumpEffect );
+
+                dispEffect = getshaders( \"category\", \"ika_meV7Disp,ika_meV7BumpDisp\" );
+                dispEffectNum = arraylength( dispEffect );
+
+                //
+                // Generate this co/shader Material's bxdf's 
+                //
+"
+# XXX All writeaov() calls need to check for camera ray only. Local function? sl.h?
+                foreach bxdf $bxdfNames {
+                    generate $bxdf
+                    output "writeaov( \"$bxdfLabel($bxdf)_Intensity\", [getvar $bxdf]->Intensity ); // Pre-normalized"
+                }
+
+output "
+                // Apply Intensity Normalizations.
+                varying float   intensityTotal;
+                uniform float   numNormAndNotKilled;
+"
+                foreach layer $responselayers {
+                    set normalizeParam [getvar ${layer}Normalize]
+output "
+                    numNormAndNotKilled = 0;
+"
+                    foreach bxdf $bxdfNamesByLayer($layer) {
+output "
+                        numNormAndNotKilled += step( 0.5, gridmax( float [getvar $bxdf]->NormOnOff ));
+"
+                    }
+output "
+                    // Normalize $layer
+                    if ($bxdfLayerNum($layer) > 1 && $normalizeParam != 0 && numNormAndNotKilled > 1)
+                    {
+                        intensityTotal = 0;
+"
+                        foreach bxdf $bxdfNamesByLayer($layer) {
+output "
+                            intensityTotal += colorSRGBToLinear(
+                                mix( 0.0, [getvar $bxdf]->Intensity, [getvar $bxdf]->NormOnOff )
+                            );
+"
+                        }
+output "
+                        intensityTotal = abs(intensityTotal);
+                        if (intensityTotal > 0) {
+                            intensityTotal = colorLinearToSRGB( mix( 1.0, intensityTotal, $normalizeParam ));
+"
+                            foreach bxdf $bxdfNamesByLayer($layer) {
+output "
+                                [getvar $bxdf]->Intensity /= mix( 1.0, intensityTotal, [getvar $bxdf]->NormOnOff );
+"
+                            }
+output "
+                        }
+                    }
+"
+                }
+
+output "
+                // Call each of the bxdf begin() methods to initialize them
+                // and process any colorEffect Material Effector types.
+
+                uniform float   i, j, tmp;
+"
+                foreach bxdf $bxdfNames {
+output "
+                    // $bxdfLabel($bxdf) color and normalized intensity aov's.
+                    writeaov( \"$bxdfLabel($bxdf)_Color\", [getvar $bxdf]->Color );
+                    writeaov( \"$bxdfLabel($bxdf)_NormIntensity\", [getvar $bxdf]->Intensity );
+
+                    // Initialize the bxdf response: initialize colorintensity and set its layer number.
+                    [getvar $bxdf]->begin( $bxdfLayerFromName($bxdf) );
+
+                    // Apply the colorEffect coshaders.
+                    for (i=0; i < colorEffectNum; i+=1)
+                    {
+                        [getvar $bxdf]->Cbxdf = colorEffect\[i\]->colorEffect( __categoryUser, [getvar $bxdf]->Cbxdf );
+                    }
+"
+                }
+output "
+                beginCommon( optsandattrsData );
+
+
+                //
+                // Process the Material layers.
+                //
+                varying color   cs_Ocut;
+                varying float   cs_Dcut;
+
+                for (i=0; i < coshaderMaterialNum; i+=1)
+                {
+                    // Call the coshader begin() method.
+ // XXX hasn't this already happened from the beginCommon() call just above?
+                    coshaderMaterial\[i\]->cs_begin( optsandattrsData );
+
+                    // Composite the coshader Material's opacities over this shader's composite values.
+                    coshaderMaterial\[i\]->OiEC_over( OiECComp );
+
+                    // Get the coshader Material's cut-out mattes.
+                    cs_Ocut = color 1 - coshaderMaterial\[i\]->Omatte;
+                    cs_Dcut = 1 - coshaderMaterial\[i\]->Dmatte;
+
+                    // Cut out the coshader's presence from this base shader's matte and opacity values...
+                    ScaleOiEC( cs_Ocut );
+                    ScaleOmatte( cs_Ocut );
+                    ScaleDmatte( cs_Dcut );
+
+                    // ...and from any intermediate coshader layers.
+                    for (j=0; j < i; j+=1)
+                    {
+                        coshaderMaterial\[j\]->ScaleOiEC( cs_Ocut );
+                        coshaderMaterial\[j\]->ScaleOmatte( cs_Ocut );
+                        coshaderMaterial\[j\]->ScaleDmatte( cs_Dcut );
+                    }
+
+                    // Update the shader's response flags to include responses from all layers.
+                    tmp = coshaderMaterial\[i\]->hasUpper;
+                    hasUpper = max( hasUpper, tmp );
+
+                    tmp = coshaderMaterial\[i\]->hasMiddle;
+                    hasMiddle = max( hasMiddle, tmp );
+
+                    tmp = coshaderMaterial\[i\]->hasLower;
+                    hasLower = max( hasLower, tmp );
+
+                    tmp = coshaderMaterial\[i\]->hasRefl;
+                    hasRefl = max (hasRefl, tmp);
+
+                    tmp = coshaderMaterial\[i\]->hasTran;
+                    hasTran = max (hasTran, tmp);
+
+                    tmp = coshaderMaterial\[i\]->hasDiff;
+                    hasDiff = max (hasDiff, tmp);
+
+                    tmp = coshaderMaterial\[i\]->hasBack;
+                    hasBack = max (hasBack, tmp);
+
+                    tmp = coshaderMaterial\[i\]->hasSubs;
+                    hasSubs = max (hasSubs, tmp);
+
+                    tmp = coshaderMaterial\[i\]->hasRad;
+                    hasRad = max (hasRad, tmp);
+                }
+
+                // Update the shader's response flags to include responses from all layers.
+                hasDiffOrBack  = (hasDiff > 0 || hasBack >  0) ? 1 : 0;
+                hasDiffOrSubs  = (hasDiff > 0 || hasSubs >  0) ? 1 : 0;
+                hasDiffAndSubs = (hasDiff > 0 && hasSubs >  0) ? 1 : 0;
+                hasDiffNoSubs  = (hasDiff > 0 && hasSubs == 0) ? 1 : 0;
+                hasSubsNoDiff  = (hasSubs > 0 && hasDiff == 0) ? 1 : 0;
+
+                // Set the integrationdomain based on the response types.
+                // XXX Any subsurface() call is broken if diff_integrationdomain != hemisphere.
+                // Most recent RPS 18.0 testing shows no effect on bxdfBack responses when always
+                // using hemisphere - except Backlit.
+                diff_integrationdomain = (hasBack == 1) ? \"sphere\" : \"hemisphere\";
+                spec_integrationdomain = (hasTran == 1) ? \"sphere\" : \"hemisphere\";
+                both_integrationdomain = (hasBack == 1 || hasTran == 1) ? \"sphere\" : \"hemisphere\";
+
+                // XXX This is used for indirect diffuse irradiance, so we can't do PI coneangle
+                // just because one response needs it (unless shadowing will save us? Need to test).
+                diff_integrationconeangle = (hasBack == 1) ? HALFPI : HALFPI;
+"
+            }
+
+
+            #
+            #   displacement methods.
+            #
+            generateMethod "public void cs_displacement
+            (
+                output surface_s        _surfaceData;
+
+                output varying point    Pbd;
+                output varying vector   Nbd;
+                output varying point    Pcovered;
+                output varying vector   Ncovered;
+            )" {
+                set dispParam  [safeeval %c GetProperties -name BumpDisp]
+                set dispFunc   [safeeval $dispParam GetConnectedFunction]
+
+                if {$dispFunc != {}} {
+                    set dispResult [safeeval $dispFunc GetProperties -access output -type bumpdisp_s]
+                    set dispRSL [safeeval $dispResult GetNameSL 1]
+output "
+                    varying point   _Pin;
+                    varying vector  _Nin;
+
+                    if (gridever( abs(Dmatte) > 0 ))
+                    {
+                        _Pin = mix( Pbd, Pcovered, _Thickness );
+                        _Nin = slerp( Nbd, Ncovered, _Thickness );
+
+                        $dispRSL->Pin = mix( _Pin, _surfaceData->GetP(), _Replace );
+                        $dispRSL->Nin = slerp( _Nin, _surfaceData->GetN(), _Replace );
+"
+                        generate BumpDisp
+output "
+                        Pbd = mix( Pbd, $dispRSL->Pout, Dmatte );
+                        Nbd = slerp( Nbd, normal $dispRSL->Nout, Dmatte );
+                        Pcovered = mix( Pcovered, $dispRSL->Pcovered, Dmatte );
+                        Ncovered = slerp( Ncovered, $dispRSL->Ncovered, Dmatte );
+                    }
+"
+                } else {
+output "
+                    varying float   Tmatte = _Thickness * Dmatte;
+                    varying float   Rmatte = _Replace * Dmatte;
+
+                    Pbd = mix( Pbd, Pcovered, Tmatte );
+                    Nbd = slerp( Nbd, Ncovered, Tmatte );
+
+                    Pbd = mix( Pbd, _surfaceData->GetP(), Rmatte );
+                    Nbd = slerp( Nbd, _surfaceData->GetN(), Rmatte );
+
+                    Pcovered = mix( Pcovered, _surfaceData->GetP(), Rmatte );
+                    Ncovered = slerp( Ncovered, _surfaceData->GetN(), Rmatte );
+"
+                }
+output "
+                // Apply the dispEffect displacements.
+                uniform float   i;
+                varying point   Peffect;
+                for (i=0; i < dispEffectNum; i+=1)
+                {
+                    Peffect = dispEffect\[i\]->dispEffect( __categoryUser, Pbd, Nbd );
+                    Pbd = mix( Pbd, Peffect, Dmatte );
+                }
+"
+            }
+
+            generateMethod "public void displacement( output varying point P; output varying normal N )" {
+
+                set dispParam [safeeval %c GetProperties -name BumpDisp]
+                set dispFunc  [safeeval $dispParam GetConnectedFunction]
+output "
+                extern surface_s    surfaceData;
+
+                uniform float   i;
+                varying point   Pbd;
+                varying vector  Nbd;
+                varying point   Pcovered;
+                varying vector  Ncovered;
+
+                // Initialize.
+                Pbd = Pcovered = surfaceData->GetP();
+                Nbd = Ncovered = surfaceData->GetN();
+
+                // When 0, use the same displacement direction on the doubleshaded surface as the
+                // geometric one (which must be flipped so it points in the geometric normal direction).
+                uniform float   doubleshadednormal = 0;
+                attribute( \"user:doubleshadednormal\", doubleshadednormal );
+                if (doubleshadednormal == 0)
+                {
+                    if (surfaceData->Outside() == 0 && prmanDoubleshaded() == 1)
+                    {
+                        Nbd = -Nbd;
+                        Ncovered = -Ncovered;
+                    }
+                }
+"
+                if {$dispFunc != {}} {
+                    set dispResult [safeeval $dispFunc GetProperties -access output -type bumpdisp_s]
+                    set dispRSL [safeeval $dispResult GetNameSL 1]
+output "
+                    // Execute the BumpDisp.
+                    $dispRSL->Pin = Pbd;
+                    $dispRSL->Nin = Nbd;
+"
+                    generate BumpDisp
+output "
+                    Pbd = $dispRSL->Pout;
+                    Nbd = $dispRSL->Nout;
+
+                    Pcovered = $dispRSL->Pcovered;
+                    Ncovered = $dispRSL->Ncovered;
+"
+                }
+output "
+                // Apply the dispEffect displacements.
+                varying point   Peffect;
+                for (i=0; i < dispEffectNum; i+=1)
+                {
+                    Peffect = dispEffect\[i\]->dispEffect( __categoryUser, Pbd, Nbd );
+                    Pbd = mix( Pbd, Peffect, Dmatte );
+                }
+
+                // Call any coshader Material cs_displacement() methods.
+                for (i=0; i < coshaderMaterialNum; i+=1)
+                {
+                    coshaderMaterial\[i\]->cs_displacement( surfaceData, Pbd, Nbd, Pcovered, Ncovered );
+                }
+
+                // Call any coshader Displacements.
+                for (i=0; i < coshaderDisplacementNum; i+=1)
+                {
+                    coshaderDisplacement\[i\]->bumpdisp( surfaceData, Pbd, Nbd, Pcovered, Ncovered );
+                }
+
+                // Set prman displaced surface point and bumped surface normal, and update surfaceData.
+                P = Pbd;
+                N = normal Nbd;
+                surfaceData->Update( P,N );
+"
+            }
+
+
+            #
+            #   opacity methods.
+            #
+            generateMethod "public void cs_opacity( varying color OiScale )" {
+output "
+                extern varying color    OiEC;
+
+                OiEC *= OiScale;
+
+                // coshader Material execution based on just its own EC opacity.
+                shortCircuit = gridnever( abs(colorRGBToValue(OiEC)) > _OpacityThreshold );
+"
+            }
+
+            generateMethod "public void opacity( output varying color Oi )" {
+output "
+                extern varying color    OiEC, OiECComp;
+                extern varying color    OiNonEC;
+
+                extern camera_s         cameraData;
+                extern surface_s        surfaceData;
+                extern rayinfo_s        rayinfoData;
+
+                uniform float   i;
+
+                // Apply any opacityEffects.
+                varying color   OiScale = color 1;
+
+                for (i=0; i < opacityEffectNum; i+=1)
+                {
+                    OiScale *= opacityEffect\[i\]->opacityEffect( __categoryUser, Oi );
+                }
+
+                // Scale both Oi values by the opacityEffect value.
+                // It will alter all material shader and coshader opacities
+                // and all their associated shortCircuit values as a result.
+                OiEC *= OiScale;
+                OiECComp *= OiScale;
+
+                Oi = OiECComp;
+
+                // Base shader Material execution based on the overall opacity.
+                shortCircuit = gridnever( abs(colorRGBToValue(Oi)) > _OpacityThreshold );
+"
+                set shadParam [safeeval %c GetProperties -name Shadowing -type coreV7shadow_s]
+                set shadFunc  [safeeval $shadParam GetConnectedFunction]
+
+                if {$shadFunc != {}} {
+                    set shadResult [safeeval $shadFunc GetProperties -access output -type coreV7shadow_s]
+                    set shadRSL    [safeeval $shadResult GetNameSL 1]
+output "
+                    // Set the shadow (transmission ray) opacity for coloring the shadows.
+                    // Oi will be reset in prelighting().
+                    $shadRSL->Init( cameraData, surfaceData );
+"
+                    generate Shadowing
+output "
+                    Oi *= [getvar Shadowing]->GetOi();
+"
+                }
+output "
+                // Call any coshader Material cs_opacity() methods
+                // and composite the coshader NonEC transparency values over the shader's value.
+                for (i=0; i < coshaderMaterialNum; i+=1)
+                {
+                    coshaderMaterial\[i\]->cs_opacity( OiScale );
+                    coshaderMaterial\[i\]->OiNonEC_over( OiNonEC );
+                }
+
+                // Do view-dependent opacity variation for transmission rays.
+                // I'm assuming that __computesOpacity=4 is enough to control specularlighting(Oi) output,
+                // so I don't have to set that to 1 myself. We'll see.
+                if (__computesOpacity == 2 || __computesOpacity == 4) {
+                    if (rayinfoData->type == \"transmission\") {
+                    }
+                }
+"
+            }
+
+
+            #
+            #   prelighting methods.
+            #
+            generateMethod "public void genFresnelAndBlend(
+                output camera_s     _cameraData; 
+                output surface_s    _surfaceData;
+            )" {
+output "
+                if (shortCircuit != 1)
+                {
+                    // Initialize this shader/coshader's Fresnel and Blend values
+                    // based on its connected functions and response types.
+
+                    $FresnelRSL->Init( _cameraData, _surfaceData );
+"
+                    # Fresnel function results needed for any Upper layer responses.
+                    if {$bxdfLayerNum(Upper) > 0} {
+
+                        # Produces a view-dependent reflected-transmitted blend based on surfaceData - not Nbxdf.
+                        generate Fresnel
+
+                    } else {
+                        if {$local_has(Tran) == 1} {
+
+                            # When Refraction is present in the Middle layer.
+                            generate Fresnel
+
+                        } else {
+output "
+                            [getvar Fresnel]->Set( 0, 1 );
+"
+                        }
+                    }
+
+                    # The material's Blend is only generated if there are both middle and lower layers.
+                    if {$bxdfLayerNum(Middle) > 0 && $bxdfLayerNum(Lower) > 0} {
+
+                        generate Blend
+
+                    } elseif {$bxdfLayerNum(Middle) > 0 && $bxdfLayerNum(Lower) == 0} {
+output "
+                        [getvar Blend]->Set( 1, 0 );
+"
+                    } elseif {$bxdfLayerNum(Middle) == 0 && $bxdfLayerNum(Lower) > 0} {
+output "
+                        [getvar Blend]->Set( 0, 1 );
+"
+                    } else {
+output "
+                        [getvar Blend]->Set( 0, 0 );
+"
+                    }
+output "
+                }
+"
+            }
+
+            generateMethod "public void initBxdfResponses( output response_s _responseData )" {
+                # Call this Material's bxdf methods.
+                # displacement() simply sets the shading point and normal the bxdf will use, including overrides.
+                # opacity() pre-multiplies the response color by its shading opacity. This must be
+                # done even if this shader's responses aren't used, so that the ComputeIndirectLambert()
+                # and ComputeRadiance() computations don't produce any response from them.
+                # initShortCircuit() sets the bxdf's shortCircuit value.
+                # prelighting() does any bxdf-specific initialization needed by its evaluate/generateSamples().
+output "
+                // opacity() pre-multiplies the response color (Cbxdf) by its shading opacity (Obxdf).
+                // This must be done even if this shader's responses aren't used, so that the
+                // ComputeIndirectLambert() and ComputeRadiance() computations don't produce
+                // any response.
+
+                extern varying point    P;
+                extern varying normal   N;
+                extern varying color    OiEC;
+
+                uniform float   i;
+"
+                foreach bxdf $bxdfNames {
+output "
+                    // Set Pbxdf and Nbxdf, including response normal and coshader overrides.
+                    // Using N requires that surfaces be double-shaded if their inside is visible.
+                    // Can't be sloppy and use Nf for a number of reasons: eye isn't known yet...
+                    [getvar $bxdf]->displacement( P,N );
+
+                    // Apply any bumpEffect coshaders.
+                    // Since this is executed in each material co/shader,
+                    // the __categoryUser contains the individual materials' category;
+                    // so these effects are applied per material.
+                    for (i=0; i < bumpEffectNum; i+=1)
+                    {
+                        [getvar $bxdf]->Nbxdf = bumpEffect\[i\]->bumpEffect( __categoryUser, [getvar $bxdf]->Pbxdf, [getvar $bxdf]->Nbxdf );
+                    }
+
+                    // Set and apply the bxdf opacity and set its shortcircuit.
+                    [getvar $bxdf]->opacity( OiEC );
+                    [getvar $bxdf]->initShortCircuit();
+
+                    // Do any bxdf-specific setup for its generate/evaluateSamples methods.
+                    // Use local co/shader Fresnel and Blend data for responses.
+                    [getvar $bxdf]->prelighting( _responseData, [getvar Fresnel], [getvar Blend] );
+"
+                }
+            }
+
+            #
+            # prelighting() will only be called in a surface shader.
+            #
+            generateMethod "public void prelighting( output varying color Ci, Oi )" {
+                generate __groupList
+output "
+                extern varying color    OiECComp;
+                extern camera_s         cameraData;
+                extern surface_s        surfaceData;
+                extern response_s       responseData;
+
+                uniform float   i;
+
+                // Reset the base Material shader's opacity (overwrite the value set by opacity())
+                // based on the overall opacity and energy conserving transparency.
+                Oi = OiECComp;
+
+                // Generate the shader's Fresnel and Blend.
+                genFresnelAndBlend( cameraData, surfaceData );
+
+                // Composite all coshader Materials' Fresnel and Blend values over the shader Material's.
+                // This is done because the diffuse responses are all summed in diffuselighting() and cached,
+                // and the aggregate result is then scaled by the composited Kt inside specularlighting().
+                // Specular responses can be pre-muliplied by their own response Kr's, so this is only
+                // necessitated by the cached aggregate diffuse response.
+
+                compFresnel = [getvar Fresnel];
+                compBlend = [getvar Blend];
+
+                for (i=0; i < coshaderMaterialNum; i+=1)
+                {
+                    coshaderMaterial\[i\]->genFresnelAndBlend( cameraData, surfaceData );
+
+                    // Only use the composite Kt value for scaling the (cached) diffuselighting responses.
+                    // The (bxdf) Kr values are applied to each specular response individually in their
+                    // generate/evaluateSamples() methods.
+                    coshaderMaterial\[i\]->FresnelOver( compFresnel );
+                    coshaderMaterial\[i\]->BlendOver( compBlend );
+                }
+
+                // Set Kt values so diffuse responses can use it to control their reaction
+                // to the Fresnel Kt multiplication in specularlighting().
+                responseData->SetKt( compFresnel );
+
+                // Call the co/shader's bxdf initialization methods.
+                initBxdfResponses( responseData );
+
+                for (i=0; i < coshaderMaterialNum; i+=1)
+                {
+                    coshaderMaterial\[i\]->initBxdfResponses( responseData );
+                }
+
+                // Process the light __group list.
+                if ([getvar __groupList] != \"-1\")
+                {
+                    _lightgroups = split( [getvar __groupList], \",\" );
+                }
+                else
+                {
+                    reserve( _lightgroups, plausibleLightsNum );
+
+                    uniform string  group;
+                    for (i=0; i < plausibleLightsNum; i+=1)
+                    {
+                        if (getvar( plausibleLights\[i\], \"__group\", group ) == 1 && group != \"\")
+                        {
+                            push( _lightgroups, group );
+                        }
+                    }
+                }
+                _lightgroupsnum = arraylength( _lightgroups );
+"
+            }
+
+            #
+            #   Called for coshaders.
+            #
+            generateMethod "public void cs_evaluateSamples
+            (
+                output response_s       response;
+                uniform string          context;
+                output __radiancesample samples\[\];
+            )" {
+output "
+                if (shortCircuit)
+                {
+                    bxdfZeroResponse (samples);
+                    return;
+                }
+
+                // Evaluate view dependent responses for the given light samples.
+                if (context != \"diffuse\")
+                {
+"
+                    foreach bxdf [concat $bxdfNamesByType(Refl) $bxdfNamesByType(Tran)] {
+output "
+                        [getvar $bxdf]->evaluateSamples( response, [getvar Fresnel], [getvar Blend], context, samples );
+"
+                    }
+output "
+                }
+
+                // Evaluate view independent responses for the given light samples.
+                else
+                {
+"
+                    foreach bxdf [concat $bxdfNamesByType(Diff) $bxdfNamesByType(Back)] {
+output "
+                        [getvar $bxdf]->evaluateSamples( response, [getvar Fresnel], [getvar Blend], context, samples );
+"
+                    }
+output "
+                }
+"
+            }
+
+            #
+            #   Called only for surface shaders.
+            #
+            generateMethod "public void evaluateSamples( string context; output __radiancesample samples\[\] )" {
+output "
+                if (shortCircuit)
+                {
+                    bxdfZeroResponse (samples);
+                    return;
+                }
+
+                extern response_s   responseData;
+
+                // Call coshader Material evaluateSamples() methods
+                // (coshaderMaterialNum = 0 in a coshader).
+                uniform float   i;
+                for (i=0; i < coshaderMaterialNum; i+=1)
+                {
+                    coshaderMaterial\[i\]->cs_evaluateSamples( responseData, context, samples );
+                }
+
+                // Evaluate view dependent responses for the given light samples
+                // (specular context samples).
+                if (context != \"diffuse\")
+                {
+"
+                    foreach bxdf [concat $bxdfNamesByType(Refl) $bxdfNamesByType(Tran)] {
+output "
+                        [getvar $bxdf]->evaluateSamples( responseData, [getvar Fresnel], [getvar Blend], context, samples );
+"
+                    }
+output "
+                }
+
+                // Evaluate view independent (cacheable) responses for the given light samples
+                // (diffuse context samples).
+                else
+                {
+"
+                    foreach bxdf [concat $bxdfNamesByType(Diff) $bxdfNamesByType(Back)] {
+output "
+                        [getvar $bxdf]->evaluateSamples( responseData, [getvar Fresnel], [getvar Blend], context, samples );
+"
+                    }
+output "
+                    // Must zero diffuse context response if there are none
+                    // when the lighting() method is employed (probably a good idea regardless).
+                    if (hasDiffOrBack == 0)
+                    {
+                        bxdfZeroResponse( samples );
+                    }
+                }
+"
+            }
+
+            #
+            #   Called for coshaders.
+            #
+            generateMethod "public void cs_generateSamples
+            (
+                output response_s       response;
+                uniform string          context;
+                output __radiancesample samples\[\];
+            )" {
+output "
+                if (shortCircuit) return;
+
+                // Generate view dependent response samples.
+                if (context != \"diffuse\")
+                {
+                    uniform float   oldLength, newLength, numSamples;
+
+                    resize( nsamplesPerComponent,0 );
+
+                    if (responseData->integrationmode != \"path\")
+                    {
+"
+                        foreach bxdf [concat $bxdfNamesByType(Refl) $bxdfNamesByType(Tran)] {
+output "
+                            [getvar $bxdf]->generateSamples( responseData, [getvar Fresnel], [getvar Blend], context, samples, nsamplesPerComponent );
+"
+                        }
+output "
+                    }
+                    else
+                    {
+                        uniform float   numResponses = $bxdfNumByType(Refl) + $bxdfNumByType(Tran);
+                        varying float   rnd = floor( random() * numResponses );
+                        uniform float   r = 0;
+"
+                        foreach bxdf [concat $bxdfNamesByType(Refl) $bxdfNamesByType(Tran)] {
+output "
+                            if (r == rnd) [getvar $bxdf]->generateSamples( responseData, [getvar Fresnel], [getvar Blend], context, samples, nsamplesPerComponent );
+                            r += 1;
+"
+                        }
+output "
+                    }
+                }
+"
+            }
+
+            #
+            #   Called for shaders.
+            #
+            generateMethod "public void generateSamples( string context; output __radiancesample samples\[\] )" {
+output "
+                if (shortCircuit) return;
+
+                extern response_s   responseData;
+
+                // Generate view dependent response samples.
+                if (context != \"diffuse\")
+                {
+                    uniform float   oldLength, newLength, numSamples;
+
+                    resize( nsamplesPerComponent,0 );
+
+                    if (responseData->integrationmode != \"path\")
+                    {
+"
+                        foreach bxdf [concat $bxdfNamesByType(Refl) $bxdfNamesByType(Tran)] {
+output "
+                            [getvar $bxdf]->generateSamples( responseData, [getvar Fresnel], [getvar Blend], context, samples, nsamplesPerComponent );
+"
+                        }
+output "
+                    }
+                    else
+                    {
+                        uniform float   numResponses = $bxdfNumByType(Refl) + $bxdfNumByType(Tran);
+                        varying float   rnd = floor( random() * numResponses );
+                        uniform float   r = 0;
+"
+                        foreach bxdf [concat $bxdfNamesByType(Refl) $bxdfNamesByType(Tran)] {
+output "
+                            if (r == rnd) [getvar $bxdf]->generateSamples( responseData, [getvar Fresnel], [getvar Blend], context, samples, nsamplesPerComponent );
+                            r += 1;
+"
+                        }
+output "
+                    }
+
+                    // Add coshader responses to samples and nsamplesPerComponent arrays,
+                    // then normalize all the responses.
+                    __radiancesample    coshaderSamples\[\];
+                    uniform float       coshaderSamplesNum;
+
+                    uniform float   samplesNum;
+                    uniform float   i, j, k, l;
+
+                    samplesNum = arraylength(samples);
+                    for (i=0; i < coshaderMaterialNum; i+=1)
+                    {
+                        resize( coshaderSamples, 0 );
+
+                        coshaderMaterial\[i\]->cs_generateSamples( responseData, context, coshaderSamples );
+                        coshaderSamplesNum = arraylength(coshaderSamples);
+
+                        resize (samples, samplesNum + coshaderSamplesNum);
+                        for (j=0; j < coshaderSamplesNum; j+=1)
+                        {
+                            samples\[samplesNum + j\] = coshaderSamples\[j\];
+                        }
+
+                        k = coshaderMaterial\[i\]->Length_nsamplesPerComponent();
+                        for (j=0; j < k; j+=1)
+                        {
+                            l = coshaderMaterial\[i\]->Get_nsamplesPerComponent(j);
+                            push( nsamplesPerComponent, l );
+                        }
+
+                        samplesNum += coshaderSamplesNum;
+                    }
+
+                    // Normalize all the responses.
+                    // nsamplesPerComponent length must equal the number of
+                    // accumulateMaterialResponse() calls in evaluateSamples() method.
+                    normalizeMaterialResponse( samples, nsamplesPerComponent );
+                }
+"
+            }
+
+            #
+            #   Lighting method.
+            #
+            generateMethod "public void lighting( output varying color Ci, Oi, Irradiance )" {
+output "
+                if (shortCircuit) return;
+
+                varying color   directDiffuse = color 0,
+                                directSpecular = color 0;
+
+                varying color   unshadoweddiffuseresult, unshadowedspecularresult,
+                                groupeddiffuseresults\[_lightgroupsnum\],
+                                groupedspecularresults\[_lightgroupsnum\],
+                                groupedunshadoweddiffuseresults\[_lightgroupsnum\],
+                                groupedunshadowedspecularresults\[_lightgroupsnum\];
+
+                varying color   indirectDiffuse = color 0,
+                                diffuseResponse = color 0,
+                                subsurfaceResponse = color 0,
+                                radianceResponse = color 0;
+
+                varying color   directIrradiance, indirectIrradiance;
+
+                varying color   diffuseResult, tmp;
+                uniform float   i;
+
+                // Set Left eye.
+                SetEye( LEFT );
+
+                for (i=0; i < coshaderMaterialNum; i+=1)
+                {
+                    coshaderMaterial\[i\]->SetEye( LEFT );
+                }
+
+                /*
+                 *  Direct Diffuse (left and right) and Specular (left) responses.
+                 */
+                if (hasDiffOrSubs == 1 || hasRefl == 1 || hasTran == 1)
+                {
+                    directlighting( surface, plausibleLights,
+                        \"integrationdomain\", both_integrationdomain,
+#if 0
+                        // XXX This causes acculumateMaterialResponse call errors when there's more than one diffuse response.
+                        // Apparently, if this is 1, you must be generating diffuse samples? (not actually tested).
+                        \"diffusemis\", 1
+#endif
+                        \"mis\", [getvar SpecMIS],
+
+                        \"irradianceresult\", directIrradiance,
+                        \"diffuseresult\", directDiffuse,
+                        \"specularresult\", directSpecular,
+                        \"unshadoweddiffuseresult\", unshadoweddiffuseresult,
+                        \"unshadowedspecularresult\", unshadowedspecularresult,
+
+                        \"lightgroups\", _lightgroups,
+                        \"groupeddiffuseresults\", groupeddiffuseresults,
+                        \"groupedspecularresults\", groupedspecularresults,
+                        \"groupedunshadoweddiffuseresults\", groupedunshadoweddiffuseresults,
+                        \"groupedunshadowedspecularresults\", groupedunshadowedspecularresults
+                    );
+
+                    Irradiance = directIrradiance;  // Raw irradiance (from evaluateSamples computation).
+                }
+
+                // Indirect diffuse response.
+                if (hasDiffOrSubs == 1)
+                {
+                    // Indirect diffuse response.
+                    // indirectdiffuse() does not include any Cbxdf's.
+                    // It's just cosine-weighted hemisphere irradiance.
+                    if (_DiffIndirectOn)
+                    {
+                        indirectIrradiance = indirectdiffuse(
+                            P, N, indiffSampleNum,
+                            \"distribution\", \"cosine\",
+                            \"coneangle\", diff_integrationconeangle,
+                            \"maxvariation\", _DiffMaxVariation,
+                            \"adaptive\", _DiffAdaptive,
+                            \"subset\", _DiffTraceSet,
+                            \"excludesubset\", _DiffExcludeSet,
+                            \"maxdist\", _DiffMaxDist
+                        );
+                    }
+
+                    // Catch nans in indirectdiffuse() result.
+                    if (indirectIrradiance == indirectIrradiance)
+                    {
+                        Irradiance += indirectIrradiance;   // Raw irradiance.
+                    }
+                    else
+                    {
+                        indirectIrradiance = color 0;
+                    }
+
+                    // Do indirect diffuse responses.
+                    indirectDiffuse += ComputeIndirectLambert( indirectIrradiance );
+
+                    for (i=0; i < coshaderMaterialNum; i+=1)
+                    {
+                        tmp = coshaderMaterial\[i\]->ComputeIndirectLambert( indirectIrradiance );
+                        indirectDiffuse +=  tmp;
+                    }
+                }
+
+                // Subsurface response is not computed for subsurface() traced rays.
+                if (hasSubs == 1 && rayinfoData->label != \"subsurface\")
+                {
+                    if (gridever( _abs(compBlend->GetBt()) != color(0) ))
+                    {
+                        subsurfaceResponse += ComputeSubsurface( responseData->GetAvgKt() );
+
+                        for (i=0; i < coshaderMaterialNum; i+=1)
+                        {
+                            tmp = coshaderMaterial\[i\]->ComputeSubsurface( responseData->GetAvgKt() );
+                            subsurfaceResponse += tmp;
+                        }
+                    }
+                }
+
+                // Radiance response.
+                if (hasRad == 1)
+                {
+                    radianceResponse += ComputeRadiance();
+
+                    for (i=0; i < coshaderMaterialNum; i+=1)
+                    {
+                        tmp = coshaderMaterial\[i\]->ComputeRadiance();
+                        radianceResponse += tmp;
+                    }
+
+                    // Will be scaled by Kt in specularlighting(), so undo that effect.
+                    // Note: introduces view-dependent variation in the diffuse cache.
+                    radianceResponse /= compFresnel->GetAvgKt();
+                }
+
+                // Modify the responses.
+                ModifyResponse( _DiffDirectIntensity, _DiffDirectSaturation, _DiffDirectTint, directDiffuse );
+                ModifyResponse( _DiffIndirectIntensity, _DiffIndirectSaturation, _DiffIndirectTint, indirectDiffuse );
+                ModifyResponse( _DiffDirectIntensity, _DiffDirectSaturation, _DiffDirectTint, unshadoweddiffuseresult );
+
+                // Total the diffuse responses.
+                diffuseResponse = directDiffuse + indirectDiffuse;
+
+                // Blend the diffuse and subsurface responses.
+                varying color   diffuseBlend, subsurfBlend;
+
+                // Have Middle response(s) and Lower response(s) (which can only be Subsurface).
+                if (hasMiddle==1 && hasLower==1)
+                {
+                    diffuseBlend = compBlend->GetBr() * diffuseResponse;
+                    subsurfBlend = compBlend->GetBt() * subsurfaceResponse;
+
+                    // Can't rely on initialization to 0 for some reason.
+                    // This is when there are no diffuse Middle responses - only specular Middle responses.
+                    if (hasSubsNoDiff) diffuseBlend = diffuseResponse = color 0;
+                }
+
+                // Have Lower but no Middle.
+                else if (hasMiddle==0 && hasLower==1)
+                {
+                    diffuseBlend = diffuseResponse = color 0;
+                    subsurfBlend = subsurfaceResponse;
+                }
+
+                // No Lower.
+                else
+                {
+                    diffuseBlend = diffuseResponse;
+                    subsurfBlend = color 0;
+                }
+
+                // Total all the view-independent responses, and accumulate
+                // the result into the prman radiosity cache: Ci.
+                diffuseResult = diffuseBlend + subsurfBlend + radianceResponse;
+
+                Ci += diffuseResult;
+
+                // Write diffuse AOVs.
+                if (rayinfoData->depth == 0)
+                {
+                    writeaov( \"DirectIrradiance\", directIrradiance );
+                    writeaov( \"IndirectIrradiance\", indirectIrradiance );
+                    writeaov( \"DirectDiffuse\", directDiffuse );
+                    writeaov( \"IndirectDiffuse\", indirectDiffuse );
+                    writeaov( \"Diffuse\", diffuseResponse );
+                    writeaov( \"DiffuseBlend\", diffuseBlend );
+                    writeaov( \"Subsurface\", subsurfaceResponse );
+                    writeaov( \"SubsurfaceBlend\", subsurfBlend );
+                    writeaov( \"Radiance\", radianceResponse );
+                    writeaov( \"DiffuseCache\", Ci );
+
+                    writeaov( \"DirectIrradianceRight\", directIrradiance );
+                    writeaov( \"IndirectIrradianceRight\", indirectIrradiance );
+                    writeaov( \"DirectDiffuseRight\", directDiffuse );
+                    writeaov( \"IndirectDiffuseRight\", indirectDiffuse );
+                    writeaov( \"DiffuseRight\", diffuseResponse );
+                    writeaov( \"DiffuseBlendRight\", diffuseBlend );
+                    writeaov( \"SubsurfaceRight\", subsurfaceResponse );
+                    writeaov( \"SubsurfaceBlendRight\", subsurfBlend );
+                    writeaov( \"RadianceRight\", radianceResponse );
+                    writeaov( \"DiffuseCacheRight\", Ci );
+
+                    writeaov( \"DirectDiffuseUnshadowed\",  unshadoweddiffuseresult );
+                    writeaov( \"DirectDiffuseUnshadowedRight\",  unshadoweddiffuseresult );
+
+                    uniform float   i;
+                    for (i=0; i < _lightgroupsnum; i+=1)
+                    {
+                        ModifyResponse( _DiffDirectIntensity, _DiffDirectSaturation, _DiffDirectTint, groupeddiffuseresults\[i\] );
+                        ModifyResponse( _DiffDirectIntensity, _DiffDirectSaturation, _DiffDirectTint, groupedunshadoweddiffuseresults\[i\] );
+
+                        writeaov( concat( \"DirectDiffuse_\", _lightgroups\[i\] ), groupeddiffuseresults\[i\] );
+                        writeaov( concat( \"DirectDiffuseUnshadowed_\", _lightgroups\[i\] ), groupedunshadoweddiffuseresults\[i\] );
+                        writeaov( concat( \"DirectDiffuse_\", _lightgroups\[i\], \"Right\" ), groupeddiffuseresults\[i\] );
+                        writeaov( concat( \"DirectDiffuseUnshadowed_\", _lightgroups\[i\], \"Right\" ), groupedunshadoweddiffuseresults\[i\] );
+                    }
+                }
+
+                /*
+                 *  Specular Responses.
+                 */
+                varying color   indirectSpecular = color 0,
+                                specularResponse = color 0;
+
+                varying color   specularKr, diffuseKt;
+
+                //
+                //  Left Eye (indirect).
+                //
+                varying color   CiLeft = color 0;
+
+                // Indirect specular (left) response.
+                // indirectspecular() results include all Cbxdf's from evaluateSamples().
+                if (hasRefl == 1 || hasTran == 1)
+                {
+                    if (_SpecIndirectOn)
+                    {
+                        indirectSpecular = indirectspecular(
+                            surface,
+                            \"integrationdomain\", spec_integrationdomain,
+                            \"subset\", _SpecTraceSet,
+                            \"excludesubset\", _SpecExcludeSet,
+                            \"maxdist\", _SpecMaxDist,
+                            \"hitmode\", _SpecHitMode,
+                            \"hitsides\", _SpecHitSides
+                        );
+                    }
+
+                    // Catch nans from indirectspecular().
+                    if (indirectSpecular == indirectSpecular) { } else { indirectSpecular = color 0; }
+
+                    // Modify the responses.
+                    ModifyResponse( _SpecDirectIntensity, _SpecDirectSaturation, _SpecDirectTint, directSpecular );
+                    ModifyResponse( _SpecIndirectIntensity, _SpecIndirectSaturation, _SpecIndirectTint, indirectSpecular );
+                    ModifyResponse( _SpecDirectIntensity, _SpecDirectSaturation, _SpecDirectTint, unshadowedspecularresult );
+
+                    // Total the view-dependent responses.
+                    // Fresnel effects are applied directly to the specular samples.
+                    specularKr = directSpecular + indirectSpecular;
+
+                    // Apply/Undo the Fresnel effects.
+                    diffuseKt = compFresnel->GetKt( LEFT ) * diffuseResult;
+                    specularResponse = specularKr / compFresnel->GetKr( LEFT );
+                }
+
+                // No Refl or Tran responses.
+                else
+                {
+                    directSpecular = color 0;
+                    indirectSpecular = color 0;
+                    specularResponse = color 0;
+                    specularKr = color 0;
+                    diffuseKt = diffuseResult;
+                }
+
+                CiLeft = specularKr + diffuseKt;
+
+                // Write Left Specular AOVs.
+                if (rayinfoData->depth == 0)
+                {
+                    writeaov( \"DirectSpecular\", directSpecular );
+                    writeaov( \"IndirectSpecular\", indirectSpecular );
+                    writeaov( \"Specular\", specularResponse );
+                    writeaov( \"SpecularKr\", specularKr );
+                    writeaov( \"DiffuseKt\", diffuseKt );
+                    writeaov( \"Kr\", compFresnel->GetKr( LEFT ));
+                    writeaov( \"Kt\", compFresnel->GetKt( LEFT ));
+
+                    writeaov( \"DirectSpecularUnshadowed\",  unshadowedspecularresult );
+
+                    for (i=0; i < _lightgroupsnum; i+=1)
+                    {
+                        ModifyResponse( _SpecDirectIntensity, _SpecDirectSaturation, _SpecDirectTint, groupedspecularresults\[i\] );
+                        ModifyResponse( _SpecDirectIntensity, _SpecDirectSaturation, _SpecDirectTint, groupedunshadowedspecularresults\[i\] );
+
+                        writeaov( concat( \"DirectSpecular_\", _lightgroups\[i\] ), groupedspecularresults\[i\] );
+                        writeaov( concat( \"DirectSpecularUnshadowed_\", _lightgroups\[i\] ), groupedunshadowedspecularresults\[i\] );
+                    }
+                }
+
+                //
+                //  Right Eye (direct and indirect).
+                //
+                varying color   CiRight = color 0;
+
+                if (cameraData->ComputeRight())
+                {
+                    if (hasRefl == 1 || hasTran == 1)
+                    {
+                        SetEye( RIGHT );
+
+                        for (i=0; i < coshaderMaterialNum; i+=1)
+                        {
+                            coshaderMaterial\[i\]->SetEye( RIGHT );
+                        }
+
+                        // indirectspecular() samples cache.
+                        __radiancesample    samplesRight\[\] = {};
+
+                        // Can't re-use samples if doing Trans responses.
+                        if (hasTran)
+                        {
+                            if (_SpecIndirectOn)
+                            {
+                                indirectSpecular = indirectspecular(
+                                    surface,
+                                    \"integrationdomain\", spec_integrationdomain,
+                                    \"subset\", _SpecTraceSet,
+                                    \"excludesubset\", _SpecExcludeSet,
+                                    \"maxdist\", _SpecMaxDist,
+                                    \"hitmode\", _SpecHitMode,
+                                    \"hitsides\", _SpecHitSides
+                                );
+                            }
+
+                            directlighting( surface, plausibleLights,
+                                \"integrationdomain\", spec_integrationdomain,
+                                \"mis\", [getvar SpecMIS],
+
+                                \"specularresult\", directSpecular,
+                                \"unshadowedspecularresult\", unshadowedspecularresult,
+
+                                \"lightgroups\", _lightgroups,
+                                \"groupedspecularresults\", groupedspecularresults,
+                                \"groupedunshadowedspecularresults\", groupedunshadowedspecularresults
+                            );
+                        }
+
+                        // Re-use indirectspecular() samples in directlighting().
+                        else
+                        {
+                            if (_SpecIndirectOn)
+                            {
+                                indirectSpecular = indirectspecular(
+                                    surface,
+                                    \"integrationdomain\", spec_integrationdomain,
+                                    \"materialsamples\", samplesRight,
+                                    \"subset\", _SpecTraceSet,
+                                    \"excludesubset\", _SpecExcludeSet,
+                                    \"maxdist\", _SpecMaxDist,
+                                    \"hitmode\", _SpecHitMode,
+                                    \"hitsides\", _SpecHitSides
+                                );
+                            }
+
+                            directlighting( surface, plausibleLights,
+                                \"integrationdomain\", spec_integrationdomain,
+                                \"materialsamples\", samplesRight,
+                                \"mis\", [getvar SpecMIS],
+
+                                \"specularresult\", directSpecular,
+                                \"unshadowedspecularresult\", unshadowedspecularresult,
+
+                                \"lightgroups\", _lightgroups,
+                                \"groupedspecularresults\", groupedspecularresults,
+                                \"groupedunshadowedspecularresults\", groupedunshadowedspecularresults
+                            );
+                        }
+
+                        // Catch nans from indirectspecular().
+                        if (indirectSpecular == indirectSpecular) { } else { indirectSpecular = color 0; }
+
+                        ModifyResponse( _SpecDirectIntensity, _SpecDirectSaturation, _SpecDirectTint, directSpecular );
+                        ModifyResponse( _SpecIndirectIntensity, _SpecIndirectSaturation, _SpecIndirectTint, indirectSpecular );
+                        ModifyResponse( _SpecDirectIntensity, _SpecDirectSaturation, _SpecDirectTint, unshadowedspecularresult );
+
+                        specularKr = directSpecular + indirectSpecular;
+                        diffuseKt = compFresnel->GetKt( RIGHT ) * diffuseResult;
+
+                        specularResponse = specularKr / compFresnel->GetKr( RIGHT );
+                    }
+#if 0
+                    // No Refl or Tran responses.
+                    // Not strictly necessary, since the Left Eye computation set them.
+                    else
+                    {
+                        directSpecular = color 0;
+                        indirectSpecular = color 0;
+                        specularResponse = color 0;
+                        specularKr = color 0;
+                        diffuseKt = diffuseResult;
+                    }
+#endif
+                    CiRight = specularKr + diffuseKt;
+
+                    // Write Right Specular AOVs.
+                    if (rayinfoData->depth == 0)
+                    {
+                        writeaov( \"DirectSpecularRight\", directSpecular );
+                        writeaov( \"IndirectSpecularRight\", indirectSpecular );
+                        writeaov( \"SpecularRight\", specularResponse );
+                        writeaov( \"SpecularKrRight\", specularKr );
+                        writeaov( \"DiffuseKtRight\", diffuseKt );
+                        writeaov( \"KrRight\", compFresnel->GetKr( RIGHT ));
+                        writeaov( \"KtRight\", compFresnel->GetKt( RIGHT ));
+
+                        writeaov( \"DirectSpecularUnshadowedRight\",  unshadowedspecularresult );
+
+                        for (i=0; i < _lightgroupsnum; i+=1)
+                        {
+                            ModifyResponse( _SpecDirectIntensity, _SpecDirectSaturation, _SpecDirectTint, groupedspecularresults\[i\] );
+                            ModifyResponse( _SpecDirectIntensity, _SpecDirectSaturation, _SpecDirectTint, groupedunshadowedspecularresults\[i\] );
+
+                            writeaov( concat( \"DirectSpecular_\", _lightgroups\[i\], \"Right\" ), groupedspecularresults\[i\] );
+                            writeaov( concat( \"DirectSpecularUnshadowed_\", _lightgroups\[i\], \"Right\" ), groupedunshadowedspecularresults\[i\] );
+                        }
+                    }
+                }
+
+                //
+                //  If not computing right camera, simply write left camera values to right aov's.
+                //
+                else
+                {
+                    CiRight = CiLeft;
+
+                    if (rayinfoData->depth == 0)
+                    {
+                        writeaov( \"DirectSpecularRight\", directSpecular );
+                        writeaov( \"IndirectSpecularRight\", indirectSpecular );
+                        writeaov( \"SpecularRight\", specularResponse );
+                        writeaov( \"SpecularKrRight\", specularKr );
+                        writeaov( \"DiffuseKtRight\", diffuseKt );
+                        writeaov( \"KrRight\", compFresnel->GetKr( LEFT ));
+                        writeaov( \"KtRight\", compFresnel->GetKt( LEFT ));
+
+                        writeaov( \"DirectSpecularUnshadowedRight\",  unshadowedspecularresult );
+
+                        for (i=0; i < _lightgroupsnum; i+=1)
+                        {
+                            writeaov( concat( \"DirectSpecular_\", _lightgroups\[i\], \"Right\" ), groupedspecularresults\[i\] );
+                            writeaov( concat( \"DirectSpecularUnshadowed_\", _lightgroups\[i\], \"Right\" ), groupedunshadowedspecularresults\[i\] );
+                        }
+                    }
+                }
+
+                Ci = CiLeft;
+
+                // Write left and right camera AOVs.
+                if (rayinfoData->depth == 0)
+                {
+                    writeaov (\"CiLeft\", CiLeft);
+                    writeaov (\"CiRight\", CiRight);
+                }
+"
+            }
+
+            #
+            # diffuselighting() will only be called in a surface shader.
+            #
+            generateMethod "public void diffuselighting( output varying color Ci, Oi, Irradiance )" {
+output "
+                if (shortCircuit) return;
+
+                varying color   directResponse = color 0, directIrradiance = color 0,
+                                indirectResponse = color 0, indirectIrradiance = color 0,
+                                subsurfaceResponse = color 0,
+                                radianceResponse = color 0;
+
+                varying color   diffuseresult, unshadoweddiffuseresult,
+// XXX These likely need to be resized before they're used in directlighting().
+// Getting array range errors when rendering.
+                                groupeddiffuseresults\[_lightgroupsnum\],
+                                groupedunshadoweddiffuseresults\[_lightgroupsnum\];
+
+                varying color   diffuseResponse, totalResponse, tmp;
+                uniform float   i;
+
+                // Diffuse responses.
+                if (hasDiffOrSubs)
+                {
+                    // directlighting() result includes all Cbxdf's from evaluateSamples().
+                    directResponse = directlighting(
+                        surface, plausibleLights,
+                        \"integrationdomain\", diff_integrationdomain,
+
+                        \"irradianceresult\", directIrradiance,
+                        // Same as directResponse \"diffuseresult\", diffuseresult,
+                        \"unshadoweddiffuseresult\", unshadoweddiffuseresult,
+
+                        \"lightgroups\", _lightgroups,
+                        \"groupeddiffuseresults\", groupeddiffuseresults,
+                        \"groupedunshadoweddiffuseresults\", groupedunshadoweddiffuseresults
+
+/*
+    XXX This causes acculumateMaterialResponse call errors when there's more than one diffuse response.
+    Apparently, if this is 1, you must be generating diffuse samples? (not actually tested).
+                        \"diffusemis\", 1
+ */
+                    );
+                    Irradiance = directIrradiance;  // Raw irradiance (from evaluateSamples computation).
+
+                    // Indirect response.
+                    // indirectdiffuse() does not include any Cbxdf's.
+                    // It's just cosine-weighted hemisphere irradiance.
+                    if (_DiffIndirectOn)
+                    {
+                        indirectIrradiance = indirectdiffuse(
+                            P, N, indiffSampleNum,
+                            \"distribution\", \"cosine\",
+                            \"coneangle\", diff_integrationconeangle,
+                            \"maxvariation\", _DiffMaxVariation,
+                            \"adaptive\", _DiffAdaptive,
+                            \"subset\", _DiffTraceSet,
+                            \"excludesubset\", _DiffExcludeSet,
+                            \"maxdist\", _DiffMaxDist
+                        );
+                    }
+
+                    // Catch nans in indirectdiffuse() result.
+                    if (indirectIrradiance == indirectIrradiance)
+                    {
+                        Irradiance += indirectIrradiance;   // Raw irradiance.
+                    }
+                    else
+                    {
+                        indirectIrradiance = color 0;
+                    }
+
+                    // Do indirect diffuse responses.
+                    indirectResponse += ComputeIndirectLambert( indirectIrradiance );
+
+                    for (i=0; i < coshaderMaterialNum; i+=1)
+                    {
+                        tmp = coshaderMaterial\[i\]->ComputeIndirectLambert( indirectIrradiance );
+                        indirectResponse +=  tmp;
+                    }
+                }
+
+                // Subsurface response is not computed for subsurface() traced rays.
+                if (hasSubs == 1 && rayinfoData->label != \"subsurface\")
+                {
+                    if (gridever( _abs(compBlend->GetBt()) != color(0) ))
+                    {
+                        subsurfaceResponse += ComputeSubsurface( responseData->GetAvgKt() );
+
+                        for (i=0; i < coshaderMaterialNum; i+=1)
+                        {
+                            tmp = coshaderMaterial\[i\]->ComputeSubsurface( responseData->GetAvgKt() );
+                            subsurfaceResponse += tmp;
+                        }
+                    }
+                }
+
+                // Radiance response.
+                if (hasRad)
+                {
+                    radianceResponse += ComputeRadiance();
+
+                    for (i=0; i < coshaderMaterialNum; i+=1)
+                    {
+                        tmp = coshaderMaterial\[i\]->ComputeRadiance();
+                        radianceResponse += tmp;
+                    }
+
+                    // Will be scaled by Kt in specularlighting(), so undo that effect.
+                    // Note: introduces view-dependent variation in the diffuse cache.
+                    radianceResponse /= compFresnel->GetAvgKt();
+                }
+
+                // Modify the responses.
+                ModifyResponse( _DiffDirectIntensity, _DiffDirectSaturation, _DiffDirectTint, directResponse );
+                ModifyResponse( _DiffDirectIntensity, _DiffDirectSaturation, _DiffDirectTint, unshadoweddiffuseresult );
+                ModifyResponse( _DiffIndirectIntensity, _DiffIndirectSaturation, _DiffIndirectTint, indirectResponse );
+
+                // Total the diffuse responses.
+                diffuseResponse = directResponse + indirectResponse;
+
+                // Blend the diffuse and subsurface responses.
+                varying color   diffuseBlend, subsurfBlend;
+
+                // Have Middle response(s) and Lower response(s) (which can only be Subsurface).
+                if (hasMiddle==1 && hasLower==1)
+                {
+                    diffuseBlend = compBlend->GetBr() * diffuseResponse;
+                    subsurfBlend = compBlend->GetBt() * subsurfaceResponse;
+
+                    // Can't rely on initialization to 0 for some reason.
+                    // This is when there are no diffuse Middle responses - only specular Middle responses.
+                    if (hasSubsNoDiff) diffuseBlend = diffuseResponse = color 0;
+                }
+
+                // Have Lower but no Middle.
+                else if (hasMiddle==0 && hasLower==1)
+                {
+                    diffuseBlend = diffuseResponse = color 0;
+                    subsurfBlend = subsurfaceResponse;
+                }
+
+                // No Lower.
+                else
+                {
+                    diffuseBlend = diffuseResponse;
+                    subsurfBlend = color 0;
+                }
+
+                // Total all the view-independent responses, and accumulate
+                // the result into the prman diffuselighting() radiosity cache: Ci.
+                totalResponse = diffuseBlend + subsurfBlend + radianceResponse;
+
+                Ci += totalResponse;
+
+                // Write left and right camera diffuse AOVs.
+                if (rayinfoData->depth == 0)
+                {
+                    writeaov( \"DirectIrradiance\", directIrradiance );
+                    writeaov( \"IndirectIrradiance\", indirectIrradiance );
+                    writeaov( \"DirectDiffuse\", directResponse );
+                    writeaov( \"IndirectDiffuse\", indirectResponse );
+                    writeaov( \"Diffuse\", diffuseResponse );
+                    writeaov( \"DiffuseBlend\", diffuseBlend );
+                    writeaov( \"Subsurface\", subsurfaceResponse );
+                    writeaov( \"SubsurfaceBlend\", subsurfBlend );
+                    writeaov( \"Radiance\", radianceResponse );
+                    writeaov( \"DiffuseCache\", Ci );
+
+                    writeaov( \"DirectIrradianceRight\", directIrradiance );
+                    writeaov( \"IndirectIrradianceRight\", indirectIrradiance );
+                    writeaov( \"DirectDiffuseRight\", directResponse );
+                    writeaov( \"IndirectDiffuseRight\", indirectResponse );
+                    writeaov( \"DiffuseRight\", diffuseResponse );
+                    writeaov( \"DiffuseBlendRight\", diffuseBlend );
+                    writeaov( \"SubsurfaceRight\", subsurfaceResponse );
+                    writeaov( \"SubsurfaceBlendRight\", subsurfBlend );
+                    writeaov( \"RadianceRight\", radianceResponse );
+                    writeaov( \"DiffuseCacheRight\", Ci );
+
+                    writeaov( \"DirectDiffuseUnshadowed\",  unshadoweddiffuseresult );
+                    writeaov( \"DirectDiffuseUnshadowedRight\",  unshadoweddiffuseresult );
+
+                    uniform float   i;
+                    for (i=0; i < _lightgroupsnum; i+=1)
+                    {
+                        ModifyResponse( _DiffDirectIntensity, _DiffDirectSaturation, _DiffDirectTint, groupeddiffuseresults\[i\] );
+                        ModifyResponse( _DiffDirectIntensity, _DiffDirectSaturation, _DiffDirectTint, groupedunshadoweddiffuseresults\[i\] );
+
+                        writeaov( concat( \"DirectDiffuse_\", _lightgroups\[i\] ), groupeddiffuseresults\[i\] );
+                        writeaov( concat( \"DirectDiffuseUnshadowed_\", _lightgroups\[i\] ), groupedunshadoweddiffuseresults\[i\] );
+                        writeaov( concat( \"DirectDiffuse_\", _lightgroups\[i\], \"Right\" ), groupeddiffuseresults\[i\] );
+                        writeaov( concat( \"DirectDiffuseUnshadowed_\", _lightgroups\[i\], \"Right\" ), groupedunshadoweddiffuseresults\[i\] );
+                    }
+                }
+"
+            }
+
+
+            #
+            # specularlighting() will only be called in a surface shader.
+            #
+            generateMethod "public void specularlighting( output varying color Ci, Oi )" {
+output "
+                if (shortCircuit) return;
+
+                varying color   directResponse = color 0, indirectResponse = color 0,
+                                specularResponse, specularKr,
+                                diffuseResult, diffuseKt;
+
+                varying color   specularresult, unshadowedresult, unshadowedspecularresult,
+                                groupedresults\[_lightgroupsnum\],
+                                groupedunshadowedresults\[_lightgroupsnum\],
+                                groupedspecularresults\[_lightgroupsnum\],
+                                groupedunshadowedspecularresults\[_lightgroupsnum\];
+
+                uniform float   i;
+
+                // (cached) view-independent responses from diffuselighting().
+                diffuseResult = Ci;
+
+                // Left Eye.
+                varying color   CiLeft = color 0;
+                {
+                    SetEye( LEFT );
+                    for (i=0; i < coshaderMaterialNum; i+=1)
+                    {
+                        coshaderMaterial\[i\]->SetEye( LEFT );
+                    }
+
+                    __radiancesample    samplesLeft\[\];
+
+                    // indirectspecular() and directlighting() results include all Cbxdf's from evaluateSamples().
+
+                    if (hasRefl==1 || hasTran==1)
+                    {
+                        // If there are transmitted rays, don't re-use materialsamples in directlighting.
+// XXX doing indirect samples first results in very noisy results in AS responses
+// when they're combined with Translucence responses. This was due to not generating samples for directlighting()
+// (context = specular).
+/*                         if (0 == 1) */
+                        if (hasTran)
+                        {
+                            if (_SpecIndirectOn)
+                            {
+// XXX Use m_mode and two indirectspecular() calls to separate integration of reflection and refraction samples?
+#if 0
+                                SpecIntegrationDomain = REFLECTION;
+                                indirectResponse = indirectspecular(
+                                    surface,
+                                    \"integrationdomain\", \"hemisphere\",
+                                    \"subset\", _SpecTraceSet,
+                                    \"excludesubset\", _SpecExcludeSet,
+                                    \"maxdist\", _SpecMaxDist,
+                                    \"hitmode\", _SpecHitMode,
+                                    \"hitsides\", _SpecHitSides
+                                );
+                                SpecIntegrationDomain = TRANSMISSION;
+                                indirectResponse = indirectspecular(
+                                    surface,
+/*                                     \"integrationdomain\", \"inversehemisphere\", */
+                                    \"integrationdomain\", \"sphere\",
+                                    \"subset\", _SpecTraceSet,
+                                    \"excludesubset\", _SpecExcludeSet,
+                                    \"maxdist\", _SpecMaxDist,
+                                    \"hitmode\", _SpecHitMode,
+                                    \"hitsides\", _SpecHitSides
+                                );
+#else
+                                indirectResponse = indirectspecular(
+                                    surface,
+                                    \"integrationdomain\", spec_integrationdomain,
+                                    \"subset\", _SpecTraceSet,
+                                    \"excludesubset\", _SpecExcludeSet,
+                                    \"maxdist\", _SpecMaxDist,
+                                    \"hitmode\", _SpecHitMode,
+                                    \"hitsides\", _SpecHitSides
+                                );
+                            }
+#endif
+// XXX Same for directighting()?
+                            directResponse = directlighting(
+                                surface, plausibleLights,
+                                \"integrationdomain\", spec_integrationdomain,
+                                \"mis\", [getvar SpecMIS],
+
+                                // Same as directResponse \"specularresult\", specularresult,
+                                \"unshadowedspecularresult\", unshadowedspecularresult,
+
+                                \"lightgroups\", _lightgroups,
+                                \"groupedspecularresults\", groupedspecularresults,
+                                \"groupedunshadowedspecularresults\", groupedunshadowedspecularresults
+                            );
+                        }
+
+                        // If no transmitted rays, can re-use the indirectspecular()
+                        // reflection samples for directlighting.
+                        else
+                        {
+                            if (_SpecIndirectOn)
+                            {
+                                indirectResponse = indirectspecular(
+                                    surface,
+                                    \"integrationdomain\", spec_integrationdomain,
+                                    \"materialsamples\", samplesLeft,   // samples are output.
+                                    \"subset\", _SpecTraceSet,
+                                    \"excludesubset\", _SpecExcludeSet,
+                                    \"maxdist\", _SpecMaxDist,
+                                    \"hitmode\", _SpecHitMode,
+                                    \"hitsides\", _SpecHitSides
+                                );
+                            }
+
+                            directResponse = directlighting(
+                                surface, plausibleLights,
+                                \"integrationdomain\", spec_integrationdomain,
+                                \"materialsamples\", samplesLeft,   // samples are input, or empty.
+                                \"mis\", [getvar SpecMIS],
+
+                                // Same as directResponse \"specularresult\", specularresult,
+                                \"unshadowedspecularresult\", unshadowedspecularresult,
+
+                                \"lightgroups\", _lightgroups,
+                                \"groupedspecularresults\", groupedspecularresults,
+                                \"groupedunshadowedspecularresults\", groupedunshadowedspecularresults
+                            );
+                        }
+
+                        // Catch nans from indirectspecular().
+                        if (indirectResponse == indirectResponse) { } else { indirectResponse = color 0; }
+
+                        // Modify the responses.
+                        ModifyResponse( _SpecDirectIntensity, _SpecDirectSaturation, _SpecDirectTint, directResponse );
+                        ModifyResponse( _SpecDirectIntensity, _SpecDirectSaturation, _SpecDirectTint, unshadowedspecularresult );
+                        ModifyResponse( _SpecIndirectIntensity, _SpecIndirectSaturation, _SpecIndirectTint, indirectResponse );
+
+                        // Total the view-dependent responses.
+                        // Fresnel effects are applied directly to the specular samples.
+                        specularKr = directResponse + indirectResponse;
+
+                        // Apply/Undo the Fresnel effects.
+                        diffuseKt = compFresnel->GetKt( LEFT ) * diffuseResult;
+                        specularResponse = specularKr / compFresnel->GetKr( LEFT );
+                    }
+
+                    // No view-dependent responses.
+                    else
+                    {
+                        specularResponse = indirectResponse = directResponse = color 0;
+                        specularKr = color 0;
+                        diffuseKt = diffuseResult;
+                    }
+
+                    CiLeft = specularKr + diffuseKt;
+
+                    // Write Left Specular AOVs.
+                    if (rayinfoData->depth == 0)
+                    {
+                        writeaov( \"DirectSpecular\", directResponse );
+                        writeaov( \"IndirectSpecular\", indirectResponse );
+                        writeaov( \"Specular\", specularResponse );
+                        writeaov( \"SpecularKr\", specularKr );
+                        writeaov( \"DiffuseKt\", diffuseKt );
+                        writeaov( \"Kr\", compFresnel->GetKr( LEFT ));
+                        writeaov( \"Kt\", compFresnel->GetKt( LEFT ));
+
+                        writeaov( \"DirectSpecularUnshadowed\",  unshadowedspecularresult );
+
+                        for (i=0; i < _lightgroupsnum; i+=1)
+                        {
+                            ModifyResponse( _SpecDirectIntensity, _SpecDirectSaturation, _SpecDirectTint, groupedspecularresults\[i\] );
+                            ModifyResponse( _SpecDirectIntensity, _SpecDirectSaturation, _SpecDirectTint, groupedunshadowedspecularresults\[i\] );
+
+                            writeaov( concat( \"DirectSpecular_\", _lightgroups\[i\] ), groupedspecularresults\[i\] );
+                            writeaov( concat( \"DirectSpecularUnshadowed_\", _lightgroups\[i\] ), groupedunshadowedspecularresults\[i\] );
+                        }
+                    }
+                }
+
+                // Right Eye.
+                varying color   CiRight = color 0;
+
+                if (cameraData->ComputeRight())
+                {
+                    SetEye( RIGHT );
+                    for (i=0; i < coshaderMaterialNum; i+=1)
+                    {
+                        coshaderMaterial\[i\]->SetEye( RIGHT );
+                    }
+
+                    __radiancesample    samplesRight\[\];
+
+                    if (hasRefl==1 || hasTran==1)
+                    {
+                        if (hasTran)
+                        {
+                            if (_SpecIndirectOn)
+                            {
+                                indirectResponse = indirectspecular(
+                                    surface,
+                                    \"integrationdomain\", spec_integrationdomain,
+                                    \"subset\", _SpecTraceSet,
+                                    \"excludesubset\", _SpecExcludeSet,
+                                    \"maxdist\", _SpecMaxDist,
+                                    \"hitmode\", _SpecHitMode,
+                                    \"hitsides\", _SpecHitSides
+                                );
+                            }
+
+                            directResponse = directlighting(
+                                surface, plausibleLights,
+                                \"integrationdomain\", spec_integrationdomain,
+                                \"mis\", [getvar SpecMIS],
+
+                                // Same as directResponse \"specularresult\", specularresult,
+                                \"unshadowedspecularresult\", unshadowedspecularresult,
+
+                                \"lightgroups\", _lightgroups,
+                                \"groupedspecularresults\", groupedspecularresults,
+                                \"groupedunshadowedspecularresults\", groupedunshadowedspecularresults
+                            );
+                        }
+                        else
+                        {
+                            if (_SpecIndirectOn)
+                            {
+                                indirectResponse = indirectspecular(
+                                    surface,
+                                    \"integrationdomain\", spec_integrationdomain,
+                                    \"materialsamples\", samplesRight,
+                                    \"subset\", _SpecTraceSet,
+                                    \"excludesubset\", _SpecExcludeSet,
+                                    \"maxdist\", _SpecMaxDist,
+                                    \"hitmode\", _SpecHitMode,
+                                    \"hitsides\", _SpecHitSides
+                                );
+                            }
+
+                            directResponse = directlighting(
+                                surface, plausibleLights,
+                                \"integrationdomain\", spec_integrationdomain,
+                                \"materialsamples\", samplesRight,
+                                \"mis\", [getvar SpecMIS],
+
+                                // Same as directResponse \"specularresult\", specularresult,
+                                \"unshadowedspecularresult\", unshadowedspecularresult,
+
+                                \"lightgroups\", _lightgroups,
+                                \"groupedspecularresults\", groupedspecularresults,
+                                \"groupedunshadowedspecularresults\", groupedunshadowedspecularresults
+                            );
+                        }
+
+                        // Catch nans from indirectspecular().
+                        if (indirectResponse == indirectResponse) { } else { indirectResponse = color 0; }
+
+                        ModifyResponse( _SpecDirectIntensity, _SpecDirectSaturation, _SpecDirectTint, directResponse );
+                        ModifyResponse( _SpecDirectIntensity, _SpecDirectSaturation, _SpecDirectTint, unshadowedspecularresult );
+                        ModifyResponse( _SpecIndirectIntensity, _SpecIndirectSaturation, _SpecIndirectTint, indirectResponse );
+
+                        specularKr = directResponse + indirectResponse;
+                        diffuseKt = compFresnel->GetKt( RIGHT ) * diffuseResult;
+
+                        specularResponse = specularKr / compFresnel->GetKr( RIGHT );
+                    }
+
+                    else
+                    {
+                        specularResponse = indirectResponse = directResponse = color 0;
+                        specularKr = color 0;
+                        diffuseKt = diffuseResult;
+                    }
+
+                    CiRight = specularKr + diffuseKt;
+
+                    // Write Right Specular AOVs.
+                    if (rayinfoData->depth == 0)
+                    {
+                        writeaov( \"DirectSpecularRight\", directResponse );
+                        writeaov( \"IndirectSpecularRight\", indirectResponse );
+                        writeaov( \"SpecularRight\", specularResponse );
+                        writeaov( \"SpecularKrRight\", specularKr );
+                        writeaov( \"DiffuseKtRight\", diffuseKt );
+                        writeaov( \"KrRight\", compFresnel->GetKr( RIGHT ));
+                        writeaov( \"KtRight\", compFresnel->GetKt( RIGHT ));
+
+                        writeaov( \"DirectSpecularUnshadowedRight\",  unshadowedspecularresult );
+
+                        for (i=0; i < _lightgroupsnum; i+=1)
+                        {
+                            ModifyResponse( _SpecDirectIntensity, _SpecDirectSaturation, _SpecDirectTint, groupedspecularresults\[i\] );
+                            ModifyResponse( _SpecDirectIntensity, _SpecDirectSaturation, _SpecDirectTint, groupedunshadowedspecularresults\[i\] );
+
+                            writeaov( concat( \"DirectSpecular_\", _lightgroups\[i\], \"Right\" ), groupedspecularresults\[i\] );
+                            writeaov( concat( \"DirectSpecularUnshadowed_\", _lightgroups\[i\], \"Right\" ), groupedunshadowedspecularresults\[i\] );
+                        }
+                    }
+                }
+
+                // Write left camera values to right aov's if there's no right camera or we didn't compute them.
+                else
+                {
+                    CiRight = CiLeft;
+
+                    if (rayinfoData->depth == 0)
+                    {
+                        writeaov( \"DirectSpecularRight\", directResponse );
+                        writeaov( \"IndirectSpecularRight\", indirectResponse );
+                        writeaov( \"SpecularRight\", specularResponse );
+                        writeaov( \"SpecularKrRight\", specularKr );
+                        writeaov( \"DiffuseKtRight\", diffuseKt );
+                        writeaov( \"KrRight\", compFresnel->GetKr( LEFT ));
+                        writeaov( \"KtRight\", compFresnel->GetKt( LEFT ));
+
+                        writeaov( \"DirectSpecularUnshadowedRight\",  unshadowedspecularresult );
+
+                        for (i=0; i < _lightgroupsnum; i+=1)
+                        {
+                            writeaov( concat( \"DirectSpecular_\", _lightgroups\[i\], \"Right\" ), groupedspecularresults\[i\] );
+                            writeaov( concat( \"DirectSpecularUnshadowed_\", _lightgroups\[i\], \"Right\" ), groupedunshadowedspecularresults\[i\] );
+                        }
+                    }
+                }
+
+                // Output left and right camera images.
+                Ci = CiLeft;
+
+                writeaov (\"CiLeft\", CiLeft);
+                writeaov (\"CiRight\", CiRight);
+"
+            }
+
+
+            #
+            # postlighting() will only be called in a surface shader.
+            #
+            generateMethod "public void postlighting( output varying color Ci, Oi )" {
+output "
+                extern varying point    P;
+                extern varying normal   N;
+                extern varying float    s, t;
+
+                extern varying color    OiNonEC;
+
+                // Non-energy conserving transparency.
+                Oi *= OiNonEC;
+"
+                foreach comptype $computationtype {
+                    foreach bxdf $bxdfNamesByType($comptype) {
+output "                [getvar $bxdf]->postlighting( Ci, Oi );"
+                    }
+                }
+output "
+                uniform float   i;
+
+                // Handle any wavefrontobj output coshaders.
+                uniform shader  objOutputCoshader\[\] = getshaders( \"category\", \"ikaBakeObj\" );
+                uniform float   objOutputCoshaderNum = arraylength( objOutputCoshader );
+                for (i=0; i < objOutputCoshaderNum; i+=1)
+                {
+                    objOutputCoshader\[i\]->bakeObj( P, N, s, t );
+                }
+
+
+                // Get any AOV coshaders...
+                uniform shader  aovCoshader\[\] = getshaders (\"category\", \"ikaAOVCoshader\");
+                uniform float   aovCoshaderCount = arraylength (aovCoshader);
+
+                // ...and cause them to write their aov values to their output parameters.
+                for (i=0; i < aovCoshaderCount; i+=1)
+                {
+                    aovCoshader\[i\]->begin();
+                }
+
+
+                // Scene aov's.
+                writeaov (\"PLeft\", P);
+                writeaov (\"NLeft\", normalize(N));
+                writeaov (\"Pworld\", transform( \"world\", P ));
+                writeaov (\"Nworld\", normalize( vtransform( \"world\", vector N )));
+
+                // Write right camera versions of P and N.
+                varying point   PRight;
+                varying vector  NRight;
+
+                if (cameraData->RightExists() == 1)
+                {
+                    uniform string  space = cameraData->RightSpace();
+
+                    PRight = transform( space, P );
+                    NRight = normalize( vtransform( space, vector N ));
+                }
+                else
+                {
+                    PRight = P;
+                    NRight = vector normalize(N);
+                }
+
+                writeaov (\"PRight\", PRight);
+                writeaov (\"NRight\", NRight);
+
+                writeaov (\"u\", u);
+                writeaov (\"v\", v);
+
+                writeaov( \"dPdtime\", dPdtime );
+"
+            }
+        }
+    }
+
+  }
+}

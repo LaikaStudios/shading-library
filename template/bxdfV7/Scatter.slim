@@ -1,0 +1,314 @@
+##
+##  Copyright(c) 2012-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV bxdfV7Scatter_s bxdfV7Scatter 0 {
+        description {
+            Scatter is modeled as a scattering medium in a boundary layer of the surface,
+            like dust or a random jumble of fibers.
+        }
+
+        parameter float OnOff {
+            label {On Off}
+            description {
+                Turn this response on or off.
+                On(1) = Normal Computation.
+                Bypass(0) = Don't show its response in the result.
+                Kill(-1) = Remove it from the Material.
+                <
+            }
+            detail varying
+            subtype selector
+            range {
+                "On" 1
+                "Bypass" 0
+                "Kill" -1
+            }
+            default 1
+        }
+        parameter coshader OnOff_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float NormOnOff {
+            label {Normalize On}
+            description {
+                Does this response participate in the Intensity Normalization within this Layer or not?
+                Note that when this is first turned off, the intensities of all the normalized responses
+                (including it) will change. But once it's been removed from that computation, further changes
+                will not interact with the rest of the responses.
+                <
+            }
+            detail varying
+            subtype switch
+            default 1
+        }
+        parameter coshader NormOnOff_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float Intensity {
+            description {
+                The Intensity of the response.
+                <
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+        parameter coshader Intensity_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter color Color {
+            label {Color}
+            description {
+                The color of the response.
+                <
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter coshader Color_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float ColorMix {
+            label {Use Color}
+            description {
+                Determines how much of the Color is used in the response.
+                <
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+        parameter coshader ColorMix_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+
+        parameter float ScatterDirection {
+            label {Scatter Direction}
+            description {
+                This controls the degree of forward to backward scattering.
+                Negative values produce back scattering (brighter when viewed from the same side as the light).
+                Positive values produce forward scattering (brighter when looking toward the light).
+                When 0, scattering is isotropic.
+                <
+            }
+            detail varying
+            subtype slider
+            range {-1 1}
+            default 0
+        }
+        parameter coshader ScatterDirection_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float Exponent {
+            label {Exponent}
+            description {
+                The focusing exponent.
+            }
+            detail varying
+            subtype slider
+            range {1 6}
+            default 4
+        }
+        parameter coshader Exponent_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        collection void NsOverride {
+            label {Normal Override}
+            description {
+                These controls allow you to alter the shading normal that
+                will be used. This overrides any bump that's been applied to
+                the Material with the Bump Disp parameter.
+            }
+
+            parameter float NsInfluence {
+                label {Influence}
+                description {
+                    How much of the alternate Shading Normal is used?
+                    This is a mix between the regular normal and the alternate Shading Normal.
+                    <
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 0
+            }
+            parameter coshader NsInfluence_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter normal Ns {
+                label {Shading Normal}
+                description {
+                    An alternate Shading Normal to use.
+                    <
+                }
+                detail mustvary "pixar,SurfaceNormal"
+            }
+            parameter coshader Ns_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+        }
+
+        collection void1 FresnelOverride {
+            label {Fresnel Override}
+            description {
+                These controls allow you to alter the Fresnel Value that
+                will be used. This overrides any Fresnel function that's connected to
+                the Material with the Fresnel parameter.
+            }
+
+            parameter float FresnelInfluence {
+                label {Influence}
+                description {
+                    How much of the alternate Fresnel Value is used?
+                    This is a mix between the connected Fresnel function and the alternate Fresnel Value.
+                    <
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 0
+            }
+            parameter coshader FresnelInfluence_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+
+            parameter color FresnelValue {
+                label {Fresnel Value}
+                description {
+                    An alternate Fresnel Value to use.
+                    <
+                }
+                detail varying
+                default {1 1 1}
+            }
+            parameter coshader FresnelValue_Co_ {
+                display hidden
+                default {}
+                value {}
+            }
+        }
+
+        parameter bxdfV7Scatter_s result {
+            display hidden
+            access output
+        }
+
+
+#        RSLInclude {bxdfV7/Scatter.h} -within body
+
+        RSLInclude {coreV7/override.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+
+                    set overrideParam "OnOff"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "NormOnOff"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "Intensity"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "Color"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying color _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "ColorMix"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "ScatterDirection"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "Exponent"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "NsInfluence"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "Ns"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying vector _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "FresnelInfluence"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "FresnelValue"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying color _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+output "
+                    result->OnOff = _OnOff;
+                    result->NormOnOff = _NormOnOff * step( -0.5, _OnOff );  // Do not normalize if killed.
+                    result->Intensity = _Intensity;
+                    result->Color = _Color;
+                    result->ColorMix = _ColorMix;
+                    result->ScatterDirection = linear (-1, 1, _ScatterDirection);
+                    result->Exponent = _Exponent;
+                    result->Ns = _Ns;
+                    result->NsInfluence = _NsInfluence;
+                    result->FresnelInfluence = _FresnelInfluence;
+                    result->FresnelValue = _FresnelValue;
+"
+                }
+            }
+        }
+    }
+
+  }
+}

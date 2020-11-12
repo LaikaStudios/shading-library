@@ -1,0 +1,320 @@
+##
+##  Copyright(c) 2010-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV lighteffector leV7OrthoCard 0 {
+        description {
+            Orthographically projects a "card" within the scene
+            based on a given coordinate system.
+        }
+
+        eval [::__categoryParam "ikaRadianceEffector"]
+
+        parameter string Space {
+            label {Control Space}
+            description {
+                This is set to the name of a coordinate system.
+                If "shader" or blank, the object this is attached to will define the space.
+            }
+            provider parameterlist
+            detail varying
+            default "shader"
+        }
+
+        parameter float Enable {
+            label {Enable}
+            description {
+                Controls how much effect this will have on the illumination.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        parameter string TextureMap {
+            label {Texture Map}
+            description {
+                An optional color texture to use.
+                The Color parameter then becomes a tint control.
+                The edges of the texture are mapped to the +/-1 locations
+                of the X and Y axes in the Control Space coordinate system.
+            }
+            detail varying
+            subtype texture
+            default ""
+        }
+
+        parameter string TextureMode {
+            label {Texture Mode}
+            description {
+                Selects whether the Texture Map contains sRGB or light-linear values.
+            }
+            detail uniform
+            subtype selector
+            range {
+                "sRGB"   sRGB
+                "Linear" Linear
+            }
+            default Linear
+        }
+
+        parameter float TextureBlur {
+            label {Texture Blur}
+            description {
+                The amount of texture "pre-blur" to apply.
+            }
+            detail varying
+            subtype slider
+            range {0 .1 .001}
+            default 0
+        }
+
+        parameter color Color {
+            label {Color}
+            description {
+                sRGB Color applied to the overall illumination.
+            }
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter float Intensity {
+            description {
+                sRGB Intensity applied to the overall illumination.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter color DiffuseTint {
+            label {Diffuse Tint}
+            description {
+                A multiplier applied to the diffuse illumination.
+                sRGB space.
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter float DiffuseIntensity {
+            label {Diffuse Intensity}
+            description {
+                A multiplier applied to the diffuse illumination.
+                sRGB space.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter color SpecularTint {
+            label {Specular Tint}
+            description {
+                A multiplier applied to the specular illumination.
+                sRGB space.
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter float SpecularIntensity {
+            label {Specular Intensity}
+            description {
+                A multiplier applied to the specular illumination.
+                sRGB space.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float Invert {
+            label {Invert}
+            description {
+                If checked, treat the rectangular area defined by the rest of the parameters as
+                a hole that light can pass through, rather than a card that blocks light.
+            }
+            subtype switch
+            default 0
+        }
+
+        collection void TopAtten {
+            label {Top}
+
+            parameter float TopAttenEnable {
+                label {Enable}
+                detail uniform
+                subtype switch
+                default 1
+            }
+            parameter float TopAttenLoc {
+                label {Location}
+                detail varying
+                subtype slider
+                default 1
+            }
+            parameter float TopAttenWidth {
+                label {Width}
+                detail varying
+                subtype slider
+                range {0 2}
+                default 0
+            }
+        }
+
+        collection void BotAtten {
+            label {Bottom}
+
+            parameter float BotAttenEnable {
+                label {Enable}
+                detail uniform
+                subtype switch
+                default 1
+            }
+            parameter float BotAttenLoc {
+                label {Location}
+                detail varying
+                subtype slider
+                default -1
+            }
+            parameter float BotAttenWidth {
+                label {Width}
+                detail varying
+                subtype slider
+                range {0 2}
+                default 0
+            }
+        }
+
+        collection void LeftAtten {
+            label {Left}
+
+            parameter float LeftAttenEnable {
+                label {Enable}
+                detail uniform
+                subtype switch
+                default 1
+            }
+            parameter float LeftAttenLoc {
+                label {Location}
+                detail varying
+                subtype slider
+                default -1
+            }
+            parameter float LeftAttenWidth {
+                label {Width}
+                detail varying
+                subtype slider
+                range {0 2}
+                default 0
+            }
+        }
+
+        collection void RightAtten {
+            label {Right}
+
+            parameter float RightAttenEnable {
+                label {Enable}
+                detail uniform
+                subtype switch
+                default 1
+            }
+            parameter float RightAttenLoc {
+                label {Location}
+                detail varying
+                subtype slider
+                default 1
+            }
+            parameter float RightAttenWidth {
+                label {Width}
+                detail varying
+                subtype slider
+                range {0 2}
+                default 0
+            }
+        }
+
+
+        RSLInclude {stdrsl/RadianceSample.h}
+
+        RSLInclude {coreV7/light.h}
+        RSLInclude {effectorV7/OrthoCard.h}
+
+        RSLClass {
+output "
+            private effectorV7OrthoCard_s   _le;
+"
+
+            #   Dummy method for Katana coshader-as-light workaround.
+            generateMethod "public void light (output vector L; output color Cl)" {
+output "
+                L = vector 0;
+                Cl = color 0;
+"
+            }
+
+            #
+            #  Initialize.
+            #
+            generateMethod "public void begin()" {
+                generate *
+output "
+                _le->Enable = [getvar Enable];
+                _le->Color = [getvar Color];
+                _le->Intensity = [getvar Intensity];
+                _le->DiffuseTint = [getvar DiffuseTint];
+                _le->DiffuseIntensity = [getvar DiffuseIntensity];
+                _le->SpecularTint = [getvar SpecularTint];
+                _le->SpecularIntensity = [getvar SpecularIntensity];
+                _le->Invert = [getvar Invert];
+                _le->TopAttenEnable = [getvar TopAttenEnable];
+                _le->TopAttenStart = [getvar TopAttenLoc] - [getvar TopAttenWidth]/2;
+                _le->TopAttenEnd = [getvar TopAttenLoc] + [getvar TopAttenWidth]/2;
+                _le->BotAttenEnable = [getvar BotAttenEnable];
+                _le->BotAttenStart = -[getvar BotAttenLoc] - [getvar BotAttenWidth]/2;
+                _le->BotAttenEnd = -[getvar BotAttenLoc] + [getvar BotAttenWidth]/2;
+                _le->LeftAttenEnable = [getvar LeftAttenEnable];
+                _le->LeftAttenStart = -[getvar LeftAttenLoc] - [getvar LeftAttenWidth]/2;
+                _le->LeftAttenEnd = -[getvar LeftAttenLoc] + [getvar LeftAttenWidth]/2;
+                _le->RightAttenEnable = [getvar RightAttenEnable];
+                _le->RightAttenStart = [getvar RightAttenLoc] - [getvar RightAttenWidth]/2;
+                _le->RightAttenEnd = [getvar RightAttenLoc] + [getvar RightAttenWidth]/2;
+                _le->TextureMap = [getvar TextureMap];
+                _le->TextureMode = [getvar TextureMode];
+                _le->TextureBlur = [getvar TextureBlur];
+                _le->Space = [getvar Space];
+
+                _le->begin();
+"
+            }
+
+            #
+            #   LightEffector method.
+            #
+            generateMethod "public void radianceEffect( output light_s _light )" {
+output "
+                _le->radianceEffect( _light );
+"
+            }
+        }
+    }
+
+  }
+}

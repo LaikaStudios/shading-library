@@ -1,0 +1,145 @@
+##
+##  Copyright(c) 2012-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV coreV7blend_s bxdfV7BlendMix 0 {
+        description {
+            A simple mix of the available irradiance between the Middle and Lower Layers.
+        }
+
+        parameter color Mix {
+            label {Lower Percent}
+            description {
+                What percentage of the illumination passes to the Lower Layer.
+                The remainder is available for the Middle Layer to use.
+                0 = all Middle.
+                1 = all Lower.
+                <
+            }
+            detail varying
+            default {.5 .5 .5}
+        }
+        parameter coshader Mix_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter coreV7blend_s result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {coreV7/blend.h}
+        RSLInclude {coreV7/override.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+
+                    set overrideParam "Mix"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying color _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+output "
+                    [getvar result]->Set( color 1 - _Mix, _Mix );
+"
+                }
+            }
+        }
+    }
+
+    templateV coreV7blend_s bxdfV7BlendKrKt 0 {
+        description {
+            Directly set the Middle and Lower intensities.
+        }
+
+        parameter color Middle {
+            label {Middle}
+            description {
+                Directly sets the Middle intensity.
+            }
+            detail varying
+            default {.5 .5 .5}
+        }
+        parameter coshader Middle_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter color Lower {
+            label {Lower}
+            description {
+                Directly sets the Lower intensity.
+            }
+            detail varying
+            default {.5 .5 .5}
+        }
+        parameter coshader Lower_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter coreV7blend_s result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {coreV7/blend.h}
+        RSLInclude {coreV7/override.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+
+                    set overrideParam "Middle"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying color _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "Lower"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying color _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+output "
+                    [getvar result]->Set( _Middle, _Lower );
+"
+                }
+            }
+        }
+    }
+
+
+    template visualizer coreV7blend_s {
+        parameter coreV7blend_s vis {}
+
+        RSLMain {
+            generate
+output "
+            Ci = color( [getvar vis]->GetBt() );
+            Oi = color 1;
+"
+        }
+    }
+
+  }
+}

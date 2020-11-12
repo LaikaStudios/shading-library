@@ -1,0 +1,677 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV multiple Occlusion 11 {
+        description {
+            Produces occlusion effects.
+        }
+
+        slimattribute float Type {
+            description {
+                Selects between Ray Traced or Point Cloud based occlusion calculation methods.
+            }
+            subtype selector
+            range {
+                "Ray Traced" 0
+                "Point Cloud" 1
+                "Coshader" 2
+            }
+            default 0
+
+            msghandler {
+                SetValue {
+                    set typeParam %obj
+                    set typeValue [$typeParam GetValue]
+                    set app [$typeParam GetAppearance]
+
+                    set traceList {TraceSet label adaptive samples minsamples hitmode seed}
+                    set cloudList {File coordsystem areachannel maxsolidangle clamp rasterresolution}
+                    set coshdList {Coshader}
+                    set otherList {maxvariation bias samplebase hitsides
+                                   distribution coneangle falloff falloffmode
+                                   maxdist Quality Sampling Falloff}
+
+                    if {$typeValue == 0} {
+                        set dispList [concat $traceList $otherList]
+                        set hideList [concat $cloudList $coshdList]
+                    } elseif {$typeValue == 1} {
+                        set dispList [concat $cloudList $otherList]
+                        set hideList [concat $traceList $coshdList]
+                    } else {
+                        set dispList [concat $coshdList]
+                        set hideList [concat $traceList $cloudList $otherList]
+                    }
+
+                    foreach d $dispList {
+                        set p [$app GetProperties -name $d]
+                        $p SetDisplayLevel ""
+                    }
+
+                    foreach d $hideList {
+                        set p [$app GetProperties -name $d]
+                        $p SetDisplayLevel hidden
+                    }
+
+                    set minsamplesParam [$app GetProperties -name minsamples]
+                    set adaptiveParam [$app GetProperties -name adaptive]
+                    set adaptiveValue [$adaptiveParam GetValue]
+                    if {$typeValue == 0 && $adaptiveValue == 1} {
+                        $minsamplesParam SetDisplayLevel ""
+                    } else {
+                        $minsamplesParam SetDisplayLevel hidden
+                    }
+
+                    set paramValue [[$app GetProperties -name clamp] GetValue]
+                    if {$typeValue == 1 && $paramValue == 1} {
+                        [$app GetProperties -name rasterresolution] SetDisplayLevel ""
+                    } else {
+                        [$app GetProperties -name rasterresolution] SetDisplayLevel "hidden"
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        parameter string File {
+            display hidden
+            label {File}
+            description {
+                The point cloud file to use.
+            }
+            provider variable
+            detail varying
+            subtype file
+            default {[passinfo rmanRenderRadiosityPass filename]}
+        }
+
+        parameter string coordsystem {
+            display hidden
+            label {Coordinate System}
+            description {
+                The Coordinate System the point could data is in.
+            }
+            provider constant
+            detail varying
+            default "world"
+        }
+
+        parameter string areachannel {
+            display hidden
+            label {Area Channel}
+            description {
+                The name of the point cloud data channel containing the area information used
+                for the occlusion calculations.
+            }
+            provider constant
+            detail varying
+            default _area
+        }
+
+        parameter string TraceSet {
+            label {Trace Set}
+            description {
+                The name of the object set or sets that will cast shadows.
+            }
+            provider constant
+            detail varying
+            default {}
+        }
+
+        parameter string label {
+            label {Trace Label}
+            description {
+                The label to apply to traced rays.
+            }
+            provider constant
+            detail varying
+            default {}
+        }
+
+        parameter string Coshader {
+            display hidden
+            label {Coshader}
+            description {
+                The coshader to use for occlusion calculation.
+            }
+            provider constant
+            detail varying
+            default {worldOcclusionCoshd}
+        }
+
+        parameter float samples {
+            label {Samples}
+            description {
+                Determines the number of Samples within the Sample Cone to use when
+                calculating the occlusion. More samples produce better quality. Any value may be used,
+                but when using the Cosine distribution, values of 4 times the square of a number
+                (4, 16, 36, 64, 100, 144, 196, 256, 324) are particularly cost-efficient.
+            }
+            provider constant
+            detail uniform
+            subtype slider
+            range {4 256 4}
+            default 16
+        }
+
+        parameter float maxvariation {
+            label {Max Variation}
+            description {
+                Controls the interpolation of occlusion across areas with low variation.
+                Smaller values produce higher quality (less interpolation).
+                At 0, there is no interpolation. Values such as 0.02 or 0.03 usually produce the
+                same image as 0.0, but up to twice as fast. Must be 0.0 when Sample Cone
+                is less than 90: interpolation doesn't work well for small cone angles.
+            }
+            provider constant
+            detail varying
+            subtype slider
+            range {0 .1 .001}
+            default .05
+        }
+
+        collection manifoldn Manifold {
+            label {Sample Point}
+            detail mustvary "pixar,CurrentPoint"
+            parameter point Q {detail mustvary}
+            parameter vector dQu {detail mustvary}
+            parameter vector dQv {detail mustvary}
+        }
+
+        parameter normal QN {
+            label {Sample Direction}
+            detail mustvary "pixar,ShadingNormal"
+        }
+
+        parameter float coneangle {
+            label {Sample Cone}
+            description {
+                Specifies the size of the region above the sample location to examine.
+                Generally should be 180 degrees: a full hemisphere above the sample point.
+                When sampling a volume of data, 360 degrees will be necessary, along with using 
+                a Uniform distribution. Smaller angles can be used to produce more specular
+                responses, but will require adjustments to maxvariation and probably other parameters.
+            }
+            provider constant
+            detail varying
+            range {0 360}
+            default 180
+        }
+
+        collection void Sampling {
+            label {Sampling Controls}
+            description {
+                These control the sampling of the scene geometry or point cloud data during the occlusion calculations.
+                These may effect the quality versus speed tradeoff and the look of the resulting occlusion.
+            }
+
+            parameter float bias {
+                description {
+                    As with shadows, bias offsets the sample points a bit above the actual surface.
+                    This can be necessary to avoid self-occlusion on highly curved surfaces or along
+                    convex edges. Typical values are in the range 0.0 to 0.01. The value is dependent
+                    on your scene size and scale.
+                }
+                provider constant
+                detail varying
+                subtype slider
+                range {0 .2 .001}
+                default 0.01
+            }
+
+            parameter float samplebase {
+                description {
+                    Controls the jittering of the sample origin. 0 means no jittering.
+                    A value of 1 means jittering over the entire micropolygon.
+                    A setting of 0.5 or even 1 may be necessary to avoid thin lines of too low
+                    occlusion where two surfaces intersect (especially perpendicular surfaces).
+                }
+                provider constant
+                detail uniform
+                subtype slider
+                range {0 1}
+                default 1
+            }
+
+            parameter string hitmode {
+                description {
+                    Determine the opacity of the hit surface by examining the surface's diffusehitmode,
+                    its opacity attribute, or by running its shader.
+                }
+                provider constant
+                detail uniform
+                subtype selector
+                range {
+                    diffusehitmode default
+                    opacity primitive
+                    shader shader
+                }
+                default default
+            }
+
+            parameter string hitsides {
+                description {
+                    When a one-sided surface is encountered (specified by Sides 1),
+                    the hit is rejected if the side does not match the value of hitsides.
+                    When set to Both, the sidedness of the geometry is ignored.
+                }
+                provider constant
+                detail uniform
+                subtype selector
+                range {
+                    Front front
+                    Back back
+                    Both both
+                }
+                default both
+            }
+
+            parameter string distribution {
+                description {
+                    Determines whether the distribution of samples is uniform throughtout the Sample Cone,
+                    or whether the directions are weighted toward the center of the sampling cone. Use
+                    Cosine when simulating diffuse illumination characteristics. Use Uniform to ensure all
+                    samples are treated equally, as is needed when sampling data at a point within a volume.
+                }
+                provider constant
+                detail uniform
+                subtype selector
+                range {
+                    Cosine cosine
+                    Uniform uniform
+                }
+                default cosine
+            }
+
+            parameter float seed {
+                description {
+                    If set to a fixed, non-negative number, the ray directions from each sample point
+                    will be fixed from frame to frame. If set to -1 or the frame number, the directions
+                    will change from frame to frame.
+                }
+                provider constant
+                detail uniform
+                subtype slider
+                range {-1 32767 1}
+                default -1
+            }
+
+            parameter string environmentmap {
+                label {Environment Map}
+                description {
+                    The illumination from this will be returned in the Environment output.
+                    Also controls importance sampling.
+                }
+                subtype file
+                default ""
+
+                msghandler {
+                    SetValue {
+                        set param %obj
+                        set app [$param GetAppearance]
+
+                        set paramValue [$param GetValue]
+                        if {$paramValue == ""} {
+                            [$app GetProperties -name environmentspace] SetDisplayLevel "hidden"
+                            [$app GetProperties -name brightnesswarp] SetDisplayLevel "hidden"
+                        } else {
+                            [$app GetProperties -name environmentspace] SetDisplayLevel ""
+                            [$app GetProperties -name brightnesswarp] SetDisplayLevel ""
+                        }
+
+                        $app UpdateEditor
+                    }
+                }
+            }
+
+            parameter string environmentspace {
+                label {Environment Space}
+                display hidden
+                description {
+                    Transform the Sample Direction to this space before accessing the Enviromment Map.
+                    Setting it to "current" turns off any transformation.
+                }
+                default "current"
+            }
+
+            parameter float brightnesswarp {
+                label {Brightness Warp}
+                display hidden
+                description {
+                    Use the Environmenet Map's brightness to direct the occlusion sampling:
+                    use more samples in brighter areas than darker ones.
+                    Significantly reduces noise in the Environment color.
+                    Occlusion also then represents the shadowing that would
+                    be caused by the Environment Map illumination rather than a uniformly
+                    bright environment.
+                }
+                subtype switch
+                default 1
+            }
+
+            parameter color Clight {
+                label {Light Intensity}
+                description {
+                    For optimization.
+                    When this intensity falls below the Intensity Cutoff, the occlusion
+                    calculations will taper off and not be done.
+                }
+                provider constant
+                detail varying
+                default {1 1 1}
+            }
+
+            parameter float Cutoff {
+                label {Intensity Cutoff}
+                description {
+                    For optimization.
+                    Sets the Light Intensity value which occlusion calculations will taper off and not be done.
+                }
+                provider constant
+                detail uniform
+                subtype slider
+                range {0 .1}
+                default .05
+            }
+        }
+
+        collection void Quality {
+            label {Quality Controls}
+            description {
+                These primarily effect the quality versus speed tradoff.
+            }
+
+            parameter float adaptive {
+                description {
+                    If on, will allow fewer samples to be used if little variation is detected in the first
+                    set of samples, specified by minsamples.
+                }
+                provider constant
+                detail uniform
+                subtype switch
+                default 1
+
+                msghandler {
+                    SetValue {
+                        set adaptiveParam %obj
+                        set adaptiveValue [$adaptiveParam GetValue]
+                        set app [$adaptiveParam GetAppearance]
+
+                        if {$adaptiveValue == 0} {
+                            set disp hidden
+                        } else {
+                            set disp ""
+                        }
+
+                        set minsamplesParam [$app GetProperties -name minsamples]
+                        $minsamplesParam SetDisplayLevel $disp
+
+                        $app UpdateEditor
+                    }
+                }
+            }
+
+            parameter float clamp {
+                display hidden
+                label {clamp}
+                description {
+                    Reduce "over-bleeding" from the point cloud.
+                }
+                provider constant
+                detail uniform
+                subtype switch
+                default 1
+
+                msghandler {
+                    SetValue {
+                        set param %obj
+                        set app [$param GetAppearance]
+
+                        set paramValue [$param GetValue]
+                        if {$paramValue == 1} {
+                            [$app GetProperties -name rasterresolution] SetDisplayLevel ""
+                        } else {
+                            [$app GetProperties -name rasterresolution] SetDisplayLevel "hidden"
+                        }
+
+                        $app UpdateEditor
+                    }
+                }
+            }
+
+            parameter float rasterresolution {
+                display hidden
+                label {rasterresolution}
+                description {
+                    Similar to Pixel Samples in the RenderMan Controls.
+                    Higher values are higher quality.
+                }
+                provider constant
+                detail uniform
+                subtype slider
+                range {1 24 1}
+                default 12
+            }
+
+            parameter float minsamples {
+                description {
+                    The minimum number of samples to use for adaptive sampling. When samples is greater
+                    than 64, should generally be about samples/4.
+                }
+                provider constant
+                detail uniform
+                subtype slider
+                range {4 128 4}
+                default 16
+            }
+
+            parameter float maxsolidangle {
+                display hidden
+                description {
+                    Point cloud occlusion uses clusters of points. maxsolidangle
+                    determines how small a cluster must be for it to be a reasonable
+                    approximation for all the points in the cluster. Smaller values
+                    produce higher quality but longer rendering times.
+                    Appropriate values are in the range 0.03 - 0.1.
+                }
+                provider constant
+                detail uniform
+                subtype slider
+                range {0 .1 .001}
+                default .05
+            }
+
+            parameter float maxpixeldist {
+                description {
+                    A screen-based metric to limit artifacts associated with interpolation.
+                    If set to zero, the occlusion will be computed at every shading point:
+                    no attempt at interpolation will be made.
+                    If set to -1, the value of Attribute "irradiance" "maxpixeldist" is used.
+                }
+                provider constant
+                detail varying
+                subtype slider
+                range {0 .1 .001}
+                default -1
+            }
+        }
+
+        collection void Falloff {
+            label {Falloff Controls}
+            description {
+                These control the appearance of the occlusion, and are largely independent of render time.
+            }
+
+            parameter float falloffmode {
+                description {
+                    Controls the shape of how the occlusion fades with distance by selecting between
+                    two different distance weighting functions.
+                    When Exponential, the occlusion is weighted by exp(-falloff*dist).
+                    When Power, the occlusion is weighted by pow(1 - dist/maxdist, falloff).
+                    (dist is the distance from the sample point to the hit geometry)
+                }
+                provider constant
+                detail uniform
+                subtype selector
+                range {
+                    Exponential 0
+                    Power 1
+                }
+                default 0
+            }
+
+            parameter float falloff {
+                description {
+                    Coupled with falloffmode, controls how the occlusion fades with distance.
+                    Larger numbers produce more rapid fading. A 0 value results in no additional
+                    fading with distance (other than that produced naturally).
+                }
+                provider constant
+                detail varying
+                subtype slider
+                range {0 4}
+                default 0
+            }
+
+            parameter float maxdist {
+                description {
+                    Determines the cutoff distance at which an object can no longer cause occlusion.
+                    Smaller values make the occlusion have more localized effect. The value is dependent
+                    on your scene size and scale. If falloff is 0 and maxdist is less than the scene
+                    size, aliasing may occur. Larger distances will require more geometry to be tested,
+                    and so may result in longer render times. Setting it to -1 is equivalent to making it
+                    infinite.
+                }
+                provider constant
+                detail varying
+                range {-1 1e4}
+                default -1
+            }
+        }
+
+        parameter color Cocc {
+            label {Occlusion}
+            access output
+            display hidden
+        }
+
+        parameter color CoccInv {
+            label {Inverse Occlusion}
+            access output
+            display hidden
+        }
+
+        parameter color Cenv {
+            label {Environment}
+            access output
+            display hidden
+        }
+
+        parameter vector Vocc {
+            label {Direction}
+            access output
+            display hidden
+        }
+
+        RSLInclude {color.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                    varying float   Ilight = colorRGBToLuminance([getvar Clight]);
+
+                    Cocc = color 0;
+                    CoccInv = color 1;
+                    Cenv = color 0;
+                    Vocc = vector 0;
+
+                    if (Ilight > [getvar Cutoff]/2) {
+"
+                        if {[getval Type] == 2} {
+output "
+                            shader occCoshd = getshader([getvar Coshader]);
+                            Cocc = occCoshd->getOcclusion([getvar Q], [getvar QN]);
+"
+                        } else {
+output "
+                            uniform matrix  envMatrix = transform ([getvar environmentspace], matrix 1);
+
+                            envMatrix = rotate (envMatrix, HALFPI, vector(1,0,0));
+                            envMatrix = rotate (envMatrix, HALFPI, vector(0,0,1));
+
+                            Cocc = occlusion ([getvar Q], [getvar QN], [getvar samples],
+"
+                                if {[getval Type] == 1} {
+                                    set filenames ""
+output "
+                                    \"pointbased\", 1,
+                                    \"filename\", [getvar File],
+                                    \"coordsystem\", [getvar coordsystem],
+                                    \"areachannel\", [getvar areachannel],
+                                    \"maxsolidangle\", [getvar maxsolidangle],
+                                    \"clamp\", [getvar clamp],
+                                    \"rasterresolution\", [getvar rasterresolution],
+"
+                                } else {
+output "
+                                    \"pointbased\", 0,
+                                    \"label\", [getvar label],
+                                    \"subset\", [getvar TraceSet],
+                                    \"hitmode\", [getvar hitmode],
+                                    \"adaptive\", [getvar adaptive],
+                                    \"minsamples\", [getvar minsamples],
+                                    \"seed\", [getvar seed],
+"
+                                }
+output "
+                                /* common options */
+                                \"coneangle\", radians([getvar coneangle]/2),
+                                \"distribution\", [getvar distribution],
+                                \"bias\", [getvar bias],
+                                \"samplebase\", [getvar samplebase],
+                                \"maxvariation\", [getvar maxvariation],
+                                \"maxpixeldist\", [getvar maxpixeldist],
+                                \"hitsides\", [getvar hitsides],
+                                \"falloffmode\", [getvar falloffmode],
+                                \"falloff\", [getvar falloff],
+                                \"maxdist\", [getvar maxdist],
+
+                                \"environmentmap\", [getvar environmentmap],
+                                    \"environmentspace\", envMatrix,
+                                    \"brightnesswarp\", [getvar brightnesswarp],
+                                    \"environmentcolor\", Cenv,
+
+                                \"environmentdir\", Vocc
+                            );
+"
+                        }
+output "
+                        Cocc -= Cenv;
+                        CoccInv = mix (color 0, Cocc, smoothstep ([getvar Cutoff]/2, [getvar Cutoff], Ilight));
+                        Cocc = color 1 - CoccInv;
+                    }
+"
+                }
+            }
+        }
+    }
+
+  }
+}

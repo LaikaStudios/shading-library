@@ -1,0 +1,80 @@
+##
+##  Copyright(c) 2010 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV multiple Multiplex 0 {
+        description {
+            Add any number of parameters of any type here, and you can access them all from this node.
+            Provides a collection point in your network for a set of values.
+            Set the parameter values with a connection to another template, or just use the default values.
+            Lets you label the parameters anything you want to make them easy to identify.
+        }
+
+        collection customuiFullWidth MultiplexConnections {
+            customui laika MultiplexParam
+            subtype propertycreator
+            drawmode children
+            state open
+            userdata { addString "Add Parameter" }
+        }
+
+        RSLSource GenerativeFunction {
+            proc primvars {} {}
+            proc function {} {
+                #
+                # Gets the auto extension number given a property
+                # that was created with an auto extension.
+                #
+                proc getAutoExt {prop} {
+                    set propName [safeeval $prop GetName]
+                    set extIndex [expr [string last "_" $propName] + 1]
+                    return [string range $propName $extIndex end]
+                }
+
+                # Get the set of Multiplex parameters.
+                set multiplexCollections [safeeval %c GetProperties -name "MultiplexParam_Collection_*"]
+
+                set inOutList {}
+                foreach multiplexColl $multiplexCollections {
+                    set autoExt [getAutoExt $multiplexColl]
+                    set multiplexCollName [safeeval $multiplexColl GetName]
+
+                    set multiplexParam [safeeval %c GetProperties -name "MultiplexParam_Input_$autoExt"]
+                    set inputparam [safeeval $multiplexParam GetName]
+
+                    set multiplexParam [safeeval %c GetProperties -name "MultiplexParam_Output_$autoExt"]
+                    set outputparam [safeeval $multiplexParam GetName]
+
+                    lappend inOutList $inputparam $outputparam
+                }
+
+                generateBody {
+                    foreach {in out} $inOutList {
+                        set input [generate $in]
+                        regsub -all ({|}) $input "" input
+                        set x [getvar $out]
+                        set y [getvar $input]
+                        output "$x = $y;"
+                    }
+                }
+            }
+        }
+    }
+
+
+  }
+}

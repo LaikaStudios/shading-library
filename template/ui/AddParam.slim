@@ -1,0 +1,227 @@
+##
+##  Copyright(c) 2011-2012 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+#
+#   AddParam creates an Add button that adds new parameters to the template.
+#   Optionally, a template can be specified to connect to the parameter when it's created.
+#   userdata defines what the parameter's characteristics are:
+#
+#        collection customuiFullWidth PaintCams {
+#            customui laika AddParam
+#            subtype propertycreator
+#            drawmode children
+#            state open
+#            userdata {
+#                AddSlimAttr 0|1        (if 1, create a slimattribute instead of a parameter)
+#                AddString "Add Paint Cam"
+#                AddDescription "Adds a new Paint Cam."
+#                ParamType PaintCam_s
+#                ParamSubtype {}
+#                ParamPrefix PaintCam   (this is used to find the parameter: GetProperties -name PaintCam_*)
+#                ParamLabel  PaintCam   (this is the parameter name displayed by Slim)
+#                ParamProvider {}
+#                ParamDetail {mustvary "laika,PaintCam" inline}
+#                ParamDefault {}
+#                ParamDescription "This will be the info description of the added parameter."
+#                ParamRange {}
+#                AddToTop 1     (this will cause the new parameter to be added at the top of the list)
+#                ParamMsgHandler {msg handler}  (this will become the msghandler for the parameter. msg e.g. SetValue)
+#                                               (msg can also be a set of message types the handler will respond to)
+#            }
+#        }
+#
+#
+#   Use the ParamPrefix value to find the added parameters with getproperties:
+#
+#        set paramList [getproperties -name PaintCam_* -access input]
+#
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+	customui AddParam {
+		classification addschildren
+
+		TclTkSource {
+            #
+            # Gets the auto extension number given a property
+            # that was created with an auto extension.
+            #
+            proc getAutoExt {prop} {
+                set propName [$prop GetName]
+                set extIndex [expr [string last "_" $propName] + 1]
+                return [string range $propName $extIndex end]
+            }
+
+            #
+            #   Create the Add button.
+            #   addParam will be called by the Add button to create a new userdata ParamType parameter.
+            #
+			proc BuildUI {container recommendedWidth args} {
+				set canvas $container
+
+				# Look for parent object.
+				set i [lsearch $args -parent] 
+				if {$i == -1} return; #error
+                incr i
+
+				set obj [lindex $args $i]
+                set app [$obj GetAppearance]
+
+				canvas $canvas -width $recommendedWidth -height 36
+
+				# Create the button frame in which the add button will exist.
+				frame $canvas.bf
+
+                # Create the add button used to add a new parameter.
+                set addString [$obj GetUserData AddString]
+				button $canvas.bf.add -text "  $addString  " \
+					-command [::RAT::PackageCode [namespace code "addParam $app $obj"]]
+
+                set addDescription [$obj GetUserData AddDescription]
+                ::RAT::AddBalloon $canvas.bf.add "$addDescription" 0
+
+                # Pack into the frame
+                pack $canvas.bf.add -side left -padx 4 -pady 4
+
+                # Create the canvas window (frame) in which the above items will be drawn
+				$canvas create window 0 0 -window $canvas.bf -anchor nw
+
+				return [$canvas cget -height]
+			}
+
+			#
+			#	addParam adds a new parameter to the appearance when the Add button is pushed.
+			#
+			proc addParam {app obj} {
+                set doit [::RAT::PackageCode [namespace code "createNewParam $app $obj"]]
+
+                ::RAT::JournalCmd \
+                    -title "Add Param" \
+                    -doit "$doit; $app UpdateEditor; $app DirtyMaster" \
+                    -undoit "" \
+                    -redoit "" \
+                    -changeit "" \
+                    -cmdkey [$app GetCommandKey]
+			}
+
+            #
+            #   createNewParam creates the new parameter.
+            #   app is the handle to the appearance (func).
+            #   obj is the handle to the customui collection that contains the Add button.
+            #
+            proc createNewParam {app obj} {
+                # Get the UserData needed to create the new parameter.
+                set addSlimAttr [$obj GetUserData AddSlimAttr]
+                set type [$obj GetUserData ParamType]
+                set subtype [$obj GetUserData ParamSubtype]
+                set prefix [$obj GetUserData ParamPrefix]
+                set label [$obj GetUserData ParamLabel]
+                set provider [$obj GetUserData ParamProvider]
+                set detail [$obj GetUserData ParamDetail]
+                set range [$obj GetUserData ParamRange]
+                set defVal [$obj GetUserData ParamDefault]
+                set descript [$obj GetUserData ParamDescription]
+                set msghandler [$obj GetUserData ParamMsgHandler]
+
+                # Create the new parameter.
+                set objParent [$obj GetParent]
+
+                if {$addSlimAttr == 1} {
+                    set createCmd "NewSlimAttribute"
+                } else {
+                    set createCmd "NewParameter"
+                }
+
+                if {[$objParent isa ::Slim::AlterEgo::coll]} {
+                    set param [$objParent $createCmd $type ${prefix}#auto]
+                } else {
+                    set param [$app $createCmd $type ${prefix}#auto]
+                }
+                set autoExt [getAutoExt $param]
+
+                if {$descript != {}} {
+                    $param SetDescription $descript
+                }
+                if {$label != {}} {
+                    $param SetLabel ${label}_${autoExt}
+                }
+                if {$subtype != {}} {
+                    $param SetSubtype $subtype
+                }
+                if {$range != {}} {
+                    $param SetRange $range
+                }
+                if {$defVal != {}} {
+                    $param SetDefaultValue $defVal
+                }
+                if {$provider != {}} {
+                    $param SetValueProvider $provider
+                }
+                if {[llength $msghandler] == 2} {
+                    set msgTypes [lindex $msghandler 0]
+                    set msgValue [lindex $msghandler 1]
+
+                    foreach msgType $msgTypes {
+                        $param SetMsgHandler $msgType "$msgValue"
+                    }
+                }
+
+                # Handle the parameter's detail.
+                set detailLen [llength $detail]
+                switch $detailLen {
+                    1 { $param SetDetail [lindex $detail 0] }
+                    2 { $param SetDetail [lindex $detail 0] [lindex $detail 1] }
+                    3 { $param SetDetail [lindex $detail 0] [lindex $detail 1] [lindex $detail 2] }
+                    default { $param SetDetail varying }
+                }
+
+                # Let the user remove it.
+                $param SetDisplayLevel removable
+
+                #
+                # Now move the parameter to appear immediately after
+                # the Add button rather than at the end where it was created.
+                #
+                set propList [$objParent GetChildren]
+                set propListLength [llength $propList]
+
+                set buttonIndex [lsearch -exact $propList $obj]
+                set insertIndex [expr $buttonIndex + 1]
+
+                # Insert the new param after any existing ones unless AddToTop is set.
+                if {!([$obj GetUserData AddToTop] == 1)} {
+                    foreach prop [lrange $propList [expr $buttonIndex + 1] [expr $propListLength - 2]] {
+                        set propName [$prop GetName]
+                        if {[string match ${prefix}_* $propName]} {
+                            incr insertIndex
+                        } else {
+                            break
+                        }
+                    }
+                }
+
+                set propList [lrange $propList 0 [expr $propListLength - 2]]
+                set propList [linsert $propList $insertIndex $param]
+
+                $objParent SetChildren $propList
+
+                # Done.
+                return $param
+            }
+		}
+	}
+
+  }
+}

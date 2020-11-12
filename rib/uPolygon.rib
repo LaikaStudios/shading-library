@@ -1,0 +1,9 @@
+##RenderMan RIB
+AttributeBegin 
+    Attribute "identifier" "string name" ["uPolygon"]
+    Attribute "shade" "string transmissionhitmode" ["primitive"]
+    Attribute "visibility" "int camera" [1] "int specular" [0] "int diffuse" [0] "int transmission" [0]
+    ShadingRate 99999
+    Scale .01 .01 .01
+    Sphere 1 -1 1 360
+AttributeEnd 

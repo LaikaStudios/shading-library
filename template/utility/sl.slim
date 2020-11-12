@@ -1,0 +1,721 @@
+##
+##  Copyright(c) 2010-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV multiple PrimAttrOpt 0 {
+        description {
+            Accesses any number of Primitive Variables, Attributes, or Options.
+        }
+
+        collection void PrimVariables {
+            state open
+            label {Primitive Variables}
+            description {
+                Select the type of Primitive Variable you want to access, then click the Add button.
+                Type the name of the Primitive Variable in the area provided.
+                The variable value is accessible by its name in the multple output list.
+                Note that points and vectors are output in object space.
+                Normals are output in current space.
+                You can also set a default value for the output.
+            }
+
+            collection customuiFullWidth PrimVar {
+                customui laika AddPrimAttrOpt
+                subtype propertycreator
+                drawmode children
+                state open
+                userdata { paramPrefix PrimVar }
+            }
+        }
+
+        collection void Attributes {
+            state open
+            label {Attributes}
+            description {
+                Select the type of Attribute you want to access, then click the Add button.
+                Type the name of the Attribute in the area provided.
+                The attribute value is accessible by its name in the multple output list.
+                You can also set a default value for the output.
+            }
+
+            collection customuiFullWidth Attr {
+                customui laika AddPrimAttrOpt
+                subtype propertycreator
+                drawmode children
+                state open
+                userdata { paramPrefix Attr }
+            }
+        }
+
+        collection void Options {
+            state open
+            label {Options}
+            description {
+                Select the type of Option you want to access, then click the Add button.
+                Type the name of the Option in the area provided.
+                The option value is accessible by its name in the multple output list.
+                You can also set a default value for the output.
+            }
+
+            collection customuiFullWidth Opt {
+                customui laika AddPrimAttrOpt
+                subtype propertycreator
+                drawmode children
+                state open
+                userdata { paramPrefix Opt }
+            }
+        }
+
+        RSLSource GenerativeFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    set primVars [safeeval %c GetProperties -name "PrimVar_Output*"]
+                    foreach param $primVars {
+                        set primvarName [safeeval $param GetLabel]
+                        set outParam [safeeval $param GetName]
+                        set outType [safeeval $param GetType]
+
+                        set extIndex [string last "_" $outParam]
+                        set autoExt [string range $outParam $extIndex end]
+
+                        set outDefaultParam [safeeval %c GetProperties -name "PrimVar_Default$autoExt"]
+                        set outDefault [safeeval $outDefaultParam GetValue]
+
+                        switch $outType {
+                            float {
+                                output "$outParam = $outDefault;"
+                            }
+                            string {
+                                output "$outParam = \"$outDefault\";"
+                            }
+                            color - point - vector - normal {
+                                regsub -all {\ } $outDefault {,} outDefault
+                                output "$outParam = $outType ($outDefault);"
+                            }
+                            matrix {
+                                output "$outParam = matrix 1;"
+                            }
+                        }
+
+                        output "readprimvar( \"$primvarName\", $outParam );"
+                    }
+
+                    set attrs [safeeval %c GetProperties -name "Attr_Output*"]
+                    foreach param $attrs {
+                        set attrName [safeeval $param GetLabel]
+                        set outParam [safeeval $param GetName]
+                        set outType [safeeval $param GetType]
+
+                        set extIndex [string last "_" $outParam]
+                        set autoExt [string range $outParam $extIndex end]
+
+                        set outDefaultParam [safeeval %c GetProperties -name "Attr_Default$autoExt"]
+                        set outDefault [safeeval $outDefaultParam GetValue]
+
+                        switch $outType {
+                            float {
+                                output "$outParam = $outDefault;"
+                            }
+                            string {
+                                output "$outParam = \"$outDefault\";"
+                            }
+                            color - point - vector - normal {
+                                regsub -all {\ } $outDefault {,} outDefault
+                                output "$outParam = $outType ($outDefault);"
+                            }
+                            matrix {
+                                output "$outParam = matrix 1;"
+                            }
+                        }
+
+                        output "attribute( \"$attrName\", $outParam );"
+                    }
+
+                    set opts [safeeval %c GetProperties -name "Opt_Output*"]
+                    foreach param $opts {
+                        set optName [safeeval $param GetLabel]
+                        set outParam [safeeval $param GetName]
+                        set outType [safeeval $param GetType]
+
+                        set extIndex [string last "_" $outParam]
+                        set autoExt [string range $outParam $extIndex end]
+
+                        set outDefaultParam [safeeval %c GetProperties -name "Opt_Default$autoExt"]
+                        set outDefault [safeeval $outDefaultParam GetValue]
+                        
+                        switch $outType {
+                            float {
+                                output "$outParam = $outDefault;"
+                            }
+                            string {
+                                output "$outParam = \"$outDefault\";"
+                            }
+                            color - point - vector - normal {
+                                regsub -all {\ } $outDefault {,} outDefault
+                                output "$outParam = $outType ($outDefault);"
+                            }
+                            matrix {
+                                output "$outParam = matrix 1;"
+                            }
+                        }
+
+                        output "option( \"$optName\", $outParam );"
+                    }
+                }
+            }
+        }
+    }
+
+
+    templateV multiple N 0 {
+        description {
+            Returns N in any number of spaces.
+        }
+
+        parameter string NamedCS {
+            label {Coordinate System}
+            description {
+                If you make this an External Value (and leave it blank),
+                a Maya 3d Placement node will be created when the shader is added to Maya.
+                The transformed N is output in the CoordSys variable.
+            }
+            provider constant
+            detail varying
+            subtype place3d
+            default {}
+        }
+
+        parameter float Opposite {
+            description {
+                Negate the vector: make it point in the opposite direction.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        parameter float Normalize {
+            label {Normalize}
+            description {
+                Normalizes the result.
+            }
+            detail uniform
+            subtype switch
+            default 1
+        }
+
+        parameter normal Ncurrent {
+            label {current}
+            display hidden
+            access output
+        }
+
+        parameter normal Nworld {
+            label {world}
+            display hidden
+            access output
+        }
+
+        parameter normal Nobject {
+            label {object}
+            display hidden
+            access output
+        }
+
+        parameter normal Nshader {
+            label {shader}
+            display hidden
+            access output
+        }
+
+        parameter normal Ncamera {
+            label {camera}
+            display hidden
+            access output
+        }
+
+        parameter normal Nscreen {
+            label {screen}
+            display hidden
+            access output
+        }
+
+        parameter normal Nndc {
+            label {NDC}
+            display hidden
+            access output
+        }
+
+        parameter normal Nraster {
+            label {raster}
+            display hidden
+            access output
+        }
+
+        parameter normal Ncs {
+            label {CoordSys}
+            display hidden
+            access output
+        }
+
+        RSLInclude {prman.h}
+
+        RSLFunction {
+            void vfxN (
+                uniform string  NamedCS;
+                uniform float   Opposite;
+                uniform float   Normalize;
+
+                output normal   Ncurrent; 
+                output normal   Nworld; 
+                output normal   Nobject; 
+                output normal   Nshader; 
+                output normal   Ncamera; 
+                output normal   Nscreen; 
+                output normal   Nndc; 
+                output normal   Nraster; 
+                output normal   Ncs; 
+            ) {
+                extern normal   N;
+
+                Ncurrent = normal N;
+                Nworld = ntransform ("world", Ncurrent);
+                Nobject = ntransform ("object", Ncurrent);
+                Nshader = ntransform ("shader", Ncurrent);
+                Ncamera = ntransform ("camera", Ncurrent);
+                Nscreen = ntransform ("screen", Ncurrent);
+                Nndc = ntransform ("NDC", Ncurrent);
+                Nraster = ntransform ("raster", Ncurrent);
+
+                if (NamedCS != "")
+                    Ncs = ntransform ("cs", Ncurrent);
+                else
+                    Ncs = normal 0;
+
+                if (Opposite) {
+                    Ncurrent = -Ncurrent;
+                    Nworld = -Nworld;
+                    Nobject = -Nobject;
+                    Nshader = -Nshader;
+                    Ncamera = -Ncamera;
+                    Nscreen = -Nscreen;
+                    Nndc = -Nndc;
+                    Nraster = -Nraster;
+                    Ncs = -Ncs;
+                }
+
+                if (Normalize) {
+                    Ncurrent = normalize(Ncurrent);
+                    Nworld = normalize(Nworld);
+                    Nobject = normalize(Nobject);
+                    Nshader = normalize(Nshader);
+                    Ncamera = normalize(Ncamera);
+                    Nscreen = normalize(Nscreen);
+                    Nndc = normalize(Nndc);
+                    Nraster = normalize(Nraster);
+                    Ncs = normalize(Ncs);
+                }
+            }
+        }
+    }
+
+	templateV vector Ng 0 {
+		description {
+            Ng: the geometric normal.
+		}
+        slimattribute float Normalize {
+            description {
+                Normalizes Ng.
+            }
+            subtype switch
+            default 1
+        }
+        parameter vector result {
+            display hidden
+            access output
+        }
+		RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    if {[getval Normalize]} {
+                        output "result = normalize(Ng);"
+                    } else {
+                        output "result = Ng;"
+                    }
+                }
+            }
+		}
+	}
+
+    templateV vector ShadingNormal 0 {
+        description {
+            Produces the normalized surface shading normal.
+        }
+        parameter float Opposite {
+            description {
+                Negate the vector: make it point in the opposite direction.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+        parameter vector result {
+            display hidden
+            access output
+        }
+        RSLInclude {prman.h}
+        RSLFunction {
+            void vfxShadingNormal (
+                float           Opposite;
+                output vector   result;
+            ) {
+                result = vector prmanShadingNormal(N);
+                if (Opposite)
+                    result = -result;
+            }
+        }
+    }
+
+    templateV float Twosided 0 {
+        description {
+            Returns the value of the Sides attribute.
+            Sides = 2 returns 1.
+            Sides = 1 returns 0.
+        }
+        parameter float Invert {
+            description {
+                Invert the result.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+        parameter float result {
+            display hidden
+            access output
+        }
+        RSLInclude {prman.h}
+        RSLFunction {
+            void vfxTwosided (
+                uniform float   Invert;
+                output float    result;
+            ) {
+                result = prmanTwosided();
+                if (Invert)
+                    result = 1-result;
+            }
+        }
+    }
+
+    templateV float Doubleshaded 0 {
+        description {
+            Returns the value of the sides:doubleshaded attribute.
+        }
+        parameter float Invert {
+            description {
+                Invert the result.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+        parameter float result {
+            display hidden
+            access output
+        }
+        RSLInclude {prman.h}
+        RSLFunction {
+            void vfxDoubleshaded (
+                uniform float   Invert;
+                output float    result;
+            ) {
+                result = prmanDoubleshaded();
+                if (Invert)
+                    result = 1-result;
+            }
+        }
+    }
+
+    templateV float prmanOrientation 0 {
+        description {
+            Returns the orientation of the surface: the value of the orientation bit.
+            0 = not flipped. 1 = flipped.
+            This actually depends on the handedness of the scene.
+            In a standard prman (left handed) world, such as Slim, this is true.
+            In a Maya/RMS (right handed) world, it's the opposite:
+            0 = flipped; 1 = not flipped.
+        }
+        parameter float Invert {
+            description {
+                Invert the result.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+        parameter float result {
+            display hidden
+            access output
+        }
+        RSLInclude {prman.h}
+        RSLFunction {
+            void vfxprmanOrientation (
+                uniform float   Invert;
+                output float    result;
+            ) {
+                result = prmanOrientation();
+                if (Invert)
+                    result = 1-result;
+            }
+        }
+    }
+
+    templateV float prmanFace 0 {
+        description {
+            Which geometric face is this: 0 = back; 1 = front.
+        }
+        parameter float Invert {
+            description {
+                Invert the result.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+        parameter float result {
+            display hidden
+            access output
+        }
+        RSLInclude {prman.h}
+        RSLFunction {
+            void vfxprmanFace (
+                uniform float   Invert;
+                output float    result;
+            ) {
+                result = prmanFace();
+                if (Invert)
+                    result = 1-result;
+            }
+        }
+    }
+
+    templateV float prmanSide 0 {
+        description {
+            Which shading side of the surface is this: 0 = back; 1 = front.
+            This actually depends on the handedness of the scene.
+            In a standard prman (left handed) world, such as Slim, this is true.
+            In a Maya/RMS (right handed) world, it's the opposite:
+            0 = front; 1 = back.
+        }
+        parameter float Invert {
+            description {
+                Invert the result.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+        parameter float result {
+            display hidden
+            access output
+        }
+        RSLInclude {prman.h}
+        RSLFunction {
+            void vfxprmanSide (
+                uniform float   Invert;
+                output float    result;
+            ) {
+                result = prmanSide();
+                if (Invert)
+                    result = 1-result;
+            }
+        }
+    }
+
+    templateV float prmanOutside 0 {
+        description {
+            Are we seeing the outside=1 or inside=0 of the surface?
+        }
+        parameter float Invert {
+            description {
+                Invert the result.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+        parameter float result {
+            display hidden
+            access output
+        }
+        RSLInclude {prman.h}
+        RSLFunction {
+            void vfxprmanOutside (
+                uniform float   Invert;
+                output float    result;
+            ) {
+                result = prmanOutside();
+                if (Invert)
+                    result = 1-result;
+            }
+        }
+    }
+
+    templateV color ScreenVelocity 0 {
+        description {
+            Produces the screen space velocity per second of the surface.
+        }
+        parameter color result {
+            display hidden
+            access output
+        }
+        RSLFunction {
+            void vfxScreenVelocity (
+                output color    result;
+            )
+            {
+                varying vector  velocity = vtransform ("screen", dPdtime);
+                result = color (xcomp(velocity), ycomp(velocity), 0);
+            }
+        }
+    }
+
+##
+##  Matrix templates are required since slim can't generate the proper sl from a default to initialize them:
+##
+##  parameter matrix foo {
+##      detail uniform
+##      default {\"shader\"\ 1}
+##  }
+##  
+##  results in this sl for the default value:
+##
+##      matrix ("shader" 1)
+##
+##  Instead, you must declare the matrix parameter with a connection to one of these:
+##
+##  parameter matrix foo {
+##      detail mustvary "laika,MatrixShader" inline
+##  }
+##
+    templateV matrix MatrixSpace 0 {
+        description {
+            Returns a matrix that transforms from current space to the given space.
+        }
+
+        parameter string Space {
+            description {
+                The space the resulting matrix will transform current space to.
+                Make this blank to create a Maya place3D node to define the space.
+            }
+            provider variable
+            detail varying
+            subtype place3d
+            default {shader}
+        }
+
+        parameter matrix result {
+            display hidden
+            access output
+        }
+
+        RSLFunction {
+            void vfxMatrixSpace (
+                string  Space;
+                output matrix    result;
+            ) {
+                result = transform (Space, matrix 1);
+            }
+        }
+    }
+
+    templateV matrix MatrixShader 0 {
+        description {
+            Returns a current to shader space transformation matrix.
+        }
+
+        parameter matrix result {
+            display hidden
+            access output
+        }
+
+        RSLFunction {
+            void vfxMatrixShader (
+                output matrix    result;
+            ) {
+                result = matrix "shader" 1;
+            }
+        }
+    }
+
+    templateV matrix MatrixWorld 0 {
+        description {
+            Returns a current to world space transformation matrix.
+        }
+
+        parameter matrix result {
+            display hidden
+            access output
+        }
+
+        RSLFunction {
+            void vfxMatrixWorld (
+                output matrix    result;
+            ) {
+                result = matrix "world" 1;
+            }
+        }
+    }
+
+    templateV matrix MatrixObject 0 {
+        description {
+            Returns a current to object space transformation matrix.
+        }
+
+        parameter matrix result {
+            display hidden
+            access output
+        }
+
+        RSLFunction {
+            void vfxMatrixObject (
+                output matrix    result;
+            ) {
+                result = matrix "object" 1;
+            }
+        }
+    }
+
+    template visualizer matrix {
+        parameter matrix vis {}
+
+        RSLInclude <sl.h>
+        RSLMain {
+            generate
+            output "
+                varying point   Q = transform ([getvar vis], P);
+
+                Ci = _mod (color Q, color 1);
+                Oi = color 1;
+            "
+        }
+    }
+
+  }
+}

@@ -1,0 +1,156 @@
+##
+##  Copyright(c) 2010 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+
+#   
+#   Requirements for conversion templates
+#
+#   - No extra parameters other than input and output may be declared
+#   - input parameters MUST be declared with "provider connection"
+#   - input collections must ALSO be declared with "provider connection"
+#   - output parameters MUST be declared "access output"
+#
+slim 1 extensions mprater {
+    extensions laika vfx {
+
+    template point ColorToPoint {
+        display hidden
+        description {
+            Color to Point.
+        }
+
+        parameter color in {
+            provider connection
+        }
+
+        parameter point out {
+            access output
+        }
+
+        RSLFunction {
+            void vfxColorToPoint (
+                color   in;
+                output point    out;
+            ) {
+                out = point in;
+            }
+        }
+    }
+
+    template point VectorToPoint {
+        display hidden
+        description {
+            Vector to Point.
+        }
+
+        parameter vector in {
+            provider connection
+        }
+
+        parameter point out {
+            access output
+        }
+
+        RSLFunction {
+            void vfxVectorToPoint (
+                vector  in;
+                output point    out;
+            ) {
+                out = point in;
+            }
+        }
+    }
+
+    template point NormalToPoint {
+        display hidden
+        description {
+            Normal to Point.
+        }
+
+        parameter normal in {
+            provider connection
+        }
+
+        parameter point out {
+            access output
+        }
+
+        RSLFunction {
+            void vfxNormalToPoint (
+                normal  in;
+                output point    out;
+            ) {
+                out = point in;
+            }
+        }
+    }
+
+    template point ManifoldToPoint {
+        display hidden
+        description {
+            Manifold to Point.
+        }
+
+        collection manifold in {
+            provider connection
+            parameter point Q { provider connection }
+            parameter vector dQu { provider connection }
+            parameter vector dQv { provider connection }
+        }
+
+        parameter point out {
+            access output
+        }
+
+        RSLFunction {
+            void vfxManifoldToPoint (
+                point   Q;
+                vector  dQu;
+                vector  dQv;
+                output point    out;
+            ) {
+                out = Q;
+            }
+        }
+    }
+
+    template point Manifold_sToPoint {
+        display hidden
+        description {
+            Manifold_s to Point.
+        }
+
+        parameter manifold_s in {
+            provider connection
+        }
+
+        parameter point out {
+            access output
+        }
+
+        RSLInclude {manifold.h}
+
+        RSLFunction {
+            void vfxManifold_sToPoint (
+                output manifold_s   in;
+                output point        out;
+            ) {
+                out = in->GetQ();
+            }
+        }
+    }
+
+  }
+}

@@ -1,0 +1,314 @@
+##
+##  Copyright(c) 2013 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV color ColorReplace 0 {
+        description {
+            Replaces one color with another.
+            sRGB inputs and output.
+        }
+
+        parameter color Input {
+            label {Input}
+            description {
+                These colors will be replaced.
+                Must be sRGB.
+            }
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter color This {
+            label {Original Color}
+            description {
+                Replace this color with the New Color.
+                Must be sRGB.
+            }
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter color That {
+            label {New Color}
+            description {
+                The new color to replace the Original color with.
+                Must be sRGB.
+            }
+            detail varying
+            default {0 0 0}
+        }
+
+        parameter string SelType {
+            label {Selection Type}
+            description {
+                Selection Basis.
+            }
+            subtype selector
+            detail varying
+            range {
+                "Full Color" FullColor
+            }
+            default FullColor
+        }
+
+        parameter float Tolerance {
+            label {Selection Tolerance}
+            description {
+                Determines how wide a range of colors in the Input will match the Original Color.
+            }
+            detail varying
+            range {0 .5}
+            default .2
+        }
+
+        parameter string BlendType {
+            label {Blend Type}
+            description {
+                Selects whether the New Color is blended into the Input using RGB or Hue, Sat, Lum color space.
+            }
+            detail varying
+            subtype selector
+            range {
+                "RGB" RGB
+                "Hue Sat Lum" LCh
+            }
+            default LCh
+
+            msghandler {
+                SetValue - RevertValue {
+                    set param %obj
+                    set app [%obj GetAppearance]
+
+                    set paramValue [$param GetValue]
+                    switch $paramValue {
+                        RGB {
+                            [$app GetProperties -name RGBBlend] SetDisplayLevel ""
+                            [$app GetProperties -name HueBlend] SetDisplayLevel "hidden"
+                            [$app GetProperties -name SatBlend] SetDisplayLevel "hidden"
+                            [$app GetProperties -name LumBlend] SetDisplayLevel "hidden"
+                            [$app GetProperties -name HueUse] SetDisplayLevel "hidden"
+                            [$app GetProperties -name SatUse] SetDisplayLevel "hidden"
+                            [$app GetProperties -name LumUse] SetDisplayLevel "hidden"
+                        }
+                        default {
+                            [$app GetProperties -name RGBBlend] SetDisplayLevel "hidden"
+                            [$app GetProperties -name HueBlend] SetDisplayLevel ""
+                            [$app GetProperties -name SatBlend] SetDisplayLevel ""
+                            [$app GetProperties -name LumBlend] SetDisplayLevel ""
+                            [$app GetProperties -name HueUse] SetDisplayLevel ""
+                            [$app GetProperties -name SatUse] SetDisplayLevel ""
+                            [$app GetProperties -name LumUse] SetDisplayLevel ""
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        parameter float RGBBlend {
+            display hidden
+            label {RGB Blend Width}
+            description {
+                The New Color will be blended into the existing colors over this range.
+            }
+            detail varying
+            range {0 .5}
+            default .1
+        }
+
+        parameter float HueBlend {
+            label {Hue Blend Width}
+            description {
+                The New Color hue will be blended into the existing colors over this range.
+            }
+            detail varying
+            range {0 .5}
+            default .1
+        }
+
+        parameter float SatBlend {
+            label {Sat Blend Width}
+            description {
+                The New Color sat will be blended into the existing colors over this range.
+            }
+            detail varying
+            range {0 .5}
+            default .1
+        }
+
+        parameter float LumBlend {
+            label {Lum Blend Width}
+            description {
+                The New Color lum will be blended into the existing colors over this range.
+            }
+            detail varying
+            range {0 .5}
+            default .1
+        }
+
+        parameter float HueUse {
+            label {Use New Hue}
+            description {
+                Determines how much of the New Color's hue is used.
+            }
+            detail varying
+            range {0 1}
+            default 1
+        }
+
+        parameter float SatUse {
+            label {Use New Sat}
+            description {
+                Determines how much of the New Color's sat is used.
+            }
+            detail varying
+            range {0 1}
+            default 1
+        }
+
+        parameter float LumUse {
+            label {Use New Lum}
+            description {
+                Determines how much of the New Color's lum is used.
+            }
+            detail varying
+            range {0 1}
+            default 1
+        }
+
+        parameter string Delta {
+            label {Delta E Metric}
+            description {
+                Selects which Delta E color difference measurement is used.
+            }
+            subtype selector
+            detail varying
+            range {
+                "CIE 2000" CIE2000
+            }
+            default CIE2000
+        }
+
+        parameter float ShowSelection {
+            label {Show Selection}
+            description {
+                Allows you to see what areas will be selected.
+            }
+            detail uniform
+            range {0 1}
+            default 0
+        }
+
+        parameter color Output {
+            display hidden
+            access output
+        }
+
+        RSLInclude <sl.h>
+        RSLInclude <color.h>
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                color   input, from, to;
+
+                // Convert sRGB input color to Lab.
+                input = sRGBToLab( [getvar Input] );
+                from = sRGBToLab( [getvar This] );
+                to = sRGBToLab( [getvar That] );
+
+                // Compute the color difference metric as a percentage.
+                float   selDelta;
+
+                selDelta = LabToDE2000( input,from,1.0,1.0,1.0 ) / 100; // Convert to %.
+
+                // Blend functions.
+                float   hueBlend, satBlend, lumBlend, rgbBlend;
+
+                hueBlend = 1.0 - smoothstep( [getvar Tolerance]-[getvar HueBlend], [getvar Tolerance]+[getvar HueBlend], selDelta);
+                satBlend = 1.0 - smoothstep( [getvar Tolerance]-[getvar SatBlend], [getvar Tolerance]+[getvar SatBlend], selDelta);
+                lumBlend = 1.0 - smoothstep( [getvar Tolerance]-[getvar LumBlend], [getvar Tolerance]+[getvar LumBlend], selDelta);
+                rgbBlend = 1.0 - smoothstep( [getvar Tolerance]-[getvar RGBBlend], [getvar Tolerance]+[getvar RGBBlend], selDelta);
+
+                // Compute the LCh color delta.
+                input = LxxToLCh( input );
+                from = LxxToLCh( from );
+                to = LxxToLCh( to );
+
+                float   dL, dC, dh;
+
+                dL = to\[0\]/from\[0\];
+                dC = to\[1\]/from\[1\];
+                dh = to\[2\]-from\[2\];
+                if (abs(dh) > PI) dh = -sign(dh) * (TWOPI - abs(dh));
+
+                // Determine the new color.
+                color   new;
+                float   newh;
+
+                newh = input\[2\] + dh;
+                if (abs(newh) > PI) newh = -sign(newh) * (TWOPI - abs(newh));
+
+                new = color( input\[0\]*dL, input\[1\]*dC, newh );
+
+                // Blend the New Color into the result based on Blend Type.
+                color   blend, result;
+
+                if ([getvar BlendType] == \"RGB\") {
+                    blend = rgbBlend;
+
+                    input = XYZToRGB( LabToXYZ( LChToLxx( input )));
+                    new = XYZToRGB( LabToXYZ( LChToLxx( new )));
+
+                    result = mix( input, new, blend );
+
+                    // For Show Selection.
+                    input = LxxToLCh( XYZToLab( RGBToXYZ( input )));
+                    result = LxxToLCh( XYZToLab( RGBToXYZ( result )));
+                }
+
+                else {
+                    // Determine LCh blend values.
+                    blend = color( lumBlend*[getvar LumUse], satBlend*[getvar SatUse], hueBlend*[getvar HueUse] );
+
+                    // Blend input to the new color and convert back to sRGB.
+
+                    result = MixLabCh( input, new, blend );
+                }
+
+                // Handle Show Selection.
+                float   showSel = 1.0 - [getvar ShowSelection];
+
+                if ([getvar ShowSelection] > 0.1) {
+                    result = MixLabCh( input*color(showSel,showSel,1.0), input, blend );
+                }
+
+                // Done.
+                result = LabChTosRGB( result );
+
+                Output = result;
+"
+                }
+            }
+        }
+    }
+
+  }
+}

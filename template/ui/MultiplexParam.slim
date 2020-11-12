@@ -1,0 +1,652 @@
+##
+##  Copyright(c) 2010 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+#
+# Multiplex template customui
+#
+# Derived from Pixar's layerui2.slim
+#
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    customui MultiplexParam {
+        classification addschildren
+
+        TclTkSource {
+            #
+            # Gets the auto extension number given a property
+            # that was created with an auto extension.
+            #
+            proc getAutoExt {prop} {
+                set propName [$prop GetName]
+                set extIndex [expr [string last "_" $propName] + 1]
+                return [string range $propName $extIndex end]
+            }
+
+            variable parent;        # an array accessed by canvas id containing the collection parameter.  
+
+            #
+            # Constants used in the layout of the GUI.
+            #
+            variable icons;         # an array of move, moveGlow, delete, deleteGlow
+            variable sizes;         # an array of sizes indexed by: 
+            variable ddState;       # currentSelection, mouseState, ddSource, ddTarget
+            variable canvasList;    # used so undo/redo works between window destroys
+            variable lastType float
+
+            proc BuildUI {container recommendedWidth args} {
+                variable parent
+                variable canvasList
+                variable sizes
+                variable icons
+                variable ddState
+                variable lastType
+
+                if ![info exists icons] {
+                    set sizes(kLayerRowHeight) 32
+                    set sizes(kLayerRowHalfHeight) 15
+                    set sizes(kInterRowSpaceHeight) 4
+                    set sizes(kInterRowSpaceWidth) 126
+                    set sizes(kTypeWidth) 20
+                    set sizes(kLabelWidth) 20
+                    set sizes(kCompOpWidth) 32
+                    set sizes(kNonCnxWidth) 90
+                    set sizes(kLabelEditOffsetX) 46
+                    set sizes(kLabelEditOffsetY) 4
+                    set sizes(kLabelEditOffsetX) 0
+                    set sizes(kLabelEditOffsetY) 0
+                    set sizes(kIconWidth) 26
+                    set sizes(kMoveIconX) 1
+                    set sizes(kDeleteIconX) 20
+                    set sizes(kLayerLabelX) 34
+                    set sizes(kLayerFrameX) 45
+                    set sizes(kDraggerWidth) [expr $sizes(kLayerFrameX) - 5]
+
+                    set icons(move) [::RAT::GetImage layer-move.gif]
+                    set icons(moveGlow) [::RAT::GetImage layer-move-glo.gif]
+                    set icons(delete) [::RAT::GetImage layer-close.gif]
+                    set icons(deleteGlow) [::RAT::GetImage layer-close-glo.gif]
+
+                    set ddState(currentSelection) {}
+                    set ddState(mouseState) {}
+                    set ddState(ddSource) {}
+                    set ddState(ddTarget) {}
+                }
+
+                #
+                # recommendedWidth is the width of the entire window.
+                # The customui is presented in a canvas.
+                # The canvas is divided into rows of windows, a row per layer.
+                # The first row is the button row and is always present.
+                # Layer rows are added/subtracted dynamically via this GUI.
+                # A Layer row is comprised of a collection of icons and standard tk widgets as follows:
+                #   layer drag/drop handle icon
+                #   layer delete icon
+                #   menubutton to select the type
+                #   editable layer label
+                #   the parameter connection
+                #
+                set sizes(recommendedWidth) $recommendedWidth
+                set sizes(frameWidth) [expr $recommendedWidth - $sizes(kLayerFrameX)]
+                set sizes(cnxWidth) [expr $sizes(frameWidth) - $sizes(kNonCnxWidth)]
+                set sizes(strwidgetWidth) 12;   # characters
+
+                set canvas $container
+                set id [string range $canvas [expr [string last . $canvas] + 1] end]
+
+                #
+                # Look for parent collection.
+                #
+                set i [lsearch $args -parent] 
+                if {$i == -1} return; #error
+
+                set parent($id) [lindex $args [incr i]]
+                
+                canvas $canvas -width $sizes(recommendedWidth) \
+                    -height $sizes(kLayerRowHeight); # height is adjusted below
+                set canvasList($id) $canvas
+
+                #
+                # Static button area.
+                #
+                frame $canvas.buttons -width $sizes(recommendedWidth) -height [expr $sizes(kLayerRowHeight) -1]
+
+                # type menu
+                set typemenu $canvas.buttons.type
+                ::RAT::OptionMenu $typemenu
+                    $typemenu Add command float -label float
+                    $typemenu Add command color -label color
+                    $typemenu Add command point -label point
+                    $typemenu Add command vector -label vector
+                    $typemenu Add command string -label string
+                    $typemenu InitValue $lastType
+
+                # add button
+                set addString [$parent($id) GetUserData addString]
+                button $canvas.buttons.add -text $addString \
+                    -command [::RAT::PackageCode [namespace code "createLayer $canvas $id $typemenu"]]
+                pack $canvas.buttons.add -padx 2 -pady 2
+
+                pack $canvas.buttons.add $typemenu -side left -padx 2 -pady 2
+
+
+                $canvas create window 0 0 -window $canvas.buttons -anchor nw \
+                    -tags "button-win move-1"
+
+                if [catch "rebuildCanvas $canvas $id" msg] {
+                    ::RAT::LogMsg ERROR $msg
+                }
+
+                $canvas bind delete <Enter> \
+                    "$canvas itemconfigure current -image $icons(deleteGlow)"
+                $canvas bind delete <Leave> \
+                    "$canvas itemconfigure current -image $icons(delete)"
+                $canvas bind delete <1> \
+                    [::RAT::PackageCode [namespace code "deleteCmd $canvas $id"]]
+
+                return [$canvas cget -height]
+            }
+
+            # Useful for visual debugging...
+            proc createSpacer {canvas y row} {
+                if 0 {
+                    variable sizes
+                    set ymax [expr $y + $sizes(kInterRowSpaceHeight)]
+                    $canvas create rectangle 1 $y $sizes(kInterRowSpaceWidth) $ymax \
+                        -tags "space space$row widget"
+                }
+            }
+
+            proc rebuildCanvas {canvas id} {
+                variable parent
+                variable sizes
+                variable icons
+
+                $canvas delete widget
+
+                set y [expr 3 + $sizes(kLayerRowHeight)]
+                set parameters [$parent($id) GetChildren]
+
+                set nRows [llength $parameters]
+                for {set i 0} {$i < $nRows} {incr i} {
+                    set layerCollection [lindex $parameters $i]
+                    set layerParameters [$layerCollection GetChildren]
+                    set labelParam [lindex $layerParameters 0]
+                    set inputParam [lindex $layerParameters 1]
+                    set connection [[lindex $layerParameters 1] GetConnectedFunction]
+                    set label ""
+                    if {$connection != ""} {
+                        set label [$connection GetLabel]
+                    }
+
+                    createSpacer $canvas $y $i
+                    set y [expr $y + $sizes(kInterRowSpaceHeight) + 1]
+                    set w $canvas.row$i
+                    catch "destroy $w"
+                    set ymid [expr $y + $sizes(kLayerRowHalfHeight)]
+
+                    $canvas create image $sizes(kDeleteIconX) $ymid \
+                        -image $icons(delete) -anchor w -tags "delete delete$i widget"
+
+                    $canvas create text $sizes(kLayerLabelX) $ymid \
+                        -anchor w -tags "label label$i widget" \
+                        -text $label
+
+                    frame $w -width $sizes(frameWidth) -height $sizes(kLayerRowHeight)
+
+                    set wlabel $w.label
+                    set winput $w.input
+
+                    $labelParam BuildDefaultWidget $canvas $wlabel \
+                        $sizes(kLabelWidth) $sizes(kLayerRowHeight)
+                    $inputParam BuildDefaultWidget $canvas $winput \
+                        $sizes(cnxWidth) $sizes(kLayerRowHeight)
+
+                    pack $wlabel -side left
+                    pack $winput -side right -fill x -expand 0
+
+                    $canvas create window $sizes(kLayerFrameX) $y -window $w \
+                        -anchor nw -tags "layer$i widget"
+
+                    set y [expr $y + $sizes(kLayerRowHeight) + 1]
+                }
+
+                $canvas configure -height $y
+            }
+
+            proc setLabel {canvas entry parm row} {
+                set txt [$entry get]
+                $parm SetLabel $txt
+                $canvas itemconfigure label$row -text $txt
+                $canvas delete edittext
+                destroy $entry
+            }
+
+            #
+            # MsgHandler for changing label.
+            # dummy args put in for backward palette compatibility with version prior to 15 Aug 2011.
+            #
+            proc changeLabel {obj args} {
+                set app [$obj GetAppearance]
+                set label [$obj GetValue]
+                set autoExt [getAutoExt $obj]
+
+                set outputParam [$app GetProperties -name "MultiplexParam_Output_$autoExt"]
+                $outputParam SetLabel $label
+
+#                ::Slim::Laika::Multiplex::updatePassSettings $obj
+
+                $app UpdateEditor
+            }
+
+            #
+            # MsgHandler for changing type.
+            #
+            proc changeIOType {obj in out canvas} {
+                set type [$obj GetValue]
+
+                set parent [$in GetParent]
+                set name [$in GetName]
+                $parent RemoveChild $in
+                set in [$parent NewParameter $type $name]
+                $in SetDetail mustvary
+
+                ::RAT::RedrawAppearanceUI $canvas
+            }
+
+            #
+            #   createLayer creates these parameters:
+            #
+            #   MultiplexParam_Output#auto       // The output parameter that contains the data.
+            #
+            #   MultiplexParam_Collection#auto
+            #       MultiplexParam_Label#auto    // The name of the multiplexd channel in the ptc file.
+            #       MultiplexParam_Input#auto    // The input parameter value to multiplex.
+            #
+            #       These values are dynamically set by Multiplex.slim.
+            #       They call RMS procs to notify RMS about the
+            #       rendering passes needed to create the ptc and multiplexd files.
+            #
+            # #auto is some kind of magic that will be expanded to _uniqueNumber.
+            #
+            proc createLayer {canvas id typemenu {redraw 1}} {
+                variable parent
+                variable lastType
+
+                set c $parent($id)
+                set app [$c GetAppearance]
+                set lastType [$typemenu cget -value]
+
+                # multiple output parameters can't be in a collection.
+                set multiplexOutput [$app NewParameter $lastType MultiplexParam_Output#auto]
+
+                # get the value of #auto to use for this set of parameters.
+                set autoExt [getAutoExt $multiplexOutput]
+
+                # set the output parameter's characteristics.
+                $multiplexOutput SetLabel ${lastType}_$autoExt
+                $multiplexOutput SetDisplayLevel hidden
+                $multiplexOutput SetAccess output
+
+                # layer parameters associated with a given input/output.
+                set multiplexparamCollection [$c NewCollection void MultiplexParam_Collection_$autoExt]
+
+                    set multiplexLabel [$multiplexparamCollection NewParameter string MultiplexParam_Label_$autoExt]
+                        $multiplexLabel SetDetail uniform
+                        $multiplexLabel SetDefaultValue "${lastType}_$autoExt"
+                        $multiplexLabel SetMsgHandler SetValue "
+                            ::Slim::CustomUI::laika::MultiplexParam::changeLabel %obj
+                        "
+
+                    switch $lastType {
+                        float {set multiplexDefault 0}
+                        string {set multiplexDefault ""}
+                        default {set multiplexDefault {0 0 0}}
+                    }
+
+                    set multiplexInput [$multiplexparamCollection NewParameter $lastType MultiplexParam_Input_$autoExt]
+                        $multiplexInput SetDetail varying
+                        $multiplexInput SetDefaultValue $multiplexDefault
+                        if {$lastType == "string"} {
+                            $multiplexInput SetSubtype "file"
+                        }
+
+                # Update the pass settings.
+#                ::Slim::Laika::Multiplex::updatePassSettings $c
+
+                #
+                # Now we need to place the new collection at the end of the list.
+                #
+                set children [lreplace [$c GetChildren] end end]
+                set children [linsert $children end $multiplexparamCollection]
+                $c SetChildren $children
+                if $redraw {
+                    ::RAT::RedrawAppearanceUI $canvas
+                }
+            }
+
+            #
+            # deleteCmd:
+            #   Called via canvas binding, so look at current canvas object
+            #   to determine the object to act upon.
+            #
+            proc deleteCmd {canvas id} {
+                variable parent
+                set tags [$canvas gettags current];     # Assume tags are "delete delete$i widget"
+                set row [string range [lindex $tags 1] 6 end]
+                set docmd [::RAT::PackageCode [namespace code "removeLayer $canvas $id $row"]]
+
+                set parameters [$parent($id) GetChildren]
+                set elementP [lindex $parameters $row]
+                set c [$elementP GetChildren]
+
+                # encapsulate existing state. not correctly set up, so disable undo until it is.
+                set enableP [lindex $c 0]
+                set cnxP [lindex $c 1]
+                set label [$elementP GetLabel]
+                set enabled [$enableP GetValue]
+                set cnx [$cnxP GetConnection]
+                set encapsulation [list $label $enabled $cnx]
+
+                set undocmd [::RAT::PackageCode [namespace code "reinsertLayer $canvas $id $row {$encapsulation}"]]
+                set cmdkey [::RAT::GetCmdStackKeyFromWindow $canvas]
+                ::RAT::JournalCmd -doit "$docmd" -undoit "" -title "Remove Layer" -cmdkey $cmdkey
+            }
+
+            #
+            # Remove the multiplex parameter collection and params.
+            #
+            proc removeLayer {canvas id index} {
+                variable parent
+                set coll $parent($id)
+
+                # remove the parameter collection and get the auto extension
+                set parms [$coll GetChildren]
+                set p [lindex $parms $index]
+                set autoExt [getAutoExt $p]
+                $coll RemoveChild $p
+
+                # remove the output parameter
+                set app [$coll GetAppearance]
+                set outParamName "MultiplexParam_Output_$autoExt"
+                set outParam [$app GetProperties -name $outParamName]
+                set outParamParent [$outParam GetParent]
+                $outParamParent RemoveChild $outParam 1
+
+#                ::Slim::Laika::Multiplex::updatePassSettings $coll
+
+                # mark shader as dirty
+                $app DirtyMaster
+                ::RAT::RedrawAppearanceUI $canvas
+            }
+
+            #
+            # reinsertLayer:
+            # Called after undoing a delete operation.
+            # Not currently used: undo is disabled.
+            #
+            proc reinsertLayer {canvas id index encapsulation} {
+                variable parent
+                set old [::RAT::SetJournalingState 0]
+                # first add a new layer, then reorder
+                createLayer $canvas $id float 0; # don't redraw
+                # the new parameters should be the first
+                set parameters [$parent($id) GetChildren]
+                set elementP [lindex $parameters 0]
+                set c [$elementP GetChildren]
+
+                set enableP [lindex $c 0]
+                set cnxP [lindex $c 1]
+                set label [lindex $encapsulation 0]
+                set enable [lindex $encapsulation 1]
+                set cnx [lindex $encapsulation 2]
+                $elementP SetLabel $label
+                $enableP SetValue $enable
+                $cnxP SetConnection $cnx
+
+#                ::Slim::Laika::Multiplex::updatePassSettings $parent($id)
+
+                moveLayer $canvas $id 0 $index
+                ::RAT::RedrawAppearanceUI $canvas
+                ::RAT::SetJournalingState $old
+            }
+
+            #
+            # Move parameters at row $startIndex to $moveIndex
+            #
+            proc moveLayer {canvas id startIndex moveIndex} {
+                variable parent
+
+                if {$startIndex > $moveIndex} {
+                    incr moveIndex
+                }
+
+                if {$startIndex != $moveIndex} {
+                    set old [::RAT::SetJournalingState 0]
+
+                    # Simply reorder the children of the parent. Indices are assumed to be rows...
+                    set parameters [$parent($id) GetChildren]
+                    set tclattr [lindex $parameters $startIndex]
+                    set parameters [lreplace $parameters $startIndex $startIndex]
+                    set parameters [linsert $parameters $moveIndex $tclattr]
+                    $parent($id) SetChildren $parameters
+
+                    if [winfo exists $canvas] {
+                        rebuildCanvas $canvas $id
+                    }
+
+                    ::RAT::SetJournalingState $old
+                    # mark shader as dirty
+                    [$parent($id) GetAppearance] DirtyMaster
+                }
+            }
+
+            proc enterMove canvas {
+                variable icons
+                $canvas itemconfigure [$canvas find withtag current] -image $icons(moveGlow)
+            }
+
+            proc leaveMove canvas {
+                variable icons
+                $canvas itemconfigure [$canvas find withtag current] -image $icons(move)
+            }
+
+            proc ddCreateMoveWidgets {canvas id y {showDrop 1}} {
+                variable ddState
+                variable parent
+                variable icons
+                variable sizes
+
+                set parameters [$parent($id) GetChildren]
+                set element [lindex $parameters $ddState(currentSelection)]
+                set connection [[lindex [$element GetChildren] 1] GetConnectedFunction]
+                set label ""
+                if {$connection != ""} {
+                    set label [$connection GetLabel]
+                }
+
+                set xy [$canvas coords move$ddState(currentSelection)]
+                set xoffset [expr [lindex $xy 0] + 4]
+                $canvas create line $xoffset $y [expr $xoffset + $sizes(kDraggerWidth)] $y \
+                    -fill white -width 12 -tags {hlLine active} 
+                $canvas create image $xoffset $y \
+                    -image $icons(moveGlow) \
+                    -anchor w \
+                    -tags {hlLine active}   
+
+                $canvas create text [expr $xoffset + 32] $y \
+                    -text $label \
+                    -anchor w \
+                    -tags {hlLine active}
+                $canvas create text [expr $xoffset + 32] $y \
+                    -anchor w \
+                    -tags {hlLine active}
+
+                if $showDrop {
+                    set offy [expr [lindex $xy 1] + 18]
+                    $canvas create line [lindex $xy 0] $offy [expr [lindex $xy 0] + 100] $offy \
+                        -fill lightblue -width 6 -tags {hlDrop} 
+                }
+
+                $canvas raise active
+            }
+            
+            proc ddDragBegin {canvas id x y} {
+                variable ddState
+                variable parent
+
+                set ddState(x) $x
+                set ddState(y) $y
+                set ddState(moved) 0
+
+                set tags [$canvas gettags current]
+                set row [string range [lindex $tags 1] 4 end]; # assumed tags: move move$i ...
+                set ddState(currentSelection) $row
+                set ddState(moveSelection) $ddState(currentSelection)  
+                set ddState(mouseState) $ddState(currentSelection) 
+                ddCreateMoveWidgets $canvas $id $y
+            }
+
+            proc ddDrag {canvas id x y} {
+                variable ddState
+                variable sizes
+
+                set tags [$canvas gettags current]
+                if {-1 == [lsearch $tags move]} {
+                    set ddState(currentSelection) {}
+                    return
+                }
+
+                if { $x > $ddState(x) + 2 || $y > $ddState(y) + 2 } {
+                    set ddState(moved) 1
+                } elseif { $x < $ddState(y) - 2 || $y < $ddState(y) - 2 } {
+                    set ddState(moved) 1
+                }
+
+                if {$ddState(currentSelection)  != {}} {
+                    if {[$canvas find withtag hlLine] == {}} {
+                        return
+                    }
+                    set xy [$canvas coords active]
+                    set widgety [lindex $xy 1]
+                    if {$widgety == {}} {
+                        set widgety 0
+                    }
+                    set dx 0
+                    if {$y <= 0} {
+                        set dy [expr -$widgety]
+                    } else {
+                        set dy [expr $y - $widgety]
+                    }
+                    $canvas move active $dx $dy
+                    
+                    set selectionlist [$canvas find \
+                        overlapping 0 [expr $y + 26] \
+                        32 [expr $y - 26]]
+                    
+                    set tags [$canvas itemcget [lindex $selectionlist 0] -tags]
+                    if {[lindex $tags 0] != "move"} {
+                        set tempxy [$canvas coords [lindex $selectionlist 1]]
+                        set offy [expr [lindex $tempxy 1] -18]
+                    } else {
+                        set tempxy [$canvas coords [lindex $selectionlist 0]]
+                        set offy [expr [lindex $tempxy 1] + 18]
+                    }
+
+                    #use move tag to determine if we are in the middle of the list
+                    #use the button-win tag to determine if we are at top of list
+                    
+                    if {[lindex $tags 0] == "move"} {
+                        set ddState(moveSelection) [string range [lindex $tags 1] 4 end]
+                        $canvas delete hlDrop
+                        $canvas create line [lindex $tempxy 0] $offy \
+                            [expr [lindex $tempxy 0] + $sizes(kDraggerWidth)] $offy \
+                            -fill lightblue -width 6 -tags {hlDrop} 
+                        
+                        $canvas raise active        
+                    } elseif {[lindex $tags 0] == "button-win"} {
+                        set tags2 [$canvas itemcget [lindex $selectionlist 1] -tags]
+                        if {[lindex $tags2 0] == "move"} {
+                            set ddState(moveSelection) [string range [lindex $tags 1] 4 end]
+                            $canvas delete hlDrop
+                            $canvas create line [lindex $tempxy 0] $offy \
+                                [expr [lindex $tempxy 0] + $sizes(kDraggerWidth)] $offy \
+                                -fill lightblue -width 6 -tags {hlDrop} 
+                            
+                            $canvas raise active
+                        }       
+                    }
+                }
+            }
+
+            #
+            # Handle button1 release events.
+            #
+            proc ddDrop {canvas id x y} {
+                variable ddState
+                set ddState(mouseState) {}
+                if {[$canvas find withtag active] == {}} {
+                    return
+                } else {
+                    #do move
+                    if {$ddState(currentSelection) != $ddState(moveSelection) && \
+                        $ddState(currentSelection) != [expr $ddState(moveSelection) + 1]} {
+                    set docmd [::RAT::PackageCode [namespace code \
+                        "moveLayer $canvas $id $ddState(currentSelection) $ddState(moveSelection)"]]
+                    if {$ddState(currentSelection)  < $ddState(moveSelection)} {
+                        set src $ddState(moveSelection)
+                        set dst [expr $ddState(currentSelection)  - 1]
+                    } else {
+                        set src [expr $ddState(moveSelection) + 1]
+                        set dst $ddState(currentSelection) 
+                    }
+                    set undocmd [::RAT::PackageCode \
+                        [namespace code "moveLayer $canvas $id $src $dst"]]
+                    set cmdkey [::RAT::GetCmdStackKeyFromWindow $canvas]
+                    ::RAT::JournalCmd -doit "$docmd" \
+                        -undoit "$undocmd" \
+                        -title "Move Layer" \
+                        -cmdkey $cmdkey
+                    }
+                    $canvas delete hlLine
+                    $canvas delete hlDrop 
+                }
+            }
+
+            # used for drag/drop of adaptors (undo cancel)
+            proc enterCanvas {canvas id x y} {
+                variable ddState
+                if {$ddState(mouseState) != {}} {
+                    set ddState(currentSelection) $ddState(mouseState)
+                    ddCreateMoveWidgets $canvas $id $y 0
+                }
+            }
+
+            # used for drag/drop of adaptors (allows mouse to move outside of window
+            # and cause a cancel action)
+            proc leaveCanvas {canvas id x y} {
+                variable ddState
+                if {$ddState(currentSelection) != {} && $ddState(mouseState) != {}} {
+                    $canvas delete hlLine
+                    $canvas delete hlDrop
+                    set ddState(mouseState) $ddState(currentSelection)
+                    set ddState(currentSelection) {}
+                }
+            }
+        }
+    }
+
+  }
+}

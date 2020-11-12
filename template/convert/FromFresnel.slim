@@ -1,0 +1,85 @@
+##
+##  Copyright(c) 2015 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+    extensions laika vfx {
+
+    templateV multiple coreV7fresnelToColor 0 {
+        description {
+            Access the Fresnel Kr and Kt results.
+        }
+
+        parameter vector Is {
+            label {View Direction}
+            description {
+                The I vector.
+            }
+            detail mustvary "pixar,IncidentDirection"
+        }
+
+        parameter vector Ns {
+            label {Surface Normal}
+            description {
+                The surface normal used to compute the Fresnel results.
+            }
+            detail mustvary "pixar,SurfaceNormal"
+        }
+
+        parameter coreV7fresnel_s in {
+            label {Fresnel}
+            description {
+                Connect a Fresnel template and you can access its Kr and Kt values.
+            }
+            detail mustvary "laika,bxdfV7FresnelStd" inline
+        }
+
+        parameter color Kr {
+            display hidden
+            access output
+        }
+
+        parameter color Kt {
+            display hidden
+            access output
+        }
+
+        RSLInclude {prman.h}
+        RSLInclude {coreV7/fresnel.h}
+
+        RSLSource GenerativeFunction {
+            proc primvars {} {}
+            proc function {} {
+                set inParm   [safeeval %c GetProperties -name in]
+                set inFunc   [safeeval $inParm GetConnectedFunction]
+                set inResult [safeeval $inFunc GetProperties -access output]
+                set inRSL    [safeeval $inResult GetNameSL 1]
+
+                generateBody {
+                    generate Is Ns
+output "
+                    $inRSL->Init( normal([getvar Ns]), prmanOutside(), [getvar Is], [getvar Is] );
+"
+                    generate in
+output "
+                    [getvar Kr] = [getvar in]->GetLeftKr();
+                    [getvar Kt] = [getvar in]->GetLeftKt();
+"
+                }
+            }
+        }
+    }
+
+  }
+}

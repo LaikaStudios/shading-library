@@ -1,0 +1,17 @@
+version 3.04
+TransformBegin
+    Attribute "user" "string light_category"["-1"]
+	Attribute "identifier" "string name" ["envLight"]
+    Translate -12.332 6.287 -5.879
+    Rotate 90 -1 0 0
+    Scale -100 100 100
+    IfBegin "$versionstring >= 19.0"
+        AttributeBegin
+            ShadingRate 100
+            Surface "PxrEnvMapLight" "string __group"[""] "string envmap" ["ratEnvInterior.tex"]
+            AreaLightSource "PxrEnvMapLight" "envLight" "string __group"[""] "string envmap" ["ratEnvInterior.tex"]
+            Geometry "envsphere"
+        AttributeEnd
+    IfEnd
+TransformEnd
+

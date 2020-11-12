@@ -1,0 +1,547 @@
+##
+##  Copyright(c) 2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    #
+    # The Wavelet noise template prototype
+    #
+    set TemplatePrototype {
+    templateV %Type %TypeNoise 0 {
+        description {
+            Produces Wavelet or a Gabor-like noise.
+        }
+
+        slimattribute string Type {
+            label {Type}
+            description {
+                Selects whether Wavelet or Gabor noise is produced.
+            }
+            subtype selector
+            range {
+                Gabor Gabor
+                Wavelet Wavelet
+            }
+            default Wavelet
+
+            msghandler {
+                SetValue - RevertValue {
+                    set typeParam %obj
+                    set typeValue [$typeParam GetValue]
+                    set app [$typeParam GetAppearance]
+
+                    switch $typeValue {
+                        Gabor {
+                            [$app GetProperties -name GaborControls] SetDisplayLevel ""
+                            [$app GetProperties -name WaveletControls] SetDisplayLevel "hidden"
+                        }
+                        Wavelet {
+                            [$app GetProperties -name GaborControls] SetDisplayLevel "hidden"
+                            [$app GetProperties -name WaveletControls] SetDisplayLevel ""
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        collection void GaborControls {
+            display hidden
+            state open
+            label {Gabor Controls}
+            description {
+                Gabor noise controls.
+            }
+
+            parameter float FrequencyWindow {
+                label {Frequency Window}
+                description {
+                    Sets the range of frequencies that will be produced.
+                    Larger values tend toward producing white noise,
+                    while smaller values produce a more "structured" appearance.
+                    Useful values tend to be in the range of around .5 to 1.5.
+                }
+                detail uniform
+                subtype slider
+                range {0 4}
+                default 2
+            }
+
+            parameter float Octaves {
+                label {Octaves}
+                description {
+                    Controls the number of octaves that will be used.
+                    This value is best kept fairly small, and doesn't have to be an integer,
+                    but does need to be above 1. It can be viewed as increasing the frequency
+                    window while decreasing the amplitude of the higher frequencies.
+                }
+                detail uniform
+                subtype slider
+                range {1 8}
+                default 2
+            }
+
+            parameter float Anisotropy {
+                label {Anisotropy}
+                description {
+                    The degree of anisotropy.
+                    0 will produce an isotropic result.
+                    Increasing the value toward 1 will produce an increasingly anisotropic result.
+                }
+                detail varying
+                subtype slider
+                range {0 1}
+                default 0
+            }
+
+            parameter vector AnisoDirection {
+                label {Anisotropy Direction}
+                description {
+                    Provides the orientation of the anisotropy.
+                    This does not have to be tangent to the surface.
+                }
+                provider connection
+                detail mustvary "laika,UVTangent"
+                default {0 0 1}
+            }
+
+            parameter float LowFilter {
+                label {Low Filter}
+                description {
+                    When turned on, produces better band limiting on a surface
+                    by eliminating the low frequency contribution of some of the samples.
+                }
+                detail uniform
+                subtype switch
+                default 1
+            }
+        }
+
+        collection void WaveletControls {
+            state open
+            label {Wavelet Controls}
+            description {
+                Wavelet noise controls.
+            }
+
+            parameter string FrequencyBasis {
+                label {Frequency Basis}
+                description {
+                    When set to Manifold, the noise scale is determined by the Manifold and Frequency.
+                    When set to Pixel, the highest frequency noise layer will be determined by the pixel size.
+                    Pixel produces noise that always appears roughly the same in the image.
+                }
+                detail varying
+                subtype selector
+                range {
+                    Manifold finite
+                    Pixel infinite
+                }
+                default finite
+            }
+
+            parameter float Lacunarity {
+                label {Lacunarity}
+                description {
+                    Determines the frequency of each sucessive noise layer.
+                    Smaller numbers will cause the frequencies to be more closely scaled together.
+                    Larger values will produce larger frequency differences.
+                }
+                detail uniform
+                subtype slider
+                range {1.25 4}
+                default 2.5
+            }
+
+            parameter float Iterations {
+                label {Iterations}
+                description {
+                    Controls the number of noise layers to use and the number of Weight parameters.
+                    Each Weight parameter sets the weight for its layer of noise relative to the others.
+                }
+                detail uniform
+                subtype slider
+                range {1 8 1}
+                default 3
+
+                msghandler {
+                    SetValue - RevertValue - ScrubValue - CreateConnection - SetConnection - SetValueProvider {
+                        set app [%obj GetAppearance]
+                        set paramValue [%obj GetValue]
+
+                        if {1 < $paramValue} {
+                            [$app GetProperties -name "W1"] SetDisplayLevel ""
+                        } else {
+                            [$app GetProperties -name "W1"] SetDisplayLevel "hidden"
+                        }
+
+                        for {set i 2} {$i <= 8} {incr i} {
+                            if {$i <= $paramValue} {
+                                [$app GetProperties -name "W$i"] SetDisplayLevel ""
+                            } else {
+                                [$app GetProperties -name "W$i"] SetDisplayLevel "hidden"
+                            }
+                        }
+
+                        $app UpdateEditor
+                    }
+                }
+            }
+
+            parameter float W1 {
+                label {Weight 1}
+                detail uniform
+                subtype slider
+                range {0 1}
+                default 1
+            }
+
+            parameter float W2 {
+                label {Weight 2}
+                detail uniform
+                subtype slider
+                range {0 1}
+                default 1
+            }
+
+            parameter float W3 {
+                label {Weight 3}
+                detail uniform
+                subtype slider
+                range {0 1}
+                default 1
+            }
+
+            parameter float W4 {
+                display hidden
+                label {Weight 4}
+                detail uniform
+                subtype slider
+                range {0 1}
+                default 1
+            }
+
+            parameter float W5 {
+                display hidden
+                label {Weight 5}
+                detail uniform
+                subtype slider
+                range {0 1}
+                default 1
+            }
+
+            parameter float W6 {
+                display hidden
+                label {Weight 6}
+                detail uniform
+                subtype slider
+                range {0 1}
+                default 1
+            }
+
+            parameter float W7 {
+                display hidden
+                label {Weight 7}
+                detail uniform
+                subtype slider
+                range {0 1}
+                default 1
+            }
+
+            parameter float W8 {
+                display hidden
+                label {Weight 8}
+                detail uniform
+                subtype slider
+                range {0 1}
+                default 1
+            }
+
+            parameter string Distribution {
+                label {Distribution}
+                description {
+                    Are frequencies Uniformly distributed or Gaussian?
+                }
+                detail varying
+                subtype selector
+                range {
+                    Uniform flat
+                    Gaussian gaussian
+                }
+                default flat
+            }
+        }
+
+        slimattribute string Expand {
+            label {Expand}
+            description {
+                Selects the type of noise range adjustment to use,
+                increasing the contrast of the output.
+            }
+            subtype selector
+            range {
+                None None
+                Linear Linear
+                Smoothstep Smoothstep
+            }
+            default None
+
+            msghandler {
+                SetValue - RevertValue {
+                    set param %obj
+                    set app [$param GetAppearance]
+
+                    set paramValue [$param GetValue]
+                    if {$paramValue != "None"} {
+                        [$app GetProperties -name Zero] SetDisplayLevel ""
+                        [$app GetProperties -name One] SetDisplayLevel ""
+                    } else {
+                        [$app GetProperties -name Zero] SetDisplayLevel "hidden"
+                        [$app GetProperties -name One] SetDisplayLevel "hidden"
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        parameter float Zero {
+            display hidden
+            label {Zero}
+            description {
+                This value in the base noise will become 0 in the result.
+                Since the base noise values range from -1 to 1, the range is negative.
+            }
+            provider variable
+            detail varying
+            subtype slider
+            range {-1 0}
+            default -1
+        }
+
+        parameter float One {
+            display hidden
+            label {One}
+            description {
+                This base noise value will become 1 in the result.
+            }
+            provider variable
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        slimattribute float Abs {
+            label {Abs}
+            description {
+                Use the absolute value of the noise function.
+            }
+            subtype switch
+            default 0
+
+            msghandler {
+                SetValue - RevertValue {
+                    set param %obj
+                    set app [$param GetAppearance]
+
+                    set paramValue [$param GetValue]
+                    switch $paramValue {
+                        0 {
+                            [$app GetProperties -name AbsWidth] SetDisplayLevel "hidden"
+                        }
+                        1 {
+                            [$app GetProperties -name AbsWidth] SetDisplayLevel ""
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+        parameter float AbsWidth {
+            display hidden
+            label {Abs Width}
+            description {
+                Controls the width of the Abs transition.
+                Larger values produce a smoother transition.
+                0 produces a hard (possibly aliased) transition.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 0
+        }
+
+        parameter float Invert {
+            label {Invert}
+            description {
+                Invert the result.
+            }
+            detail varying
+            subtype switch
+            default 0
+        }
+
+        collection manifold Manifold {
+            label {Manifold}
+            description {
+                The space in which the Fractal will be generated.
+            }
+            parameter point M {detail mustvary}
+            parameter vector dMu {detail mustvary}
+            parameter vector dMv {detail mustvary}
+
+            detail mustvary "laika,Pshader"
+        }
+
+        parameter float Frequency {
+            label {Frequency}
+            description {
+                Sets the starting scale (lowest frequency) of the noise.
+                Note: while connectable, do NOT actually vary this value.
+                It must be a constant or the results will not be predictable.
+            }
+            detail varying
+            subtype slider
+            range {.1 10}
+            default 1
+        }
+
+
+        parameter %Type result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {color.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                    varying point   xQ, yQ, zQ;
+                    varying %Type   ni;
+
+                    xQ = [getvar M]*[getvar Frequency];
+"
+                    switch [getval Type] {
+                        Wavelet {
+output "
+                            varying float   dQ = sqrt( length( [getvar dMu]^[getvar dMv] ))*[getvar Frequency];
+                            uniform float   weights\[\] = {[getvar W1], [getvar W2], [getvar W3], [getvar W4], [getvar W5], [getvar W6], [getvar W7], [getvar W8] };
+"
+                            set noiseCall   wnoise
+                            set xQ          xQ
+                            set noiseParms  "dQ, \"frequencyrange\", [getvar FrequencyBasis], \"octaves\", [getvar Iterations], \"lacunarity\", [getvar Lacunarity], \"distribution\", [getvar Distribution], \"weights\", weights"
+                        }
+                        Gabor {
+                            set noiseCall   knoise
+                            set xQ          xfr
+                            set noiseParms  "[getvar FrequencyWindow], \"octaves\", [getvar Octaves], \"anisotropy\", [getvar Anisotropy], \"anisotropydirection\", [getvar AnisoDirection]"
+output "
+                            filterregion    xfr, yfr, zfr;
+                            xfr->calculate3d( xQ );
+"
+                        }
+                    }
+
+                    if {"%Type" == "float"} {
+output "
+                        ni = $noiseCall ($xQ, $noiseParms);
+"
+                    } else {
+output "
+                        yQ = xQ + vector( 1.37, 3.213, 2.759 );
+                        zQ = xQ + vector( 13.2, 1.971, 31.13 );
+"
+                        switch [getval Type] {
+                            Wavelet {
+                                set yQ yQ
+                                set zQ zQ
+                            }
+                            Gabor {
+output "
+                                yfr->calculate3d( yQ );
+                                zfr->calculate3d( zQ );
+"
+                                set yQ yfr
+                                set zQ zfr
+                            }
+                        }
+output "
+                        ni = %Type (
+                            $noiseCall ($xQ, $noiseParms),
+                            $noiseCall ($yQ, $noiseParms),
+                            $noiseCall ($zQ, $noiseParms)
+                        );
+"
+                    }
+
+                    switch [getval Expand] {
+                        Smoothstep {
+                            output "ni = _mix( %Type -1, %Type 1, _smoothstep( [getvar Zero], [getvar One], ni ));"
+                        }
+                        Linear {
+                            output "ni = _mix( %Type -1, %Type 1, linear( [getvar Zero], [getvar One], ni ));"
+                        }
+                    }
+
+                    if {[getval Abs]} {
+output "
+                        ni = _mix( -ni, ni, _smoothstep( .5 - [getvar AbsWidth], .5 + [getvar AbsWidth], linear( -1, 1, ni )));
+"
+                    }
+
+                    if {"%Type" == "float" || "%Type" == "color"} {
+output "
+                        ni = linear( -1, 1, ni );
+"
+                    }
+output "
+                    result = ni;
+
+                    result = _mix( result, %InvertFunc, [getvar Invert] );
+"
+                }
+            }
+        }
+    }
+    }
+
+    #
+    # Generate the float, color, and point Fractal templates.
+    #
+    foreach {type invertFunc} {
+        float  "1 - result"
+        color  "color 1 - result"
+        point  "-result"
+        vector "-result"
+        normal "-result"
+    } {
+        regsub -all %Type $TemplatePrototype $type result
+        regsub -all %InvertFunc $result $invertFunc result
+        if [catch $result msg] {
+            ::RAT::LogMsg ERROR $msg
+        }
+    }
+
+  }
+}

@@ -1,0 +1,104 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV manifold MayaPlace3D 0 {
+        description {
+            Creates a manifold from a Maya 3D placement node.
+        }
+
+        parameter string Place3D {
+            label {Maya place3dTexture Node}
+            description {
+                When added to the Maya scene, this will become the name of
+                a place3d node that's created. You can also set it to one
+                you create(d) yourself.
+            }
+            provider variable
+            detail varying
+            subtype place3d
+            default {}
+        }
+
+        parameter float UnitCube {
+            label {Unit Cube}
+            description {
+                When selected, the Maya place3d Texture node represents a unit cube
+                with the origin at the indicated corner. Otherwise, the origin is in 
+                the middle of the 2 unit cube and the axes are those indicated.
+            }
+            provider constant
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        collection manifold result {
+            access output
+            display hidden
+            parameter point  Q { access output }
+            parameter vector dQu { access output }
+            parameter vector dQv { access output }
+        }
+
+        RSLFunction {
+            void vfxMayaPlace3D (
+                uniform string  Place3D;
+                uniform float   UnitCube;
+
+                output varying point    Q; 
+                output varying vector   dQu;
+                output varying vector   dQv;
+            ) 
+            {
+                string  place3D;
+
+                place3D = "world";
+                if (Place3D != "")
+                    place3D = Place3D;
+
+
+#if SLIM_SHADERTYPEID == SLIM_TYPEID_light
+                extern point    Ps;
+                Q = transform (place3D, Ps);
+#else
+                extern point    P;
+                Q = transform (place3D, P);
+#endif
+
+                if (UnitCube) {
+                    Q /= 2;
+                    Q = point (
+                        .5 + xcomp(Q),
+                        .5 + ycomp(Q),
+                        .5 - zcomp(Q)
+                    );
+                }
+
+#if SLIM_SHADERTYPEID == SLIM_TYPEID_volume
+                dQu = 0;
+                dQv = 0;
+#else
+                dQu = Du(Q)*du;
+                dQv = Dv(Q)*dv;
+#endif
+            }
+        }
+    }
+
+  }
+}

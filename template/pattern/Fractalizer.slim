@@ -1,0 +1,410 @@
+##
+##  Copyright(c) 2010 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    set TemplatePrototype {
+    templateV %Type %TypeFractalizer 1 {
+        description {
+            Produces a fractal using the input Pattern as the fractal basis.
+            The Pattern is generated repeatedly and accumulated according
+            to the fractal parameters.
+        }
+
+        parameter FractalizerManifold_s FracManifold {
+            label {Fractalizer Manifold}
+            description {
+                Defines the space in which to generate the Base Pattern.
+                The same FractalizerManifold connected here must be
+                connected to the Base Pattern generation template.
+                Otherwise, only a single layer will ever be generated.
+            }
+            detail mustvary "laika,FractalizerManifold"
+        }
+
+        parameter %Type Input {
+            label {Base Pattern}
+            description {
+                The Pattern to be fractalized.
+                Pattern generation MUST use the FractalizerManifold.
+            }
+            detail mustvary ""
+            default .5
+        }
+
+        slimattribute string Type {
+            label {Type}
+            description {
+                Selects whether a standard Fractal or fractional Brownian motion
+                is produced. These use different methods of controlling the contributions
+                of each layer.
+            }
+            subtype selector
+            range {
+                Fractal Fractal
+                fBm fBm
+            }
+            default Fractal
+
+            msghandler {
+                SetValue {
+                    set typeParam %obj
+                    set typeValue [$typeParam GetValue]
+                    set app [$typeParam GetAppearance]
+
+                    switch $typeValue {
+                        fBm {
+                            [$app GetProperties -name Dimension] SetDisplayLevel "hidden"
+                            [$app GetProperties -name Gain] SetDisplayLevel ""
+                        }
+                        default {
+                            [$app GetProperties -name Dimension] SetDisplayLevel ""
+                            [$app GetProperties -name Gain] SetDisplayLevel "hidden"
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        slimattribute float Abs {
+            label {Abs}
+            description {
+                Use the absolute value of the Base Pattern.
+            }
+            subtype switch
+            default 0
+
+            msghandler {
+                SetValue {
+                    set param %obj
+                    set app [$param GetAppearance]
+
+                    set paramValue [$param GetValue]
+                    switch $paramValue {
+                        0 {
+                            [$app GetProperties -name AbsWidth] SetDisplayLevel "hidden"
+                        }
+                        1 {
+                            [$app GetProperties -name AbsWidth] SetDisplayLevel ""
+                        }
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+
+        parameter float AbsWidth {
+            display hidden
+            label {Abs Width}
+            description {
+                Controls the width of the Abs transition.
+                Larger values produce a smoother transition.
+                0 produces a hard transition.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 0
+        }
+
+        slimattribute float Invert {
+            label {Invert}
+            description {
+                Invert the result.
+            }
+            subtype switch
+            default 0
+        }
+
+        parameter float Iterations {
+            label {Layers}
+            description {
+                The number of Pattern layers to use.
+            }
+            detail uniform
+            subtype slider
+            range {1 8 1}
+            default 3
+        }
+        parameter float Offset {
+            label {Offset}
+            description {
+                Randomly shifts each successive Pattern by this percentage.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+
+            msghandler {
+                SetValue - RevertValue {
+                    set param %obj
+                    set app [$param GetAppearance]
+
+                    set paramValue [$param GetValue]
+                    if {$paramValue == 0} {
+                        set rotation [[$app GetProperties -name Rotation] GetValue]
+                        if {$rotation == 0} {
+                            [$app GetProperties -name Variation] SetDisplayLevel "hidden"
+                        }
+                    } else {
+                        [$app GetProperties -name Variation] SetDisplayLevel ""
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+        parameter float Rotation {
+            label {Rotation}
+            description {
+                Randomly rotate each successive Pattern by up to +/- this many degrees.
+            }
+            detail varying
+            subtype slider
+            range {0 180 1}
+            default 180
+
+            msghandler {
+                SetValue - RevertValue {
+                    set param %obj
+                    set app [$param GetAppearance]
+
+                    set paramValue [$param GetValue]
+                    if {$paramValue == 0} {
+                        set offset [[$app GetProperties -name Offset] GetValue]
+                        if {$offset == 0} {
+                            [$app GetProperties -name Variation] SetDisplayLevel "hidden"
+                        }
+                    } else {
+                        [$app GetProperties -name Variation] SetDisplayLevel ""
+                    }
+
+                    $app UpdateEditor
+                }
+            }
+        }
+        parameter float Variation {
+            label {Variation}
+            description {
+                Changes the pattern of Offsets and Rotations applied to the layers.
+            }
+            detail varying
+            subtype slider
+            range {0 20 1}
+            default 0
+        }
+        parameter float Frequency {
+            label {Frequency}
+            description {
+                Sets the starting scale (lowest frequency) of the Pattern.
+            }
+            detail varying
+            subtype slider
+            range {.1 10}
+            default 1
+        }
+        parameter float Lacunarity {
+            label {Lacunarity}
+            description {
+                Determines the size of each sucessive Pattern.
+                Smaller numbers will cause the Patterns to be more closely scaled together.
+                Larger values will produce larger scale differences.
+            }
+            detail varying
+            subtype slider
+            range {1.25 4}
+            default 2
+        }
+        parameter float Dimension {
+            label {Dimension}
+            description {
+                The frequency exponent.
+                Bigger values are "rougher", smaller values are "smoother".
+                This value is used to control the contribution of each sucessive
+                Pattern using the formula 1/f^(3-2*Dimension); where f is the
+                frequency of the Pattern being used for a given layer.
+                It's called Dimension since this value relates to the fractal dimension.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+        parameter float Gain {
+            display hidden
+            label {Gain}
+            description {
+                The scaling factor used to control the contribution of each successive layer.
+                The magnitude of the contribution is Gain^(i-1); where i is the layer.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default .5
+        }
+        parameter float Erosion {
+            description {
+                Erosion determines the so-called "crossover scale" of the fractal. 
+                Negative values will smooth out the low valued areas,
+                and positive values will smooth the high valued ones.
+                0 gives a uniform appearance.
+                The frequency exponent specified by the Dimension or Gain is
+                itself offset as a function of the Pattern's magnitude.
+                This value adjusts that offset.
+            }
+            detail varying
+            subtype slider
+            range {-2 2}
+            default 0
+        }
+
+        parameter %Type result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+        RSLInclude {color.h}
+
+        RSLSource GenerativeFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    generate -Input
+output "
+                    result = %Type 0;
+"
+                    set inputParam [safeeval %c GetProperties -name "Input"]
+                    set basePattern [safeeval $inputParam GetConnectedFunction]
+                    if {$basePattern != ""} {
+output "
+                        //
+                        // Get Initial FracManifold.
+                        //
+                        varying point   Pfrac;
+                        varying vector  dMu, dMv;
+                        {
+                            Pfrac = [getvar FracManifold]->GetQ();
+                            dMu = [getvar FracManifold]->GetdQu();
+                            dMv = [getvar FracManifold]->GetdQv();
+                        }
+
+                        //
+                        // Iterate on the Input pattern.
+                        //
+                        {
+                            varying point   Q;
+                            varying vector  dQu, dQv, dQN;
+                            varying float   angle;
+                            varying vector  offset;
+
+                            dQN = normalize(dMu^dMv);
+
+                            uniform float   i;
+                            varying float   f, sum, mag;
+                            varying %Type   In;
+
+                            f = [getvar Frequency];
+                            sum = 0;
+                            mag = 1;
+                            for (i=0; i < [getvar Iterations]; i+=1) {
+                                angle = radians([getvar Rotation]);
+                                angle = mix (-angle, angle, cellnoise (i + [getvar Variation] + 31));
+                                offset = [getvar Offset]*_mix (vector -.5, vector .5, vector cellnoise(i+[getvar Variation]));
+                                Q = _rotate (Pfrac, angle, dQN) * f + offset;
+                                dQu = _rotate (dMu, angle, dQN) * f;
+                                dQv = _rotate (dMv, angle, dQN) * f;
+
+                                [getvar FracManifold]->Set (Q, dQu, dQv);
+"
+                                generate Input
+output "
+                                In = [getvar Input];
+"
+                                if {[getval Abs] == 1} {
+                                    output "%AbsFunc"
+                                }
+output "
+                                result += mag*In;
+
+                                f *= [getvar Lacunarity];
+                                sum += mag;
+"
+                                switch [getval Type] {
+                                    Fractal {
+                                        output "mag = 1/pow (f, 3-2*[getvar Dimension] + mix (-[getvar Erosion], [getvar Erosion], %ToFloatFunc(result)/sum));"
+                                    }
+                                    fBm {
+                                        output "mag = pow ([getvar Gain] + mix ([getvar Erosion]/2, -[getvar Erosion]/2, %ToFloatFunc(result)/sum), i+1);"
+                                    }
+                                }
+output "
+                            }
+                            result /= sum;
+                        }
+"
+                        if {[getval Invert] == 1} {
+                            output "%InvertFunc"
+                        }
+                    }
+                }
+            }
+        }
+    }
+    }
+
+#
+# Generate the float, color, point, and vector Fractalizer templates.
+#
+    foreach {type toFloatFunc basePattern absFunc invertFunc} {
+        float
+            ""
+            "laika,Lattice"
+            "In = 2*(In-.5); In = mix (-In, In, clamp (_filterstep(0, In, [getvar AbsWidth]), 0, 1));"
+            "result = 1 - result;"
+        color
+            colorSRGBToLuma
+            "laika,Lattice"
+            "In = color 2*(In - color .5); In = mix (-In, In, _clamp (_filterstep(0, In, [getvar AbsWidth]), 0, 1));"
+            "result = color 1 - result;"
+        point
+            length
+            "pixar,VNoise"
+            "In = point _mix (-In, In, point _clamp (point _filterstep(0, In, [getvar AbsWidth]), 0, 1));"
+            "result = -result;"
+        vector
+            length
+            "pixar,VNoise"
+            "In = vector _mix (-In, In, vector _clamp (vector _filterstep(0, In, [getvar AbsWidth]), 0, 1));"
+            "result = -result;"
+    } {
+        regsub -all %Type $TemplatePrototype $type    result
+        regsub -all %ToFloatFunc $result $toFloatFunc result
+        regsub -all %BasePattern $result $basePattern result
+        regsub -all %AbsFunc     $result $absFunc     result
+        regsub -all %InvertFunc  $result $invertFunc  result
+        if [catch $result msg] {
+            ::RAT::LogMsg ERROR $msg
+        }
+    }
+
+  }
+}

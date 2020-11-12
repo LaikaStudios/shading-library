@@ -1,0 +1,562 @@
+##
+##  Copyright(c) 2010-2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+#
+#  Functions of vectors or templates that produce a vector result.
+#
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+	templateV vector Faceforward 0 {
+        label {Faceforward}
+		description {
+            Ensure the given vector points toward the camera.
+		}
+        parameter vector in {
+            description {
+                The vector to faceforward.
+            }
+            detail varying
+            default {0 0 0}
+        }
+        parameter vector result {
+            display hidden
+            access output
+        }
+		RSLFunction {
+		    void vfxFaceforward (
+                vector  in;
+                output vector    result;
+            ) {
+                #if SLIM_SHADERTYPEID == SLIM_TYPEID_light
+                    result = faceforward(in,Ps-E,in);
+                #else
+                    result = faceforward(in,I,in);
+                #endif
+            }
+		}
+	}
+
+	templateV vector Normalize 0 {
+        label {Normalize}
+		description {
+            Normalize a vector.
+		}
+        parameter vector in {
+            description {
+                The vector to be normalized.
+            }
+            detail varying
+            default {0 0 0}
+        }
+        parameter vector result {
+            display hidden
+            access output
+        }
+		RSLFunction {
+		    void vfxNormalize (
+                vector  in;
+                output vector    result;
+            )
+            {
+                result = normalize(in);
+            }
+		}
+	}
+
+	templateV vector CrossProduct 0 {
+        label {CrossProduct}
+		description {
+            Returns the cross product of the two input vectors.
+		}
+
+		parameter vector V0 {
+			description {
+                Use any vector quantity.
+			}
+			provider variable
+            detail mustvary "pixar,SurfaceNormal"
+			default {1 0 0}
+		}
+
+		parameter vector V1 {
+			description {
+                Use any vector quantity.
+			}
+			provider variable
+            detail mustvary "pixar,ArbitraryDirection"
+			default {0 1 0}
+		}
+
+		parameter float Normalize {
+			description {
+                Normalize the result.
+			}
+			provider variable
+            detail uniform
+            subtype switch
+            default 1
+		}
+
+        parameter vector result {
+            display hidden
+            access output
+        }
+
+		RSLFunction {
+		    void vfxCrossProduct (
+                vector  V0;
+                vector  V1;
+                uniform float   norm;
+
+                output vector   result;
+            )
+            {
+                result = V0^V1;
+                if (norm) result = normalize(result);
+            }
+		}
+	}
+
+	templateV float DotProduct 0 {
+		description {
+            Returns the dot product of the two input vectors.
+            The various modifications are applied in the order
+            they're listed.
+		}
+
+		parameter vector V0 {
+			description {
+                Use any vector quantity.
+			}
+			provider variable
+            detail mustvary "pixar,SurfaceNormal"
+			default {1 0 0}
+		}
+
+		parameter vector V1 {
+			description {
+                Use any vector quantity.
+			}
+			provider variable
+            detail mustvary "pixar,ViewDirection"
+			default {0 1 0}
+		}
+
+		parameter float Normalize {
+			description {
+                Normalize the input vectors if they aren't aleady.
+			}
+			provider variable
+            detail uniform
+            subtype switch
+            default 0
+		}
+
+        parameter float Invert {
+            label {Negate}
+            description {
+                Negate the dot product value.
+            }
+            provider variable
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        parameter float Remap {
+            label {Invert}
+            description {
+                Change 0 to 1 and 1 to 0 in the result.
+                Dark becomes light, and light becomes dark.
+            }
+            provider variable
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        parameter float Range {
+            label {0 to 1}
+            description {
+                Remap the output range to be 0 to 1 rather than -1 to 1.
+            }
+            provider variable
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        parameter float Exponent {
+            label {Exponent}
+            description {
+                Raise the result to this power.
+            }
+            provider variable
+            detail varying
+            subtype slider
+            range {.25 4}
+            default 1
+        }
+
+        parameter float result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {sl.h}
+
+		RSLFunction {
+		    void vfxDotProduct (
+                vector  V0;
+                vector  V1;
+                uniform float   norm;
+                uniform float   Invert;
+                uniform float   Remap;
+                uniform float   Range;
+                varying float   Exponent;
+
+                output float    result;
+            )
+            {
+                if (norm)
+                    result = normalize(V0).normalize(V1);
+                else
+                    result = V0.V1;
+
+                if (Invert)
+                    result = -result;
+
+                if (Remap)
+                    result = mix (1, 0, result);
+
+                if (Range)
+                    result = linear (-1, 1, result);
+
+                result = pow (result, Exponent);
+            }
+		}
+	}
+
+
+    templateV vector CalculateNormal 0 {
+        description {
+            Given a Point, calculate its normal.
+            Note the result is normalized and will be in the same space as the input Point.
+        }
+
+        parameter point Point {
+            label {Point}
+            description {
+                The Point to calculate a normal from.
+                Note the result is normalized and will be in the same space as this point.
+            }
+            detail mustvary "laika,Pref"
+            default {0 0 0}
+        }
+
+        parameter float Invert {
+            label {Invert}
+            description {
+                Invert (-) the result.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        parameter vector result {
+            label {N}
+            display hidden
+            access output
+        }
+
+        RSLSource StaticFunction {
+            void vfxCalculateNormal (
+                varying point   Point;
+                uniform float   Invert;
+
+                output vector   result;
+            ) {
+                result = normalize (vector calculatenormal (Point));
+
+                if (Invert)
+                    result = -result;
+            }
+        }
+    }
+
+
+	templateV vector UVTangent 0 {
+        label {UVTangent}
+		description {
+            Uses the selected UV Set as a uv space and generates
+            a tangent vector from that. Useful for defining the direction of anisotropy.
+            Note that RMS puts the first Maya UV Set into s and t.
+            Any other Maya UV Sets can be specified with the Maya UV Set parameter.
+		}
+
+        slimattribute string UVSet {
+            label {Maya UV Set}
+			description {
+                The base name of a Maya UV Set that contains the desired uv data.
+                Note that RMS puts Maya's default UV Set into s and t.
+                Set Index to -1 to use the s and t values rather than values from this UV Set.
+			}
+            default {uvSet}
+		}
+
+        parameter float Index {
+            label {Index}
+            description {
+                The index of the Maya UV Set array that contains the desired uv data.
+                Set this to -1 to use the default UV Set (stored in s and t) rather than the one specified
+                by the Maya UV Set parameter.
+            }
+            detail uniform
+            range {-1 5 1}
+            default -1
+        }
+
+        parameter float Direction {
+			description {
+                Orient the return value. 0 degrees = u,
+                90 degrees = v, 180 degrees = -u, and 270 degrees = -v.
+			}
+            detail varying
+            subtype slider
+            range {0 360 1}
+            default 0
+		}
+
+        parameter vector result {
+            display hidden
+            access output
+        }
+
+        RSLInclude {sl.h}
+
+		RSLSource DynamicFunction {
+            proc primvars {} {
+                declare {} varying float u_[getval UVSet]\[\] \{\}
+                declare {} varying float v_[getval UVSet]\[\] \{\}
+            }
+            proc function {} {
+output "
+                void [getFunctionName] (
+                    uniform float   Index;
+                    varying float   Direction;
+                    output vector   result;
+                ) {
+                    float   uu, vv;
+
+                    if (arraylength(u_[getval UVSet]) > Index && Index != -1) {
+                        uu = u_[getval UVSet]\[Index\];
+                        vv = v_[getval UVSet]\[Index\];
+                    }
+                    else {
+                        uu = s;
+                        vv = t;
+                    }
+#if SLIM_SHADERTYPEID == SLIM_TYPEID_light
+                    vector  U = normalize (Deriv(Ps, uu));
+                    vector  V = normalize (Deriv(Ps, vv));
+#elif SLIM_SHADERTYPEID != SLIM_TYPEID_volume
+                    /* make sure derivatives have good data in them before trying
+                       to use them. If the derivatives are very small the resulting
+                       tangent will be bad so just set it to something.
+                    */
+                    vector  dPduu = Deriv(P, uu);
+                    vector  dPdvv = Deriv(P, vv);
+                    if (length(dPduu) < 0.001) {
+                        dPduu = dPdu;
+                    }
+                    if (length(dPdvv) < 0.001) {
+                        dPdvv = dPdv;
+                    }
+                    vector  U = normalize (dPduu);
+                    vector  V = normalize (dPdvv);
+#else
+                    vector  U = vector 0;
+                    vector  V = vector 0;
+#endif
+                    varying float   dir = mod (Direction, 360);
+
+                    result = slerp (-V, U, linear(270,360,dir));
+                    result = mix (vector slerp (-U, -V, linear(180,270,dir)), result, step (270,dir));
+                    result = mix (vector slerp (V, -U, linear(90,180,dir)), result, step (180,dir));
+                    result = mix (vector slerp (U, V, linear(0,90,dir)), result, step (90,dir));
+                }
+"
+            }
+		}
+	}
+
+
+	templateV vector VolumeNormal 0 {
+		description {
+            For use with blobby volumes.
+            Uses the VolumeField variable to create a volume density orientation vector
+            (in current space).
+            The vector is perpendicular to the camera view direction, and is oriented
+            in the direction where the volume's density changes most rapidly.
+		}
+
+        parameter float Field {
+            label {Field}
+            description {
+                The field generation function.
+                This is the same function you're using to create the volume's density variation.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        slimattribute float Back {
+            label {Front/Back}
+            description {
+                When the VolumeNormal is used in lighting, this will toggle between
+                accentuating Front lighting versus Back lighting.
+            }
+            detail uniform
+            subtype selector
+            range {
+                Front 0
+                Back 1
+            }
+            default 0
+        }
+
+        parameter float Direction {
+			description {
+                Rotate the return value from its default orientation:
+                perpendicular to the camera view, in the direction
+                where the volume's density changes most rapidly.
+                Positive values rotate the vector clockwise.
+			}
+            detail uniform
+            subtype slider
+            range {-180 180 1}
+            default 0
+		}
+
+        parameter vector result {
+            display hidden
+            access output
+        }
+
+        RSLInclude {sl.h}
+
+		RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                    varying float   dx = Du(VolumeField * [getvar Field])*du;
+                    varying float   dy = Dv(VolumeField * [getvar Field])*dv;
+
+                    result = normalize (vector (-dx, -dy, 0));
+
+                    filterregion    fr;
+                    fr->calculate3d(P);
+
+                    varying float   df = fr->maxsize();
+"
+                    if {[getval Back] == 1} {
+output "                result = normalize (result + vector(0,0,[getvar Field]*df));"
+                    } else  {
+output "                result = normalize (result + vector(0,0,-[getvar Field]*df));"
+                    }
+output "
+                    result = vrotate (result, radians([getvar Direction]), vector(0,0,1));
+"
+                }
+            }
+		}
+	}
+
+
+	templateV vector DensityGradient 0 {
+		description {
+            Uses the gradient of the Density value to compute a vector suitable for use as a volume normal:
+            -vector( Du(Density), Dv(Density), Dw(Density) ).
+		}
+
+        parameter float Density {
+            label {Density}
+            description {
+                This must be a value that varies three-dimensionally in order to produce a useful result.
+                It should also vary smoothly, without any discontinuities.
+                This would typically be the value used for the Density of a volume shader.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default .5
+        }
+
+        parameter float Invert {
+            label {Invert}
+            description {
+                By default, the result points from higher to lower density.
+                Turn this on to flip the direction.
+            }
+            detail uniform
+            subtype switch
+            default 0
+        }
+
+        parameter float Xform {
+            label {Volume Transform}
+            description {
+                When used in a volume, the gradient is computed in object space.
+                Turning this on will transform the resulting value to current space.
+            }
+            detail uniform
+            subtype switch
+            default 1
+        }
+
+        parameter vector result {
+            display hidden
+            access output
+        }
+
+		RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+output "
+                    result = -vector( Du([getvar Density]), Dv([getvar Density]), Dw([getvar Density]) );
+                    if ([getvar Invert])
+                    {
+                        result = -result;
+                    }
+                    if ([getvar Xform])
+                    {
+                        result = vector ntransform( \"object\", \"current\", normal( result ));
+                    }
+                    result = normalize( result );
+"
+                }
+            }
+		}
+	}
+
+  }
+}

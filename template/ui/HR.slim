@@ -1,0 +1,115 @@
+##
+##  Copyright(c) 2011 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+#
+#   Creates a horizonal rule of the specified width, length, and color,
+#   displays an optional label, and justifies it.
+#
+#       collection customuiFullWidth HR {
+#           customui laika HR
+#           drawmode children
+#           userdata {
+#               Label "Line Heading"
+#               LabelPad 5
+#               LineColor gray50
+#               LineWidth 1
+#               LineLength 250
+#               Justify center|left|right
+#               Height 15
+#           }
+#
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    customui HR {
+        TclTkSource {
+            proc BuildUI {container recommendedWidth args} {
+				# Look for parent object.
+				set i [lsearch $args -parent] 
+				if {$i == -1} return; #error
+                incr i
+
+                # obj is the template using this custom ui.
+				set obj [lindex $args $i]
+
+                # Get the userdata overrides.
+                set label [$obj GetUserData Label]
+
+                set labelPad [$obj GetUserData LabelPad]
+                if {$labelPad == {}} {
+                    set labelPad 5
+                }
+
+                set color [$obj GetUserData LineColor]
+                if {$color == {}} {
+                    set color gray50
+                }
+                set lineWidth [$obj GetUserData LineWidth]
+                if {$lineWidth == {}} {
+                    set lineWidth 1
+                }
+                set lineLength [$obj GetUserData LineLength]
+                if {$lineLength == {}} {
+                    set lineLength 250
+                }
+                set justify [$obj GetUserData Justify]
+                set anchor center
+                switch $justify {
+                    left {set anchor w}
+                    right {set anchor e}
+                }
+                set height [$obj GetUserData Height]
+                if {$height == {}} {
+                    set height 15
+                }
+
+                # These can be used for more refined placement.
+                set width [$obj GetUserData Width]
+                if {$width == {}} {
+                    set width $recommendedWidth
+                }
+                set padw [$obj GetUserData PadW]
+                if {$padw == {}} {
+                    set padw 40
+                }
+                set pade [$obj GetUserData PadE]
+                if {$pade == {}} {
+                    set pade 40
+                }
+
+                # Create the canvas to draw the ui in.
+                canvas $container -height $height -width $width
+
+                set y [expr floor(($height - 1) / 2.0)]
+                set xStart $padw
+                set xEnd [expr $width - $pade]
+
+                # Draw the line.
+                $container create line $xStart $y $xEnd $y -fill $color
+
+                # Create the label if one is specified.
+                if {$label != {}} {
+                    label $container.label -text $label -padx $labelPad -height $height
+                    pack $container.label -anchor $anchor
+                }
+
+                # Done.
+                return [$container cget -height]
+            }
+        }
+    }
+
+  }
+}

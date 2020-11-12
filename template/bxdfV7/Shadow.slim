@@ -1,0 +1,216 @@
+##
+##  Copyright(c) 2013-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV coreV7shadow_s bxdfV7ShadowColor 0 {
+        description {
+            Controls the appearance of a Material's shadow.
+        }
+
+        parameter color Color {
+            label {Color}
+            description {
+                Sets the color of the shadow.
+                <
+            }
+            detail varying
+            default {0 0 0}
+        }
+        parameter coshader Color_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float Exponent {
+            label {Shaping Exponent}
+            description {
+                Controls the shape of the shadow density curve from the center to the edge of the shadow.
+                If 0, the shadow will be the Color value without any surface normal variation.
+                <
+            }
+            detail varying
+            subtype slider
+            range {0 4}
+            default 0
+        }
+        parameter coshader Exponent_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter coreV7shadow_s result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {color.h}
+        RSLInclude {coreV7/shadow.h}
+        RSLInclude {coreV7/override.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+
+                    set overrideParam "Color"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying color _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "Exponent"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+output "
+                    varying float   dot = [getvar result]->GetAbsNdotI();
+
+                    dot = pow( dot, _Exponent );
+
+                    [getvar result]->SetOi( mix( color 1, color 1 - _Color, dot ));
+"
+                }
+            }
+        }
+    }
+
+
+    templateV coreV7shadow_s bxdfV7ShadowCenterEdge 0 {
+        description {
+            Controls the appearance of a Material's shadow.
+        }
+
+        parameter color EdgeColor {
+            label {Edge Color}
+            description {
+                Sets the color of the shadow edge.
+                <
+            }
+            detail varying
+            default {.5 .5 .5}
+        }
+        parameter coshader EdgeColor_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter color CenterColor {
+            label {Center Color}
+            description {
+                Sets the color of the shadow center.
+                <
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter coshader CenterColor_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter float Exponent {
+            label {Shaping Exponent}
+            description {
+                Controls the shape of the shadow density curve from the center to the edge of the shadow.
+                <
+            }
+            detail varying
+            subtype slider
+            range {0 4}
+            default 1
+        }
+        parameter coshader Exponent_Co_ {
+            display hidden
+            default {}
+            value {}
+        }
+
+        parameter coreV7shadow_s result {
+            display hidden
+            access output
+        }
+
+
+        RSLInclude {color.h}
+        RSLInclude {coreV7/shadow.h}
+        RSLInclude {coreV7/override.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+
+                    set overrideParam "EdgeColor"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying color _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "CenterColor"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying color _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+                    set overrideParam "Exponent"
+                    set coParam [safeeval [safeeval %c GetProperties -name "${overrideParam}_Co_"] GetNameSL 1]
+                    output "varying float _$overrideParam = overrideV( $coParam, [getvar $overrideParam] );"
+
+output "
+                    varying float   dot = [getvar result]->GetAbsNdotI();
+
+                    dot = pow( dot, _Exponent );
+
+                    [getvar result]->SetOi( mix( color 1 - _EdgeColor, color 1 - _CenterColor, dot ));
+"
+                }
+            }
+        }
+    }
+
+
+    template visualizer coreV7shadow_s {
+        parameter coreV7shadow_s vis {}
+
+        RSLMain {
+            set visParam  [safeeval %c GetProperties -name vis]
+            set visFunc   [safeeval $visParam GetConnectedFunction]
+            set visResult [safeeval $visFunc GetProperties -access output]
+            set visRSL    [safeeval $visResult GetNameSL 1]
+
+output "
+            #include <coreV7/camera.h>
+            #include <coreV7/surface.h>
+            #include <coreV7/shadow.h>
+
+            camera_s    cameraData;
+            surface_s   surfaceData;
+
+            cameraData->Init();
+            surfaceData->Init();
+
+            $visRSL->Init( cameraData, surfaceData );
+"
+            generate vis
+output "
+            Ci = color 1 - $visRSL->GetOi();
+            Oi = color 1;
+"
+        }
+    }
+
+  }
+}

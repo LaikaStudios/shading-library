@@ -1,0 +1,285 @@
+##
+##  Copyright(c) 2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV volumeBD_s volumeBD 0 {
+        description {
+            Bumps and/or Displaces a Volume.
+        }
+
+        parameter float Amount {
+            label {Amount}
+            description {
+                The magnitude of the bump/displacement.
+            }
+            detail varying
+            subtype slider
+            range {0 .1 .001}
+            default .01
+        }
+
+        parameter float BumpPercent {
+            label {Bump Percent}
+            description {
+                The percentage of the Amount that is applied to bumping.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float DispPercent {
+            label {Displace Percent}
+            description {
+                The percentage of the Amount that is applied to displacement.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        collection customuiFullWidth BumpDisp {
+            customui pixar ListUI3
+            label {+Float Inputs}
+            userdata {
+                -buttonlabel {Add Float}
+                -buttondescription {Adds a float connection that effects how much the volume will be displaced along the Normal.}
+                -elementdesc {
+                    {-label Type -type float -subtype selector -range {On 1 Off 0} -default 1} 
+                    {-label Mode -type string -subtype combineOp -default plusminus}     
+                    {-label Amount -type float -default 1 -subtype vslider -range {0 1}} 
+                    {-label Value -type float -detail {mustvary laika,floatFractal}}
+                }
+                -inputLabel BumpDisp
+                -inputPrefix BD
+            }
+            subtype propertycreator
+            drawmode children
+            state open
+        }
+
+        collection customuiFullWidth VectorDisp {
+            customui pixar ListUI3
+            label {+Vector Inputs}
+            userdata {
+                -buttonlabel {Add Vector}
+                -buttondescription {Adds a current space vector connection that effects how much the volume will be bump/displaced along that vector.}
+                -elementdesc {
+                    {-label Type -type float -subtype selector -range {Bump 0 Displace 2 Both 1 Off 3} -default 1} 
+                    {-label Mode -type string -subtype combineOp -default plus}     
+                    {-label Amount -type float -default 1 -subtype vslider -range {0 1}} 
+                    {-label Value -type vector -detail {mustvary laika,vectorFractal}}
+                }
+                -inputLabel VectorDisp
+                -inputPrefix VD
+            }
+            subtype propertycreator
+            drawmode children
+            state open
+        }
+
+        collection customuiFullWidth NormalMap {
+            display hidden
+            customui pixar ListUI3
+            label {+Normal Inputs}
+            userdata {
+                -buttonlabel {Add NormalMap}
+                -buttondescription {Adds a tangent normal map connection that effects how much the volume Normal will be perturbed.}
+                -elementdesc {
+                    {-label Type -type float -subtype selector -range {On 1 Off 0} -default 1} 
+                    {-label Amount -type float -default 1 -subtype vslider -range {0 1}} 
+                    {-label Value -type vector -detail {mustvary laika,normalmapTexture}}
+                }
+                -inputLabel NormalMap
+                -inputPrefix NM
+            }
+            subtype propertycreator
+            drawmode children
+            state open
+        }
+
+        parameter volumeBD_s result {
+            display hidden
+            access output
+        }
+
+        RSLInclude {sl.h}
+        RSLInclude {volume/volumeBD.h}
+
+        RSLSource DynamicFunction {
+            proc primvars {} {}
+            proc function {} {
+                generateBody {
+                    set BD_connections [getproperties -name BD_* -access input]
+                    set VD_connections [getproperties -name VD_* -access input]
+                    set NM_connections [getproperties -name NM_* -access input]
+
+                    if {$BD_connections == {} && $VD_connections == {} && $NM_connections == {}} {
+output "
+                    [getvar result]->Pout = [getvar result]->Pin;
+                    [getvar result]->Nout = [getvar result]->Nin;
+"
+                    } else {
+output "
+                    varying vector  Nbump, Vbd, Vstart;
+                    varying point   Pdisp, Pstart;
+                    varying float   bumpamount, dispamount;
+                    uniform float   bmp, disp;
+
+                    //
+                    // Get the initial P and N from the volumeBD_s struct.
+                    //
+                    Pstart = [getvar result]->Pin;
+                    Vstart = [getvar result]->Nin;
+
+                    Vbd = Vstart / length( vtransform( \"world\", Vstart ));
+
+                    //
+                    // Determine the bump and disp magnitudes.
+                    //
+                    varying float   bumpMag, dispMag;
+
+                    bumpMag = [getvar Amount] * [getvar BumpPercent];
+                    dispMag = [getvar Amount] * [getvar DispPercent];
+
+                    //
+                    // Accumulate the float disp amounts.
+                    //
+                    dispamount = 0;
+"
+                    foreach {on op en var} $BD_connections {
+output "
+                        if ([getvar $on])
+                        {
+                            disp = [getvar $en];
+
+                            if ([getvar $op] == \"plus\")
+                            {
+                                dispamount += mix( 0, [getvar $var], disp );
+                            }
+                            else if ([getvar $op] == \"minus\")
+                            {
+                                dispamount -= mix( 0, [getvar $var], disp );
+                            }
+                            else if ([getvar $op] == \"plusminus\")
+                            {
+                                dispamount += mix( 0, mix( -1, 1, [getvar $var] ), disp );
+                            }
+                            else if ([getvar $op] == \"times\")
+                            {
+                                dispamount *= mix( 1, [getvar $var], disp );
+                            }
+                        }
+"
+                    }
+output "
+                    //
+                    // Apply the float disp.
+                    //
+                    Pdisp = Pstart + dispMag * dispamount * Vbd;
+
+
+                    //
+                    // Add vector bump/disp inputs.
+                    //
+                    Nbump = Vstart;
+"
+                    foreach {typ op en var} $VD_connections {
+output "
+                        if ([getvar $typ] != 3) {
+                            bmp = ([getvar $typ] < 2) ? [getvar $en] : 0;
+                            disp = ([getvar $typ] > 0) ? [getvar $en] : 0;
+
+                            bumpamount = bmp * bumpMag;
+                            dispamount = disp * dispMag;
+
+                            Vbd = [getvar $var] / length( vtransform( \"world\", normalize(Vbd) ));
+
+                            if ([getvar $op] == \"plus\") {
+                                Nbump += bumpamount * Vbd;
+                                Pdisp += dispamount * Vbd;
+                            }
+                            else if ([getvar $op] == \"minus\") {
+                                Nbump -= bumpamount * Vbd;
+                                Pdisp -= dispamount * Vbd;
+                            }
+                            else if ([getvar $op] == \"plusminus\") {
+                                Nbump += bumpamount * _mix( -1, 1, Vbd );
+                                Pdisp += dispamount * _mix( -1, 1, Vbd );
+                            }
+                            else if ([getvar $op] == \"times\") {
+                                Nbump *= bumpamount * Vbd;
+                                Pdisp *= dispamount * Vbd;
+                            }
+                        }
+"
+                    }
+output "
+                    //
+                    //  Apply NormalMaps.
+                    //
+"
+                    foreach {on en var} $NM_connections {
+output "
+                        if ([getvar $on])
+                        {
+                            Vbd = [getvar $var] / length( vtransform( \"world\", [getvar $var] ));
+                            Nbump += [getvar $en] * bumpMag * (Vbd - Vstart);
+                        }
+"
+                    }
+
+                    if {$NM_connections != {}} {
+output "                Nbump = normalize(Nbump);"
+                    }
+output "
+                    [getvar result]->Pout = Pdisp;
+                    [getvar result]->Nout = Nbump;
+"
+                    }
+                }
+            }
+        }
+    }
+
+    template visualizer volumeBD_s {
+        parameter volumeBD_s vis {}
+
+        RSLMain {
+            set visParam  [safeeval %c GetProperties -name vis]
+            set visFunc   [safeeval $visParam GetConnectedFunction]
+            set visResult [safeeval $visFunc GetProperties -access output -type volumeBD_s]
+            set visRSL    [safeeval $visResult GetNameSL 1]
+output "
+            $visRSL->Pin = P;
+            $visRSL->Nin = normalize(N);
+"
+            generate vis
+output "
+            P = $visRSL->Pout;
+            N = $visRSL->Nout;
+
+            Ci = N.normalize(-I);
+            Oi = color 1;
+"
+        }
+    }
+
+  }
+}

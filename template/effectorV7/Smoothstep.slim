@@ -1,0 +1,194 @@
+##
+##  Copyright(c) 2010-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV lighteffector leV7Smoothstep 0 {
+        description {
+            Creates a smoothstep() ramp along the Z axis defined by the coordinate system(s) 
+            listed in the Control Space parameter.
+        }
+
+        eval [::__categoryParam "ikaRadianceEffector"]
+
+        parameter float Enable {
+            label {Enable}
+            description {
+                Controls how much effect this will have on the illumination.
+            }
+            detail varying
+            subtype slider
+            range {0 1}
+            default 1
+        }
+
+        parameter color Color {
+            label {Color}
+            description {
+                Applied to the overall illumination.
+                sRGB space.
+            }
+            detail varying
+            default {0 0 0}
+        }
+        parameter float Intensity {
+            description {
+                Applied to the overall illumination.
+                sRGB space.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter color DiffuseTint {
+            label {Diffuse Tint}
+            description {
+                A multiplier applied to the diffuse illumination.
+                sRGB space.
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter float DiffuseIntensity {
+            label {Diffuse Intensity}
+            description {
+                A multiplier applied to the diffuse illumination.
+                sRGB space.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter color SpecularTint {
+            label {Specular Tint}
+            description {
+                A multiplier applied to the specular illumination.
+                sRGB space.
+            }
+            detail varying
+            default {1 1 1}
+        }
+        parameter float SpecularIntensity {
+            label {Specular Intensity}
+            description {
+                A multiplier applied to the specular illumination.
+                sRGB space.
+            }
+            detail varying
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float Invert {
+            label {Invert}
+            description {
+                If checked, the effect will be inverted.
+            }
+            subtype switch
+            default 0
+        }
+
+        parameter string SpaceList {
+            label {Control Space}
+            description {
+                This is set to the name of a coordinate system.
+                The -1Z and +1Z space locations define the beginning and end of the smoothstep ramp.
+                If you want to use more than one coordinate system, use ',' to separate the names in a list.
+                Each will be applied in the order listed, and their effects accumulated according to the
+                Combine Method.
+                If "shader" or blank, the object this is attached to will define the coordinate system.
+            }
+            provider variable
+            detail varying
+            subtype place3d
+            default "shader"
+        }
+
+        parameter string CombineMethod {
+            label {Combine Method}
+            description {
+                When multiple coordinate systems are specified in the Control Space list,
+                this parameter determines how they will be combined.
+                Accumulate means each effect region will add to the previous ones.
+                Alternate means the effects alternately add to and remove from the overall
+                effect. In this mode, the even-listed coordinate systems subtract from
+                the previous coordinate systems' effects.
+            }
+            detail varying
+            subtype selector
+            range {
+                "Accumulate" Accumulate
+                "Alternate" Alternate
+            }
+            default Alternate
+        }
+
+
+        RSLInclude {coreV7/light.h}
+        RSLInclude {effectorV7/Smoothstep.h}
+
+        RSLClass {
+output "
+            private effectorV7Smoothstep_s  _le;
+"
+
+            #   Dummy method for Katana coshader-as-light workaround.
+            generateMethod "public void light (output vector L; output color Cl)" {
+output "
+                L = vector 0;
+                Cl = color 0;
+"
+            }
+
+            #
+            #  Intialize globals.
+            #
+            generateMethod "public void begin()" {
+                generate *
+output "
+                _le->Enable = [getvar Enable];
+                _le->Color = [getvar Color];
+                _le->Intensity = [getvar Intensity];
+                _le->DiffuseTint = [getvar DiffuseTint];
+                _le->DiffuseIntensity = [getvar DiffuseIntensity];
+                _le->SpecularTint = [getvar SpecularTint];
+                _le->SpecularIntensity = [getvar SpecularIntensity];
+                _le->Invert = [getvar Invert];
+                _le->CombineMethod = [getvar CombineMethod];
+                _le->SpaceList = [getvar SpaceList];
+
+                _le->begin();
+"
+            }
+
+            #
+            #   LightEffector method.
+            #
+            generateMethod "public void radianceEffect( output light_s _light )" {
+output "
+                _le->radianceEffect( _light );
+"
+            }
+        }
+    }
+
+  }
+}

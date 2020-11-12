@@ -1,0 +1,171 @@
+##
+##  Copyright(c) 2013 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+	templateV geolighteffector gleV7Region 0 {
+		description {
+			Uses superellipse controls to define a region of space in which to effect a geometry light.
+		}
+
+        eval [::__categoryParam "ikaGeoLightRegion"]
+
+        parameter color Color {
+            label {Color}
+            description {
+                Applied to the overall illumination.
+                sRGB space.
+            }
+            detail uniform
+            default {0 0 0}
+        }
+        parameter float Intensity {
+            description {
+                Applied to the overall illumination.
+                sRGB space.
+            }
+            detail uniform
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter color DiffuseTint {
+            label {Diffuse Tint}
+            description {
+                A multiplier applied to the diffuse illumination.
+                sRGB space.
+            }
+            detail uniform
+            default {1 1 1}
+        }
+        parameter float DiffuseIntensity {
+            label {Diffuse Intensity}
+            description {
+                A multiplier applied to the diffuse illumination.
+                sRGB space.
+            }
+            detail uniform
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter color SpecularTint {
+            label {Specular Tint}
+            description {
+                A multiplier applied to the specular illumination.
+                sRGB space.
+            }
+            detail uniform
+            default {1 1 1}
+        }
+        parameter float SpecularIntensity {
+            label {Specular Intensity}
+            description {
+                A multiplier applied to the specular illumination.
+                sRGB space.
+            }
+            detail uniform
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float XShape {
+            label {X Shape}
+            description {
+                Controls the region's superellipse shape along the X axis.
+                0 = square; 1 = circle; 2 = diamond.
+            }
+            detail uniform
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float YShape {
+            label {Y Shape}
+            description {
+                Controls the region's superellipse shape along the Y axis.
+                0 = square; 1 = circle; 2 = diamond.
+            }
+            detail uniform
+            subtype slider
+            range {0 2}
+            default 1
+        }
+
+        parameter float TransitionWidth {
+            label {Transition Width}
+            description {
+                Controls the width of the region's transition from full to no effect.
+                The interior of the region is always at full effect.
+                Note that as the Shape parameters approach 0, the region will
+                have a hard edge no matter what this setting.
+            }
+            detail uniform
+            subtype slider
+            range {0 5}
+            default 1
+        }
+
+        parameter string Space {
+            label {Control Space}
+            description {
+                This is set to the name of a coordinate system.
+                If "shader" or blank, the object this is attached to will define the coordinate system.
+            }
+            provider variable
+            detail varying
+            subtype place3d
+            default "shader"
+        }
+
+
+        RSLInclude {color.h}
+
+        RSLClass {
+output "
+            public  uniform matrix  Matrix = matrix 1;
+            public  uniform vector  Shape = vector 1;
+            public  uniform color   Tint = color 1;
+            public  uniform color   DiffuseTint = color 1;
+            public  uniform color   SpecularTint = color 1;
+"
+            generateMethod "public void begin()" {
+                generate *
+output "
+                uniform string  _Space = [getvar Space];
+                uniform float   _XShape = max( .001, [getvar XShape] );
+                uniform float   _YShape = max( .001, [getvar YShape] );
+                uniform float   _TransitionWidth = max( .001, [getvar TransitionWidth] );
+
+                if (_Space == \"\") _Space = \"shader\";
+                Matrix = transform( _Space, matrix 1 );
+
+                Shape = vector( _YShape, _XShape, _TransitionWidth );
+
+                Tint = colorGridmin( colorSRGBToLinear( [getvar Color] * [getvar Intensity] ));
+                DiffuseTint = colorGridmin( colorSRGBToLinear( [getvar DiffuseTint] * [getvar DiffuseIntensity] ));
+                SpecularTint = colorGridmin( colorSRGBToLinear( [getvar SpecularTint] * [getvar SpecularIntensity] ));
+"
+            }
+        }
+	}
+
+  }
+}

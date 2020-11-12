@@ -1,0 +1,114 @@
+##
+##  Copyright(c) 2012 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+ extensions laika vfx {
+
+    namespace eval ::Slim::Laika {
+
+#
+#   Declares the template parameters needed to generate the PassFileName.
+#
+    proc PassFileNameParams {} {
+        set FILEParam {
+            parameter string _ikaPassFileName_FILE {
+                display hidden
+                label "FILE"
+                description {
+                    The full pathname of the Maya scene file.
+                }
+                provider variable
+                detail uniform
+                default ""
+            }
+        }
+
+        set DATAPATHParam {
+            parameter string _ikaPassFileName_DATAPATH {
+                display hidden
+                label "DATAPATH"
+                description {
+                    Relative path to the data directory: "renderman/data/$STAGE".
+                }
+                provider variable
+                detail uniform
+                default ""
+            }
+        }
+
+        set STAGEParam {
+            parameter string _ikaPassFileName_STAGE {
+                display hidden
+                label "STAGE"
+                description {
+                    The base name of the Maya scene file.
+                }
+                provider variable
+                detail uniform
+                default ""
+            }
+        }
+
+        set PASSIDParam {
+            parameter string _ikaPassFileName_PASSID {
+                display hidden
+                label "PASSID"
+                description {
+                    The id of the pass currently being rendered: the pass name.
+                }
+                provider variable
+                detail uniform
+                default ""
+            }
+        }
+
+        set F4Param {
+            parameter string _ikaPassFileName_F4 {
+                display hidden
+                label "F4"
+                description {
+                    The frame number.
+                }
+                provider variable
+                detail uniform
+                default ""
+            }
+        }
+
+        set TestParam {
+            parameter string _ikaPassFileName_Test {
+                label "Test"
+                provider variable
+                detail uniform
+                default ""
+            }
+        }
+
+        set val "
+            $FILEParam
+            $DATAPATHParam
+            $STAGEParam
+            $PASSIDParam
+            $F4Param
+            $TestParam
+        "
+
+        return $val
+    }
+
+    }
+
+  }
+}

@@ -1,0 +1,83 @@
+##
+##  Copyright(c) 2010 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+slim 1 extensions mprater {
+  extensions laika vfx {
+
+    templateV manifold Pmatrix 0 {
+        description {
+            Creates a manifold by transforming P by the
+            matrix primitive variable named Pmatrix.
+        }
+
+        parameter matrix Pmatrix {
+            display hidden
+            provider primitive
+            detail uniform
+            default {1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1}
+        }
+
+        collection manifold result {
+            access output
+            display hidden
+            parameter point  Q { access output }
+            parameter vector dQu { access output }
+            parameter vector dQv { access output }
+        }
+
+        RSLFunction {
+            void vfxPmatrix (
+                output varying point    Q; 
+                output varying vector   dQu;
+                output varying vector   dQv;
+            ) {
+                extern uniform matrix   Pmatrix;
+
+#if SLIM_SHADERTYPEID == SLIM_TYPEID_volume
+                extern point    P;
+
+                uniform matrix  obj = matrix "object" 1;
+                uniform matrix  Pobj = transform ("object", Pmatrix);
+#pragma nolint
+                Q = transform (Pobj/obj, transform ("object", P));
+                dQu = 0;
+                dQv = 0;
+
+#elif SLIM_SHADERTYPEID == SLIM_TYPEID_light
+                extern point    Ps;
+                extern float    du, dv;
+
+                Q = transform (Pmatrix, Ps);
+                dQu = Du(Q)*du;
+                dQv = Dv(Q)*dv;
+
+#else
+                extern point    P;
+                extern float    du, dv;
+
+                uniform matrix  obj = matrix "object" 1;
+                uniform matrix  Pobj = transform ("object", Pmatrix);
+#pragma nolint
+                Q = transform (Pobj/obj, transform ("object", P));
+                Q = transform (Pmatrix, P);
+                dQu = Du(Q)*du;
+                dQv = Dv(Q)*dv;
+#endif
+            }
+        }
+    }
+
+  }
+}

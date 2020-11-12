@@ -1,0 +1,630 @@
+##
+##  Copyright(c) 2010-2014 Laika, developed under contract by mitchpraterLLC.
+##  All rights reserved unless otherwise granted. This program or documentation
+##  contains proprietary, confidential information and trade secrets of Laika
+##  and/or mitchpraterLLC. Use of copyright notice does not imply publication.
+##  
+##  By possessing this software, you agree to the following terms and conditions.
+##  You may not resell this software, but you may freely distribute it to others.
+##  You may use it for whatever purposes you wish. There are no warranties of any
+##  kind. You may make modifications, however any derivation may only be distributed
+##  to others under the same freedoms granted to you herein, it must retain this
+##  notice and agreement, and the modifications noted. We also ask that you make
+##  such modifications available to Laika, mitchpraterLLC, or to the computer
+##  graphics community as a whole through a public forum.
+##
+
+#   
+#   Requirements for conversion templates
+#
+#   - No extra parameters other than input and output may be declared
+#   - input parameters MUST be declared with "provider connection"
+#   - input collections must ALSO be declared with "provider connection"
+#   - output parameters MUST be declared "access output"
+#
+slim 1 extensions mprater {
+    extensions laika vfx {
+
+#######################################
+#
+#   manifold/manifold_s conversions
+#
+#######################################
+    template manifold Manifold_sToManifold {
+        display hidden
+        description {
+            Manifold to Manifold_s.
+        }
+
+        parameter manifold_s in {
+            provider connection
+        }
+
+        collection manifold out {
+            display hidden
+            access output
+            parameter point Q { access output }
+            parameter vector dQu { access output }
+            parameter vector dQv { access output }
+        }
+
+        RSLInclude {manifold.h}
+
+        RSLFunction {
+            void vfxManifold_sToManifold (
+                output manifold_s   in;
+
+                output point    Q;
+                output vector   dQu;
+                output vector   dQv;
+            ) {
+                Q = in->GetQ();
+                dQu = in->GetdQu();
+                dQv = in->GetdQv();
+            }
+        }
+    }
+
+    template manifold_s ManifoldToManifold_s {
+        display hidden
+        description {
+            Manifold_s to Manifold.
+        }
+
+        collection manifold in {
+            provider connection
+            parameter point Q {}
+            parameter vector dQu {}
+            parameter vector dQv {}
+        }
+
+        parameter manifold_s out {
+            display hidden
+            access output
+        }
+
+        RSLInclude {manifold.h}
+
+        RSLFunction {
+            void vfxManifoldToManifold_s (
+                point    Q;
+                vector   dQu;
+                vector   dQv;
+
+                output manifold_s    out;
+            ) {
+                out->Set(Q,dQu,dQv);
+            }
+        }
+    }
+
+    template manifold ImplicitManifoldToManifold {
+        display hidden
+        description {
+            ImplicitManifold_s to manifold.
+        }
+
+        parameter ImplicitManifold_s in {
+            provider connection
+        }
+
+        collection manifold out {
+            display hidden
+            access output
+            parameter point Q { access output }
+            parameter vector dQu { access output }
+            parameter vector dQv { access output }
+        }
+
+        RSLInclude {mapper/ImplicitManifold.h}
+
+        RSLFunction {
+            void vfxImplicitManifoldToManifold (
+                output ImplicitManifold_s   in;
+
+                output point    Q;
+                output vector   dQu;
+                output vector   dQv;
+            ) {
+                Q = in->GetQ();
+                dQu = in->GetdQu();
+                dQv = in->GetdQv();
+            }
+        }
+    }
+
+    template manifold_s ImplicitManifoldToManifold_s {
+        display hidden
+        description {
+            ImplicitManifold_s to manifold_s
+        }
+
+        parameter ImplicitManifold_s in {
+            provider connection
+        }
+
+        parameter manifold_s out {
+            display hidden
+            access output
+        }
+
+        RSLInclude {mapper/ImplicitManifold.h}
+        RSLInclude {manifold.h}
+
+        RSLFunction {
+            void vfxImplicitManifoldToManifold_s (
+                output ImplicitManifold_s   in;
+                output manifold_s    out;
+            ) {
+                out->Set(in->GetQ(),in->GetdQu(),in->GetdQv());
+            }
+        }
+    }
+
+    template manifold ImplicitSurfaceManifoldToManifold {
+        display hidden
+        description {
+            ImplicitSurfaceManifold_s to manifold.
+        }
+
+        parameter ImplicitSurfaceManifold_s in {
+            provider connection
+        }
+
+        collection manifold out {
+            display hidden
+            access output
+            parameter point Q { access output }
+            parameter vector dQu { access output }
+            parameter vector dQv { access output }
+        }
+
+        RSLInclude {legacy/mapper/ImplicitSurfaceManifoldV0.h}
+
+        RSLFunction {
+            void vfxImplicitSurfaceManifoldToManifold (
+                output ImplicitSurfaceManifold_s   in;
+
+                output point    Q;
+                output vector   dQu;
+                output vector   dQv;
+            ) {
+                Q = in->GetQ();
+                dQu = in->GetdQu();
+                dQv = in->GetdQv();
+            }
+        }
+    }
+
+    template manifold_s ImplicitSurfaceManifoldToManifold_s {
+        display hidden
+        description {
+            ImplicitSurfaceManifold_s to manifold_s
+        }
+
+        parameter ImplicitSurfaceManifold_s in {
+            provider connection
+        }
+
+        parameter manifold_s out {
+            display hidden
+            access output
+        }
+
+        RSLInclude {legacy/mapper/ImplicitSurfaceManifoldV0.h}
+        RSLInclude {manifold.h}
+
+        RSLFunction {
+            void vfxImplicitSurfaceManifoldToManifold_s (
+                ImplicitSurfaceManifold_s   in;
+                output manifold_s    out;
+            ) {
+                out->Set(in->GetQ(),in->GetdQu(),in->GetdQv());
+            }
+        }
+    }
+
+    template manifold FractalizerManifoldToManifold {
+        display hidden
+        description {
+            FractalizerManifold_s to manifold.
+        }
+
+        parameter FractalizerManifold_s in {
+            provider connection
+        }
+
+        collection manifold out {
+            display hidden
+            access output
+            parameter point Q { access output }
+            parameter vector dQu { access output }
+            parameter vector dQv { access output }
+        }
+
+        RSLInclude {mapper/FractalizerManifold.h}
+
+        RSLFunction {
+            void vfxFractalizerManifoldToManifold (
+                output FractalizerManifold_s    in;
+
+                output point    Q;
+                output vector   dQu;
+                output vector   dQv;
+            ) {
+                Q = in->GetQ();
+                dQu = in->GetdQu();
+                dQv = in->GetdQv();
+            }
+        }
+    }
+
+    template manifold_s FractalizerManifoldToManifold_s {
+        display hidden
+        description {
+            FractalizerManifold_s to manifold_s
+        }
+
+        parameter FractalizerManifold_s in {
+            provider connection
+        }
+
+        parameter manifold_s out {
+            display hidden
+            access output
+        }
+
+        RSLInclude {mapper/FractalizerManifold.h}
+        RSLInclude {manifold.h}
+
+        RSLFunction {
+            void vfxFractalizerManifoldToManifold_s (
+                FractalizerManifold_s   in;
+                output manifold_s       out;
+            ) {
+                out->Set(in->GetQ(),in->GetdQu(),in->GetdQv());
+            }
+        }
+    }
+
+    template manifold FlowManifoldToManifold {
+        display hidden
+        description {
+            FlowManifold_s to manifold.
+        }
+
+        parameter FlowManifold_s in {
+            provider connection
+        }
+
+        collection manifold out {
+            display hidden
+            access output
+            parameter point Q { access output }
+            parameter vector dQu { access output }
+            parameter vector dQv { access output }
+        }
+
+        RSLInclude {mapper/FlowManifold.h}
+
+        RSLFunction {
+            void vfxFlowManifoldToManifold (
+                output FlowManifold_s    in;
+
+                output point    Q;
+                output vector   dQu;
+                output vector   dQv;
+            ) {
+                Q = in->GetQ();
+                dQu = in->GetdQu();
+                dQv = in->GetdQv();
+            }
+        }
+    }
+
+    template manifold_s FlowManifoldToManifold_s {
+        display hidden
+        description {
+            FlowManifold_s to manifold_s
+        }
+
+        parameter FlowManifold_s in {
+            provider connection
+        }
+
+        parameter manifold_s out {
+            display hidden
+            access output
+        }
+
+        RSLInclude {mapper/FlowManifold.h}
+        RSLInclude {manifold.h}
+
+        RSLFunction {
+            void vfxFlowManifoldToManifold_s (
+                FlowManifold_s   in;
+                output manifold_s       out;
+            ) {
+                out->Set(in->GetQ(),in->GetdQu(),in->GetdQv());
+            }
+        }
+    }
+
+#######################################
+#
+#   manifold collection templates
+#
+#######################################
+    template manifold ColorToManifold {
+        display hidden
+        description {
+            Color to Manifold.
+        }
+
+        parameter color in {
+            provider connection
+        }
+
+        collection manifold out {
+            access output
+            parameter point Q { access output }
+            parameter vector dQu { access output }
+            parameter vector dQv { access output }
+        }
+
+        RSLFunction {
+            void vfxColorToManifold (
+                color   in;
+
+                output point    Q;
+                output vector   dQu;
+                output vector   dQv;
+
+            ) {
+                Q = point in;
+#if SLIM_SHADERTYPEID == SLIM_TYPEID_volume
+                dQu = vector 0;
+                dQv = vector 0;
+#else
+                dQu = Du(point in)*du;
+                dQv = Dv(point in)*dv;
+#endif
+            }
+        }
+    }
+
+    template manifold PointToManifold {
+        display hidden
+        description {
+            Point to Manifold.
+        }
+
+        parameter point in {
+            provider connection
+        }
+
+        collection manifold out {
+            access output
+            parameter point Q { access output }
+            parameter vector dQu { access output }
+            parameter vector dQv { access output }
+        }
+
+        RSLFunction {
+            void vfxPointToManifold (
+                point   in;
+
+                output point    Q;
+                output vector   dQu;
+                output vector   dQv;
+
+            ) {
+                Q = in;
+#if SLIM_SHADERTYPEID == SLIM_TYPEID_volume
+                dQu = vector 0;
+                dQv = vector 0;
+#else
+                dQu = Du(in)*du;
+                dQv = Dv(in)*dv;
+#endif
+            }
+        }
+    }
+
+    template manifold VectorToManifold {
+        display hidden
+        description {
+            Vector to Manifold.
+        }
+
+        parameter vector in {
+            provider connection
+        }
+
+        collection manifold out {
+            access output
+            parameter point Q { access output }
+            parameter vector dQu { access output }
+            parameter vector dQv { access output }
+        }
+
+        RSLFunction {
+            void vfxVectorToManifold (
+                vector  in;
+
+                output point    Q;
+                output vector   dQu;
+                output vector   dQv;
+
+            ) {
+                Q = point in;
+#if SLIM_SHADERTYPEID == SLIM_TYPEID_volume
+                dQu = vector 0;
+                dQv = vector 0;
+#else
+                dQu = Du(in)*du;
+                dQv = Dv(in)*dv;
+#endif
+            }
+        }
+    }
+
+    template manifold NormalToManifold {
+        display hidden
+        description {
+            Normal to Manifold.
+        }
+
+        parameter normal in {
+            provider connection
+        }
+
+        collection manifold out {
+            access output
+            parameter point Q { access output }
+            parameter vector dQu { access output }
+            parameter vector dQv { access output }
+        }
+
+        RSLFunction {
+            void vfxNormalToManifold (
+                normal  in;
+
+                output point    Q;
+                output vector   dQu;
+                output vector   dQv;
+
+            ) {
+                Q = point in;
+#if SLIM_SHADERTYPEID == SLIM_TYPEID_volume
+                dQu = vector 0;
+                dQv = vector 0;
+#else
+                dQu = Du(in)*du;
+                dQv = Dv(in)*dv;
+#endif
+            }
+        }
+    }
+
+#######################################
+#
+#   manifold_s templates
+#
+#######################################
+    template manifold_s ColorToManifold_s {
+        display hidden
+        description {
+            Color to Manifold.
+        }
+
+        parameter color in {
+            provider connection
+        }
+
+        parameter manifold_s out {
+            display hidden
+            access output
+        }
+
+        RSLInclude {manifold.h}
+
+        RSLFunction {
+            void vfxColorToManifold_s (
+                color   in;
+
+                output manifold_s  out;
+            ) {
+                out->Set(point in);
+            }
+        }
+    }
+
+    template manifold_s PointToManifold_s {
+        display hidden
+        description {
+            Point to Manifold.
+        }
+
+        parameter point in {
+            provider connection
+        }
+
+        parameter manifold_s out {
+            display hidden
+            access output
+        }
+
+        RSLInclude {manifold.h}
+
+        RSLFunction {
+            void vfxPointToManifold_s (
+                point   in;
+
+                output manifold_s   out;
+            ) {
+                out->Set(in);
+            }
+        }
+    }
+
+    template manifold_s VectorToManifold_s {
+        display hidden
+        description {
+            Vector to Manifold.
+        }
+
+        parameter vector in {
+            provider connection
+        }
+
+        parameter manifold_s out {
+            display hidden
+            access output
+        }
+
+        RSLInclude {manifold.h}
+
+        RSLFunction {
+            void vfxPointToManifold_s (
+                vector  in;
+
+                output manifold_s   out;
+            ) {
+                out->Set(point in);
+            }
+        }
+    }
+
+    template manifold_s NormalToManifold_s {
+        display hidden
+        description {
+            Normal to Manifold.
+        }
+
+        RSLInclude {manifold.h}
+
+        parameter normal in {
+            provider connection
+        }
+
+        parameter manifold_s out {
+            display hidden
+            access output
+        }
+
+        RSLInclude {manifold.h}
+
+        RSLFunction {
+            void vfxPointToManifold_s (
+                normal  in;
+
+                output manifold_s   out;
+            ) {
+                out->Set(point in);
+            }
+        }
+    }
+
+  }
+}
