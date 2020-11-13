@@ -24,7 +24,10 @@ If you make use of this repository, I strongly urge you to [subscribe to the dis
 Documentation is on the [wiki page](https://github.com/LaikaStudios/shading-library/wiki/prman_20.Home).
 
 # Environment
-Assuming you cloned this git repository to `/opt/laika/shading-library`, you should have the following environment variables set. Make any alterations as needed for your specific situation.
+Assuming you cloned this git repository to `/opt/laika/shading-library`, you should have the following environment variables set. Make any alterations as needed for your specific operating system or application versions.
+
+For addition information, you can take a look at the [RenderMan 20 Environment Variable](https://renderman.pixar.com/resources/RenderMan_20/env_vars.html) documentation.
+
 
 Using `bash` shell:
 
@@ -57,8 +60,6 @@ Using `bash` shell:
 
     # Add bin directories to PATH.
     export PATH="${PATH}:${RMANTREE}/bin:${RMSTREE}/bin"
-
-For reference, you can take a look at the [RenderMan 20 Environment Variable](https://renderman.pixar.com/resources/RenderMan_20/env_vars.html) documentation.
 
 # License
 Licensed under either of
