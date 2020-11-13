@@ -1,5 +1,5 @@
 # Shading-library installation location.
-export SHADING_LIBRARY="${HOME}/shading-library"
+export SHADING_ROOT="/opt/laika/shading-library"
 
 # Pixar installation location.
 export PIXAR_ROOT="/opt/pixar"
@@ -10,14 +10,15 @@ export RMAN_MINOR="12"
 export RMAN_MICRO=""
 export RMAN_VERSION="${RMAN_MAJOR}.${RMAN_MINOR}${RMAN_MICRO}"
 
-# Katana version.
-export KATANA_MAJOR="3"
-export KATANA_MINOR="2"
-export KATANA_MICRO="v4"
-export KATANA_SHORT_VERSION="${KATANA_MAJOR}.${KATANA_MINOR}"
+# Maya version.
+export MAYA_VERSION="2017"
 
-# RenderMan and shading-library software locations.
+# RenderMan Environment.
 export RMANTREE="${PIXAR_ROOT}/RenderManProServer-${RMAN_VERSION}"
-export RFK_LOCATION="${PIXAR_ROOT}/RenderManForKatana-${RMAN_VERSION}-katana${KATANA_SHORT_VERSION}"
-export RMAN_SHADERPATH="${SHADING_LIBRARY}/build:${RMANTREE}/lib/plugins:${RMANTREE}/lib/shaders"
-export RMAN_RIXPLUGINPATH="${SHADING_LIBRARY}/build:${RMANTREE}/lib/plugins"
+export RMSTREE="${PIXAR_ROOT}/RenderManForMaya-${RMAN_VERSION}-maya${MAYA_VERSION}"
+export RMAN_SHADERPATH="${RMSTREE}/lib/plugins:${RMSTREE}/lib/shaders:${RMANTREE}/lib/plugins:${RMANTREE}/lib/shaders"
+
+# Maya Environment.
+export MAYA_PLUG_IN_PATH="${RMSTREE}/plug-ins"
+export MAYA_SCRIPT_PATH="${SHADING_ROOT}/command/maya:${RMSTREE}/scripts"
+export XBMLANGPATH="${RMSTREE}/icons/%B"

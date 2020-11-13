@@ -18,13 +18,13 @@ If you make use of this repository, I strongly urge you to [subscribe to the dis
 * [Pixar's](https://www.pixar.com) [RenderMan 20 for Maya](https://renderman.pixar.com/resources/RenderMan_20/RMS_101.html)
 * [Autodesk's](https://www.autodesk.com) [Maya](https://www.autodesk.com/products/maya/overview) [2015](https://knowledge.autodesk.com/support/maya/downloads/caas/downloads/content/autodesk-maya-2015-service-pack-6.html), [2016](https://knowledge.autodesk.com/support/maya/downloads/caas/downloads/content/maya-2016-service-pack-6.html), [2017](https://help.autodesk.com/view/MAYAUL/2017/ENU/)
 
-*Note*: Maya is not strictly required, as the RenderMan for Maya shader authoring tool [Slim](https://renderman.pixar.com/resources/RenderMan_20/slimGettingStarted.html) can be used by itself to create shaders.
+*Note*: Maya is not strictly required, as the RenderMan for Maya shader authoring tool [Slim](https://renderman.pixar.com/resources/RenderMan_20/slimGettingStarted.html) can be used by itself to create and manage shaders.
 
 # Documentation
 Documentation is on the [wiki page](https://github.com/LaikaStudios/shading-library/wiki/prman_20.Home).
 
 # Environment
-Assuming you checked out this git repository to `/opt/laika/shading-library`, you should have the following environment variables set. Make any alterations as needed for your specific situation.
+Assuming you cloned this git repository to `/opt/laika/shading-library`, you should have the following environment variables set. Make any alterations as needed for your specific situation.
 
 Using `bash` shell:
 
@@ -40,17 +40,20 @@ Using `bash` shell:
     export RMAN_MICRO=""
     export RMAN_VERSION="${RMAN_MAJOR}.${RMAN_MINOR}${RMAN_MICRO}"
 
-    # RenderMan
-    export RMANTREE="${PIXAR_ROOT}/RenderManProServer-${RMAN_VERSION}"
-    export RMSTREE="${PIXAR_ROOT}/RenderManForMaya-${RMAN_VERSION}"
-    export RMAN_SHADERPATH="${SHADING_ROOT}/build:${RMANTREE}/lib/plugins:${RMANTREE}/lib/shaders"
+    # Maya version.
+    export MAYA_VERSION="2017"
 
-    # Maya
+    # RenderMan Environment.
+    export RMANTREE="${PIXAR_ROOT}/RenderManProServer-${RMAN_VERSION}"
+    export RMSTREE="${PIXAR_ROOT}/RenderManForMaya-${RMAN_VERSION}-maya${MAYA_VERSION}"
+    export RMAN_SHADERPATH="${RMSTREE}/lib/plugins:${RMSTREE}/lib/shaders:${RMANTREE}/lib/plugins:${RMANTREE}/lib/shaders"
+
+    # Maya Environment.
     export MAYA_PLUG_IN_PATH="${RMSTREE}/plug-ins"
     export MAYA_SCRIPT_PATH="${SHADING_ROOT}/command/maya:${RMSTREE}/scripts"
     export XBMLANGPATH="${RMSTREE}/icons/%B"
 
-For reference, you can take a look at the [RenderMan Environment Variable documentation](https://renderman.pixar.com/resources/RenderMan_20/env_vars.html).
+For reference, you can take a look at the [RenderMan 20 Environment Variable](https://renderman.pixar.com/resources/RenderMan_20/env_vars.html) documentation.
 
 # License
 Licensed under either of
