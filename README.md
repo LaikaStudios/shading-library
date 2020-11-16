@@ -16,7 +16,7 @@ If you make use of this repository, I strongly urge you to [subscribe to the dis
 # Requirements
 * [Pixar's](https://www.pixar.com) [RenderMan 20](https://renderman.pixar.com/resources/RenderMan_20/home.html)
 * [Pixar's](https://www.pixar.com) [RenderMan 20 for Maya](https://renderman.pixar.com/resources/RenderMan_20/RMS_101.html)
-* [Autodesk's](https://www.autodesk.com) [Maya](https://www.autodesk.com/products/maya/overview) [2015](https://knowledge.autodesk.com/support/maya/downloads/caas/downloads/content/autodesk-maya-2015-service-pack-6.html), [2016](https://knowledge.autodesk.com/support/maya/downloads/caas/downloads/content/maya-2016-service-pack-6.html), [2017](https://help.autodesk.com/view/MAYAUL/2017/ENU/)
+* [Autodesk's](https://www.autodesk.com) [Maya](https://www.autodesk.com/products/maya/overview) [2015](https://knowledge.autodesk.com/support/maya/downloads/caas/downloads/content/autodesk-maya-2015-service-pack-6.html), [2016](https://knowledge.autodesk.com/support/maya/downloads/caas/downloads/content/maya-2016-service-pack-6.html), or [2017](https://help.autodesk.com/view/MAYAUL/2017/ENU/)
 
 *Note*: Maya is not strictly required, as the RenderMan for Maya shader authoring tool [Slim](https://renderman.pixar.com/resources/RenderMan_20/slimGettingStarted.html) can be used by itself to create and manage shaders.
 
