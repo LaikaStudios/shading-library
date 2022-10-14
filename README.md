@@ -7,7 +7,7 @@ The Production Shading Library refers to [Laika's](https://www.laika.com) entire
 
 This release contains a set of shading nodes that provide a [Material Layering System](https://github.com/LaikaStudios/shading-library/wiki/Material-Layering-System) based on [Pixar's](https://www.pixar.com) [RenderMan](https://renderman.pixar.com/product).
 
-Please use the Discussions tab to provide feedback on any bugs you may find or to discuss any feature requests.
+Please use the Discussions tab to provide any feedback or to initiate any other dialog about this repository.
 
 ## Requirements
 * [Pixar's](https://www.pixar.com) [RenderMan 22](https://rmanwiki.pixar.com/display/REN22/RenderMan)
