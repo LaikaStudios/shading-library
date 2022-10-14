@@ -11,7 +11,7 @@ It represents the culmination of this toolset as it evolved and matured over the
 [The Boxtrolls](https://laika.com/our-films/boxtrolls),
 and [Kubo and the Two Strings](https://laika.com/our-films/kubo).
 
-If you make use of this repository, I strongly urge you to [subscribe to the discussion group](https://groups.google.com/group/laikastudios-shading-library). Please use this group to provide feedback on any bugs you may find or to discuss any feature requests.
+Please use the Discussions tab to provide any feedback or to initiate any other dialog about this repository.
 
 # Requirements
 * [Pixar's](https://www.pixar.com) [RenderMan 20](https://renderman.pixar.com/resources/RenderMan_20/home.html)
