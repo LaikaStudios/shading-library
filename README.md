@@ -7,8 +7,8 @@ The Production Shading Library refers to [Laika's](https://www.laika.com) entire
 
 This release contains a set of shading nodes based on [Pixar's](https://www.pixar.com) [RenderMan](https://renderman.pixar.com/product) that provide:
 
-- [Material Layering System](https://github.com/LaikaStudios/shading-library/wiki/master.Home)
-- [Annotate displayfilter](https://github.com/LaikaStudios/shading-library/wiki/master.Home)
+- [Material Layering System](https://github.com/LaikaStudios/shading-library/wiki/prman_23.Home)
+- [Annotate displayfilter](https://github.com/LaikaStudios/shading-library/wiki/prman_23.Home)
 
 If you make use of this repository, I strongly urge you to [subscribe to the discussion group](https://groups.google.com/group/laikastudios-shading-library). Please use this group to provide feedback on any bugs you may find or to discuss any feature requests.
 
@@ -21,10 +21,10 @@ If you make use of this repository, I strongly urge you to [subscribe to the dis
 * ~[Autodesk's](https://www.autodesk.com) [Maya](https://www.autodesk.com/products/maya/overview)~
 * ~[Pixar's](https://www.pixar.com/renderman) [RenderMan 23 for Maya 2017/2018/2019](https://rmanwiki.pixar.com/display/RFM23/RenderMan+23+for+Maya)~
 </br></br>
-* A c++14 compatible compiler (clang++ is specified in the [ris/Makefile](https://github.com/LaikaStudios/shading-library/blob/master/ris/Makefile))
+* A c++14 compatible compiler (clang++ is specified in the [ris/Makefile](https://github.com/LaikaStudios/shading-library/blob/prman_23/ris/Makefile))
 
 # Documentation
-Documentation is on the [wiki page](https://github.com/LaikaStudios/shading-library/wiki/master.Home).
+Documentation is on the [wiki page](https://github.com/LaikaStudios/shading-library/wiki/prman_23.Home).
 
 # Building Instructions
 The Production Shading Library at Laika is developed in a [Linux](https://en.wikipedia.org/wiki/Linux) environment.
