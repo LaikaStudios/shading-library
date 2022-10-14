@@ -10,7 +10,7 @@ This release contains a set of shading nodes based on [Pixar's](https://www.pixa
 - [Material Layering System](https://github.com/LaikaStudios/shading-library/wiki/prman_23.Home)
 - [Annotate displayfilter](https://github.com/LaikaStudios/shading-library/wiki/prman_23.Home)
 
-Please use the Discussions tab to provide feedback on any bugs you may find or to discuss any feature requests.
+Please use the Discussions tab to provide any feedback or to initiate any other dialog about this repository.
 
 # Requirements
 * [Pixar's](https://www.pixar.com/renderman) [RenderMan 23](https://rmanwiki.pixar.com/display/REN23/RenderMan)
